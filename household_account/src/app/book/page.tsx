@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from "react";
-import acountsData from "./data.json";
+import accountsData from "./data.json";
 
-type AcountData = {
+type AccountData = {
     id: number;
     name: string;
     price: number;
@@ -11,10 +11,10 @@ type AcountData = {
 
 export default function Page () {
     // 読み込みデータを保持
-    const [data, setData] = useState<Array<AcountData>>([]);
+    const [data, setData] = useState<Array<AccountData>>([]);
 
     useEffect(() => {
-        setData(acountsData);
+        setData(accountsData);
     }, []);
 
     return (
@@ -33,7 +33,7 @@ export default function Page () {
                         </tr>
                     ))}
                 </table>
-                <p>合計</p><p>999999</p>
+                <p>合計</p><p></p>
         </div>
       </>
   );
