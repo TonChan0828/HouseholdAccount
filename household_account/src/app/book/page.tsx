@@ -12,9 +12,13 @@ type AccountData = {
 export default function Page () {
     // 読み込みデータを保持
     const [data, setData] = useState<Array<AccountData>>([]);
+    const [sumPrice, setSumPrice] = useState<number>(0);
 
     useEffect(() => {
+        let sum = 0;
+        accountsData.map((data) => { sum += data.price; });
         setData(accountsData);
+        setSumPrice(sum);
     }, []);
 
     return (
@@ -22,18 +26,22 @@ export default function Page () {
         <div>
             <h2>家計簿画面</h2>
                 <table>
-                    <tr>
-                        <th>項目</th><th>金額</th><th>編集</th>
-                    </tr>
-                    { data.map((data: any) => (
-                        <tr key={ data.id }>
-                            <td>{ data.name }</td>
-                            <td>{ data.price }</td>
-                            <td><button>更新</button></td>
+                    <thead>
+                        <tr>
+                            <th>項目</th><th>金額</th><th>編集</th>
                         </tr>
-                    ))}
+                    </thead>
+                    <tbody>
+                        { data.map((data: any) => (
+                            <tr key={ data.name }>
+                                <td>{ data.name } : </td>
+                                <td>{ data.price }円</td>
+                                <td><button>更新</button></td>
+                            </tr>
+                        ))}
+                    </tbody>
                 </table>
-                <p>合計</p><p></p>
+                <p>合計</p><p>{sumPrice}円</p>
         </div>
       </>
   );
