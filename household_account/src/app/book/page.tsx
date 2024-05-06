@@ -9,15 +9,34 @@ type AccountData = {
     price: number;
 };
 
+type CategoryData = {
+    name: string;
+    price: number;
+};
+
 export default function Page () {
     // 読み込みデータを保持
-    const [data, setData] = useState<Array<AccountData>>([]);
+    const [data, setData] = useState<Array<CategoryData>>([]);
     const [sumPrice, setSumPrice] = useState<number>(0);
 
     useEffect(() => {
         let sum = 0;
-        accountsData.map((data) => { sum += data.price; });
-        setData(accountsData);
+        const mp = new Map<string, number>();
+        accountsData.map((data) => {
+            if (typeof mp.get(data.name) !== "undefined") {
+                mp.set(data.name, mp.get(data.name) + data.price);
+            } else {
+                mp.set(data.name, data.price);
+            }
+            sum += data.price;
+        });
+
+        const categoryData: CategoryData[] = [];
+        for (const [key, val] of mp) {
+            categoryData.push({ name:key, price:val });
+        }
+
+        setData(categoryData);
         setSumPrice(sum);
     }, []);
 
