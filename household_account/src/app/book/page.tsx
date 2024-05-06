@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import accountsData from "./data.json";
 
+type IncomeOrExpenditure = "INCOME" | "EXPENDITURE";
+
 type AccountData = {
     id: number;
     name: string;
     price: number;
+    balanceOfPayment: IncomeOrExpenditure;
 };
 
 type CategoryData = {
@@ -16,51 +19,97 @@ type CategoryData = {
 
 export default function Page () {
     // 読み込みデータを保持
-    const [data, setData] = useState<Array<CategoryData>>([]);
-    const [sumPrice, setSumPrice] = useState<number>(0);
+    const [incomeData, setIncomeData] = useState<Array<CategoryData>>([]);
+    const [expenditureData, setExpenditureData] = useState<Array<CategoryData>>([]);
+    const [incomeSumPrice, setIncomeSumPrice] = useState<number>(0);
+    const [expenditureSumPrice, setExpenditureSumPrice] = useState<number>(0);
 
     useEffect(() => {
-        let sum = 0;
-        const mp = new Map<string, number>();
+        let incomeSum = 0;
+        let expenditureSum = 0;
+        const incomeMap = new Map<string, number>();
+        const expenditureMap = new Map<string, number>();
         accountsData.map((data) => {
-            if (typeof mp.get(data.name) !== "undefined") {
-                mp.set(data.name, mp.get(data.name) + data.price);
-            } else {
-                mp.set(data.name, data.price);
+            if (data.balanceOfPayment === "INCOME") {
+                if (typeof incomeMap.get(data.name) !== "undefined") {
+                    incomeMap.set(data.name, incomeMap.get(data.name) + data.price);
+                } else {
+                    incomeMap.set(data.name, data.price);
+                }
+                incomeSum += data.price;
+            }else if (data.balanceOfPayment === "EXPENDITURE") {
+                if (typeof expenditureMap.get(data.name) !== "undefined") {
+                    expenditureMap.set(data.name, expenditureMap.get(data.name) + data.price);
+                } else {
+                    expenditureMap.set(data.name, data.price);
+                }
+                expenditureSum += data.price;
             }
-            sum += data.price;
         });
 
-        const categoryData: CategoryData[] = [];
-        for (const [key, val] of mp) {
-            categoryData.push({ name:key, price:val });
+        const incomeCategoryData: CategoryData[] = [];
+        for (const [key, val] of incomeMap) {
+            incomeCategoryData.push({ name:key, price:val });
         }
 
-        setData(categoryData);
-        setSumPrice(sum);
+        const expenditureCategoryData: CategoryData[] = [];
+        for (const [key, val] of expenditureMap) {
+            expenditureCategoryData.push({ name:key, price:val });
+        }
+
+        setIncomeData(incomeCategoryData);
+        setExpenditureData(expenditureCategoryData);
+        setIncomeSumPrice(incomeSum);
+        setExpenditureSumPrice(expenditureSum);
     }, []);
 
     return (
       <>
         <div>
-            <h2>家計簿画面</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>項目</th><th>金額</th><th>編集</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        { data.map((data: any) => (
-                            <tr key={ data.name }>
-                                <td>{ data.name } : </td>
-                                <td>{ data.price }円</td>
-                                <td><button>更新</button></td>
+                <h2>家計簿画面</h2>
+                <div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>収入項目</th><th>金額</th><th>編集</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <p>合計</p><p>{sumPrice}円</p>
+                        </thead>
+                        <tbody>
+                            { incomeData.map((data: any) => (
+                                <tr key={ data.name }>
+                                    <td>{ data.name } : </td>
+                                    <td>{ data.price }円</td>
+                                    <td><button>更新</button></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <p>合計</p><p>{ incomeSumPrice }円</p>
+                </div>
+
+                <div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>支出項目</th><th>金額</th><th>編集</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            { expenditureData.map((data: any) => (
+                                <tr key={ data.name }>
+                                    <td>{ data.name } : </td>
+                                    <td>{ data.price }円</td>
+                                    <td><button>更新</button></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <p>合計</p><p>{ expenditureSumPrice }円</p>
+                </div>
+
+                <div>
+                    <button>新規登録</button>
+                </div>
         </div>
       </>
   );

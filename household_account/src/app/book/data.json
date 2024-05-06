@@ -2,51 +2,85 @@
     {
         "id":1,
         "name":"食費",
-        "price":50000
+        "price":50000,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":2,
         "name":"外食費",
-        "price":20000
+        "price":20000,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":3,
         "name":"日用品",
-        "price":9000
+        "price":9000,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":4,
         "name":"光熱費",
-        "price":15000
+        "price":15000,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":5,
         "name":"家賃",
-        "price":97000
+        "price":97000,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":6,
         "name":"その他",
-        "price":13500
+        "price":13500,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":7,
         "name":"サブスク",
-        "price":2300
+        "price":2300,
+        "balanceOfPayment":"EXPENDITURE"
     },
        {
         "id":8,
         "name":"食費",
-        "price":5000
+        "price":5000,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":9,
         "name":"外食費",
-        "price":25000
+        "price":25000,
+        "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":10,
         "name":"日用品",
-        "price":1300
+        "price":1300,
+        "balanceOfPayment":"EXPENDITURE"
+    },
+    {
+        "id":11,
+        "name":"給与",
+        "price":130000,
+        "balanceOfPayment":"INCOME"
+    },
+    {
+        "id":12,
+        "name":"ボーナス",
+        "price":300000,
+        "balanceOfPayment":"INCOME"
+    },
+    {
+        "id":13,
+        "name":"雑所得",
+        "price":22222,
+        "balanceOfPayment":"INCOME"
+    },
+    {
+        "id":14,
+        "name":"給与",
+        "price":11111,
+        "balanceOfPayment":"INCOME"
     }
 ]
