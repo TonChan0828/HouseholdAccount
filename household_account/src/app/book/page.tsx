@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import accountsData from "./data.json";
 
 type IncomeOrExpenditure = "INCOME" | "EXPENDITURE";
@@ -71,7 +72,7 @@ export default function Page () {
                     <table>
                         <thead>
                             <tr>
-                                <th>収入項目</th><th>金額</th><th>編集</th>
+                                <th>収入項目</th><th>金額</th><th>内訳</th><th>編集</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -79,6 +80,7 @@ export default function Page () {
                                 <tr key={ data.name }>
                                     <td>{ data.name } : </td>
                                     <td>{ data.price }円</td>
+                                    <td><Link href={`/book/detail/${data.name}`}>詳細</Link></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
@@ -91,7 +93,7 @@ export default function Page () {
                     <table>
                         <thead>
                             <tr>
-                                <th>支出項目</th><th>金額</th><th>編集</th>
+                                <th>収入項目</th><th>金額</th><th>内訳</th><th>編集</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -99,6 +101,7 @@ export default function Page () {
                                 <tr key={ data.name }>
                                     <td>{ data.name } : </td>
                                     <td>{ data.price }円</td>
+                                    <td><Link href={`/book/detail/${data.name}`}>詳細</Link></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
