@@ -1,85 +1,106 @@
 [
     {
         "id":1,
-        "name":"食費",
+        "name":"食費1",
+        "category":"食費",
         "price":50000,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":2,
-        "name":"外食費",
+        "name":"外食費2",
+        "category":"外食費",
         "price":20000,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":3,
-        "name":"日用品",
+        "name":"日用品3",
+        "category":"日用品",
         "price":9000,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":4,
-        "name":"光熱費",
+        "name":"光熱費4",
+        "category":"光熱費",
         "price":15000,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":5,
-        "name":"家賃",
+        "name":"家賃5",
+        "category":"家賃",
         "price":97000,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":6,
-        "name":"その他",
+        "name":"その他6",
+        "category":"その他",
         "price":13500,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":7,
-        "name":"サブスク",
+        "name":"サブスク7",
+        "category":"サブスク",
         "price":2300,
         "balanceOfPayment":"EXPENDITURE"
     },
        {
         "id":8,
-        "name":"食費",
+        "name":"食費8",
+        "category":"食費",
         "price":5000,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":9,
-        "name":"外食費",
+        "name":"外食費9",
+        "category":"外食費",
         "price":25000,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":10,
-        "name":"日用品",
+        "name":"日用品10",
+        "category":"日用品",
         "price":1300,
         "balanceOfPayment":"EXPENDITURE"
     },
     {
         "id":11,
-        "name":"給与",
+        "name":"給与11",
+        "category":"給与",
         "price":130000,
         "balanceOfPayment":"INCOME"
     },
     {
         "id":12,
-        "name":"ボーナス",
+        "name":"ボーナス12",
+        "category":"ボーナス",
         "price":300000,
         "balanceOfPayment":"INCOME"
     },
     {
         "id":13,
-        "name":"雑所得",
+        "name":"雑所得13",
+        "category":"雑所得",
         "price":22222,
         "balanceOfPayment":"INCOME"
     },
     {
         "id":14,
-        "name":"給与",
+        "name":"給与14",
+        "category":"給与",
+        "price":11111,
+        "balanceOfPayment":"INCOME"
+    },
+    {
+        "id":15,
+        "name":"test15",
+        "category":"test",
         "price":11111,
         "balanceOfPayment":"INCOME"
     }

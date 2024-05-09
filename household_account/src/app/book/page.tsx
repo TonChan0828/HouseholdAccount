@@ -9,12 +9,13 @@ type IncomeOrExpenditure = "INCOME" | "EXPENDITURE";
 type AccountData = {
     id: number;
     name: string;
+    category:string;
     price: number;
     balanceOfPayment: IncomeOrExpenditure;
 };
 
 type CategoryData = {
-    name: string;
+    category: string;
     price: number;
 };
 
@@ -32,17 +33,17 @@ export default function Page () {
         const expenditureMap = new Map<string, number>();
         accountsData.map((data) => {
             if (data.balanceOfPayment === "INCOME") {
-                if (typeof incomeMap.get(data.name) !== "undefined") {
-                    incomeMap.set(data.name, incomeMap.get(data.name) + data.price);
+                if (typeof incomeMap.get(data.category) !== "undefined") {
+                    incomeMap.set(data.category, incomeMap.get(data.category) + data.price);
                 } else {
-                    incomeMap.set(data.name, data.price);
+                    incomeMap.set(data.category, data.price);
                 }
                 incomeSum += data.price;
             }else if (data.balanceOfPayment === "EXPENDITURE") {
-                if (typeof expenditureMap.get(data.name) !== "undefined") {
-                    expenditureMap.set(data.name, expenditureMap.get(data.name) + data.price);
+                if (typeof expenditureMap.get(data.category) !== "undefined") {
+                    expenditureMap.set(data.category, expenditureMap.get(data.category) + data.price);
                 } else {
-                    expenditureMap.set(data.name, data.price);
+                    expenditureMap.set(data.category, data.price);
                 }
                 expenditureSum += data.price;
             }
@@ -50,12 +51,12 @@ export default function Page () {
 
         const incomeCategoryData: CategoryData[] = [];
         for (const [key, val] of incomeMap) {
-            incomeCategoryData.push({ name:key, price:val });
+            incomeCategoryData.push({ category:key, price:val });
         }
 
         const expenditureCategoryData: CategoryData[] = [];
         for (const [key, val] of expenditureMap) {
-            expenditureCategoryData.push({ name:key, price:val });
+            expenditureCategoryData.push({ category:key, price:val });
         }
 
         setIncomeData(incomeCategoryData);
@@ -77,10 +78,10 @@ export default function Page () {
                         </thead>
                         <tbody>
                             { incomeData.map((data: any) => (
-                                <tr key={ data.name }>
-                                    <td>{ data.name } : </td>
+                                <tr key={ data.category }>
+                                    <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
-                                    <td><Link href={`/book/detail/${data.name}`}>詳細</Link></td>
+                                    <td><Link href={ `/book/detail?category=${data.category}`}>詳細</Link></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
@@ -98,10 +99,10 @@ export default function Page () {
                         </thead>
                         <tbody>
                             { expenditureData.map((data: any) => (
-                                <tr key={ data.name }>
-                                    <td>{ data.name } : </td>
+                                <tr key={ data.category }>
+                                    <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
-                                    <td><Link href={`/book/detail/${data.name}`}>詳細</Link></td>
+                                    <td><Link href={ `/book/detail?category=${data.category}`}>詳細</Link></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
