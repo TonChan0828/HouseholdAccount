@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import accountsData from "./data.json";
+import ReactModal from "react-modal";
+import Detail from './detail';
 
 type IncomeOrExpenditure = "INCOME" | "EXPENDITURE";
 
@@ -25,6 +27,8 @@ export default function Page () {
     const [expenditureData, setExpenditureData] = useState<Array<CategoryData>>([]);
     const [incomeSumPrice, setIncomeSumPrice] = useState<number>(0);
     const [expenditureSumPrice, setExpenditureSumPrice] = useState<number>(0);
+    const [modalIsOpen, setIsOpen] = useState(false);
+    const [detailWord, setDetailWord] = useState<string>("");
 
     useEffect(() => {
         let incomeSum = 0;
@@ -64,7 +68,24 @@ export default function Page () {
         setIncomeSumPrice(incomeSum);
         setExpenditureSumPrice(expenditureSum);
     }, []);
-
+const modalStyle = {
+  overlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    backgroundColor: "rgba(0,0,0,0.85)"
+  },
+  content: {
+    position: "absolute",
+    top: "5rem",
+    left: "5rem",
+    right: "5rem",
+    bottom: "5rem",
+    backgroundColor: "black",
+    borderRadius: "1rem",
+    padding: "1.5rem"
+  }
+};
     return (
       <>
         <div>
@@ -81,12 +102,15 @@ export default function Page () {
                                 <tr key={ data.category }>
                                     <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
-                                    <td><Link href={ `/book/detail?category=${data.category}`}>詳細</Link></td>
+                                    <td><button onClick={ () => { setIsOpen(true); setDetailWord(data.category); } }>詳細</button></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
+                    <ReactModal isOpen={ modalIsOpen } style={modalStyle} onRequestClose={()=>setIsOpen(false)}>
+                        <Detail detailWord={(detailWord)}/>
+                    </ReactModal>
                     <p>合計</p><p>{ incomeSumPrice }円</p>
                 </div>
 
@@ -102,7 +126,7 @@ export default function Page () {
                                 <tr key={ data.category }>
                                     <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
-                                    <td><Link href={ `/book/detail?category=${data.category}`}>詳細</Link></td>
+                                    <td><button onClick={ () => setIsOpen(true) }>詳細</button></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
