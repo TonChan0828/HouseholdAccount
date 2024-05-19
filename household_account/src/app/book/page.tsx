@@ -28,7 +28,7 @@ export default function Page () {
     const [incomeSumPrice, setIncomeSumPrice] = useState<number>(0);
     const [expenditureSumPrice, setExpenditureSumPrice] = useState<number>(0);
     const [modalIsOpen, setIsOpen] = useState(false);
-    const [detailWord, setDetailWord] = useState<string>("");
+    const [detailArray, setDetailArray] = useState<Array<AccountData>>([]);
 
     useEffect(() => {
         let incomeSum = 0;
@@ -102,14 +102,14 @@ const modalStyle = {
                                 <tr key={ data.category }>
                                     <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
-                                    <td><button onClick={ () => { setIsOpen(true); setDetailWord(data.category); } }>詳細</button></td>
+                                    <td><button onClick={ () => { setIsOpen(true); setDetailArray([]); } }>詳細</button></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    <ReactModal isOpen={ modalIsOpen } style={modalStyle} onRequestClose={()=>setIsOpen(false)}>
-                        <Detail detailWord={(detailWord)}/>
+                    <ReactModal isOpen={ modalIsOpen } /*style={modalStyle}*/ onRequestClose={()=>setIsOpen(false)}>
+                        <Detail detailArray={(detailArray)}/>
                     </ReactModal>
                     <p>合計</p><p>{ incomeSumPrice }円</p>
                 </div>
