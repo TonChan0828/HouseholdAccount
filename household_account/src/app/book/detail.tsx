@@ -10,7 +10,7 @@ type AccountData = {
     balanceOfPayment: IncomeOrExpenditure;
 };
 
-export default function Detail ({detailArray}:{detailArray:Array<AccountData>}) {
+export default function Detail ({detailArray}:{detailArray:AccountData[]}) {
     
     return (
         <>
@@ -26,7 +26,7 @@ export default function Detail ({detailArray}:{detailArray:Array<AccountData>}) 
                         <tbody>
                             { detailArray.map((data: any) => (
                                 <tr key={ data.category }>
-                                    <td>{ <data value="" className="name"></data> } : </td>
+                                    <td>{ data.name } : </td>
                                     <td>{ data.price }円</td>
                                     <td><button>編集</button></td>
                                 </tr>
