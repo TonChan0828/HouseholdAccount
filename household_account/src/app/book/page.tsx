@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import accountsData from "./data.json";
+import accountsDataSample from "./data.json";
 import ReactModal from "react-modal";
 import Detail from './detail';
 
@@ -13,61 +13,83 @@ type AccountData = {
     name: string;
     category:string;
     price: number;
-    balanceOfPayment: IncomeOrExpenditure;
+    balanceOfPayment: string;
 };
 
 type CategoryData = {
     category: string;
+    categoryId: number;
     price: number;
 };
 
 export default function Page () {
-    // 読み込みデータを保持
-    const [incomeData, setIncomeData] = useState<Array<CategoryData>>([]);
-    const [expenditureData, setExpenditureData] = useState<Array<CategoryData>>([]);
-    const [incomeSumPrice, setIncomeSumPrice] = useState<number>(0);
-    const [expenditureSumPrice, setExpenditureSumPrice] = useState<number>(0);
+    // 読み込みデータを型に適用
+    const accountsData: AccountData[] = accountsDataSample;
+
+    // モーダル表示用
     const [modalIsOpen, setIsOpen] = useState(false);
     const [detailArray, setDetailArray] = useState<Array<AccountData>>([]);
 
-    useEffect(() => {
-        let incomeSum = 0;
-        let expenditureSum = 0;
-        const incomeMap = new Map<string, number>();
-        const expenditureMap = new Map<string, number>();
-        accountsData.map((data) => {
-            if (data.balanceOfPayment === "INCOME") {
-                if (typeof incomeMap.get(data.category) !== "undefined") {
-                    incomeMap.set(data.category, incomeMap.get(data.category) + data.price);
-                } else {
-                    incomeMap.set(data.category, data.price);
-                }
-                incomeSum += data.price;
-            }else if (data.balanceOfPayment === "EXPENDITURE") {
-                if (typeof expenditureMap.get(data.category) !== "undefined") {
-                    expenditureMap.set(data.category, expenditureMap.get(data.category) + data.price);
-                } else {
-                    expenditureMap.set(data.category, data.price);
-                }
-                expenditureSum += data.price;
+    // モーダル表示用カテゴリID取得用
+    const [categoryId, setCategoryId] = useState<number>(0);
+    
+    // カテゴリ用    
+    const [CategorizedAccountDataArray, setCategorizedAccountDataArray]=useState<Array<Array<AccountData>>>([]);
+    // カテゴリ集計用
+    const [incomeData, setIncomeData] = useState<Array<CategoryData>>([]);
+    const [expenditureData, setExpenditureData] = useState<Array<CategoryData>>([]);
+    // 合計集計用
+    const [incomeSumPrice, setIncomeSumPrice] = useState<number>(0);
+    const [expenditureSumPrice, setExpenditureSumPrice] = useState<number>(0);
+
+
+    useEffect(() => { 
+        // accountsDataをカテゴリで分類する
+        let categoryToNum = 0;
+        const categoryMap = new Map<string, number>();
+        const categorizedData:AccountData[][] = [];
+        accountsData.map((data: AccountData): void => {
+            if (!categoryMap.has(data.category)) {
+                categoryMap.set(data.category, categoryToNum);
+                categoryToNum++;
+                categorizedData.push([]);
+            }
+            const num: number = categoryMap.get(data.category) ?? -1;
+            if (num !== -1) {
+                categorizedData[num].push(data);
             }
         });
+        setCategorizedAccountDataArray(categorizedData);
 
+        // カテゴリごとの合計を求める
+        // 収支ごとの合計を求める
         const incomeCategoryData: CategoryData[] = [];
-        for (const [key, val] of incomeMap) {
-            incomeCategoryData.push({ category:key, price:val });
-        }
-
         const expenditureCategoryData: CategoryData[] = [];
-        for (const [key, val] of expenditureMap) {
-            expenditureCategoryData.push({ category:key, price:val });
+        let incomeSum: number = 0;
+        let expenditureSum: number = 0;
+
+        for (let num :number= 0; num < categoryToNum; num++){
+            const balanceOfPayment: string = categorizedData[num][0].balanceOfPayment;
+            const category: string = categorizedData[num][0].category;
+            const categoryId: number = num;
+            let price: number = 0;
+            categorizedData[num].map((data:AccountData):void => { price +=data.price});
+            if (balanceOfPayment === "INCOME") {
+                incomeSum += price;
+                incomeCategoryData.push({ "category": category, "categoryId": categoryId, "price": price });
+            }
+            if (balanceOfPayment === "EXPENDITURE") {
+                expenditureSum += price;
+                expenditureCategoryData.push({ "category": category, "categoryId": categoryId, "price": price });
+            }
         }
 
         setIncomeData(incomeCategoryData);
         setExpenditureData(expenditureCategoryData);
         setIncomeSumPrice(incomeSum);
         setExpenditureSumPrice(expenditureSum);
-    }, []);
+    },[accountsData]);
+    
 const modalStyle = {
   overlay: {
     position: "fixed",
@@ -102,15 +124,12 @@ const modalStyle = {
                                 <tr key={ data.category }>
                                     <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
-                                    <td><button onClick={ () => { setIsOpen(true); setDetailArray([]); } }>詳細</button></td>
+                                    <td><button onClick={ () => { setIsOpen(true); setCategoryId(data.categoryId) } }>詳細</button></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    <ReactModal isOpen={ modalIsOpen } /*style={modalStyle}*/ onRequestClose={()=>setIsOpen(false)}>
-                        <Detail detailArray={(detailArray)}/>
-                    </ReactModal>
                     <p>合計</p><p>{ incomeSumPrice }円</p>
                 </div>
 
@@ -126,7 +145,7 @@ const modalStyle = {
                                 <tr key={ data.category }>
                                     <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
-                                    <td><button onClick={ () => setIsOpen(true) }>詳細</button></td>
+                                    <td><button onClick={ () => { setIsOpen(true); setCategoryId(data.categoryId) ;} }>詳細</button></td>
                                     <td><button>更新</button></td>
                                 </tr>
                             ))}
@@ -138,6 +157,9 @@ const modalStyle = {
                 <div>
                     <button>新規登録</button>
                 </div>
+                 <ReactModal isOpen={ modalIsOpen } style={modalStyle} onRequestClose={()=>setIsOpen(false)}>
+                    <Detail detailArray={CategorizedAccountDataArray[categoryId]}/>
+                </ReactModal>
         </div>
       </>
   );
