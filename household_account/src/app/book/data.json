@@ -73,7 +73,7 @@
         "id":11,
         "name":"給与11",
         "category":"給与",
-        "price":130000,
+        "price":100000,
         "balanceOfPayment":"INCOME"
     },
     {
@@ -87,21 +87,21 @@
         "id":13,
         "name":"雑所得13",
         "category":"雑所得",
-        "price":22222,
+        "price":2000,
         "balanceOfPayment":"INCOME"
     },
     {
         "id":14,
         "name":"給与14",
         "category":"給与",
-        "price":11111,
+        "price":10000,
         "balanceOfPayment":"INCOME"
     },
     {
         "id":15,
         "name":"test15",
         "category":"test",
-        "price":11111,
+        "price":10,
         "balanceOfPayment":"INCOME"
     }
 ]
