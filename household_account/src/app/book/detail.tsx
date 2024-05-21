@@ -7,7 +7,7 @@ type AccountData = {
     name: string;
     category:string;
     price: number;
-    balanceOfPayment: IncomeOrExpenditure;
+    balanceOfPayment: string;
 };
 
 export default function Detail ({detailArray}:{detailArray:AccountData[]}) {
