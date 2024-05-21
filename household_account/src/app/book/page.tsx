@@ -5,6 +5,7 @@ import Link from "next/link";
 import accountsDataSample from "./data.json";
 import ReactModal from "react-modal";
 import Detail from './detail';
+import Form from'./form';
 
 type IncomeOrExpenditure = "INCOME" | "EXPENDITURE";
 
@@ -154,9 +155,8 @@ const modalStyle = {
                     <p>合計</p><p>{ expenditureSumPrice }円</p>
                 </div>
 
-                <div>
-                    <button>新規登録</button>
-                </div>
+                <Form />
+
                  <ReactModal isOpen={ modalIsOpen } style={modalStyle} onRequestClose={()=>setIsOpen(false)}>
                     <Detail detailArray={CategorizedAccountDataArray[categoryId]}/>
                 </ReactModal>
