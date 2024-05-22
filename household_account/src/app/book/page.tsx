@@ -117,7 +117,7 @@ const modalStyle = {
                     <table>
                         <thead>
                             <tr>
-                                <th>収入項目</th><th>金額</th><th>内訳</th><th>編集</th>
+                                <th>収入項目</th><th>金額</th><th>内訳</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -126,7 +126,6 @@ const modalStyle = {
                                     <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
                                     <td><button onClick={ () => { setIsOpen(true); setCategoryId(data.categoryId) } }>詳細</button></td>
-                                    <td><button>更新</button></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -138,7 +137,7 @@ const modalStyle = {
                     <table>
                         <thead>
                             <tr>
-                                <th>収入項目</th><th>金額</th><th>内訳</th><th>編集</th>
+                                <th>収入項目</th><th>金額</th><th>内訳</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -147,7 +146,6 @@ const modalStyle = {
                                     <td>{ data.category } : </td>
                                     <td>{ data.price }円</td>
                                     <td><button onClick={ () => { setIsOpen(true); setCategoryId(data.categoryId) ;} }>詳細</button></td>
-                                    <td><button>更新</button></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -157,7 +155,7 @@ const modalStyle = {
 
                 <Form />
 
-                 <ReactModal isOpen={ modalIsOpen } style={modalStyle} onRequestClose={()=>setIsOpen(false)}>
+                 <ReactModal isOpen={ modalIsOpen } /*style={modalStyle}*/ onRequestClose={()=>setIsOpen(false)}>
                     <Detail detailArray={CategorizedAccountDataArray[categoryId]}/>
                 </ReactModal>
         </div>
