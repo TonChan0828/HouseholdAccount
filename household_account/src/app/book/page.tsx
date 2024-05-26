@@ -5,23 +5,8 @@ import Link from "next/link";
 import accountsDataSample from "./data.json";
 import ReactModal from "react-modal";
 import Detail from './detail';
-import Form from'./form';
-
-type IncomeOrExpenditure = "INCOME" | "EXPENDITURE";
-
-type AccountData = {
-    id: number;
-    name: string;
-    category:string;
-    price: number;
-    balanceOfPayment: string;
-};
-
-type CategoryData = {
-    category: string;
-    categoryId: number;
-    price: number;
-};
+import Form from './form';
+import { AccountData,CategoryData,IncomeOrExpenditure } from "../../../types/accountData";
 
 export default function Page () {
     // 読み込みデータを型に適用

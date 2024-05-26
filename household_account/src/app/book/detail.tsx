@@ -1,14 +1,5 @@
 import React from 'react';
-
-type IncomeOrExpenditure = "INCOME" | "EXPENDITURE";
-
-type AccountData = {
-    id: number;
-    name: string;
-    category:string;
-    price: number;
-    balanceOfPayment: string;
-};
+import { IncomeOrExpenditure,AccountData } from '../../../types/accountData';
 
 export default function Detail ({detailArray}:{detailArray:AccountData[]}) {
     
