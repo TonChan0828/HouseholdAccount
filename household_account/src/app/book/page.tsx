@@ -76,24 +76,7 @@ export default function Page () {
         setExpenditureSumPrice(expenditureSum);
     },[accountsData]);
     
-const modalStyle = {
-  overlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    backgroundColor: "rgba(0,0,0,0.85)"
-  },
-  content: {
-    position: "absolute",
-    top: "5rem",
-    left: "5rem",
-    right: "5rem",
-    bottom: "5rem",
-    backgroundColor: "black",
-    borderRadius: "1rem",
-    padding: "1.5rem"
-  }
-};
+
     return (
       <>
         <div>
@@ -138,7 +121,7 @@ const modalStyle = {
                     <p>合計</p><p>{ expenditureSumPrice }円</p>
                 </div>
 
-                <Form />
+                <Form incomeData={ incomeData } expenditureData={expenditureData} />
 
                  <ReactModal isOpen={ modalIsOpen } /*style={modalStyle}*/ onRequestClose={()=>setIsOpen(false)}>
                     <Detail detailArray={CategorizedAccountDataArray[categoryId]}/>

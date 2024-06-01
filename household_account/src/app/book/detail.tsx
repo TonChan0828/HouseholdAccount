@@ -11,12 +11,13 @@ export default function Detail ({detailArray}:{detailArray:AccountData[]}) {
                     <table>
                         <thead>
                             <tr>
-                                <th>項目名</th><th>金額</th><th>編集</th>
+                                <th>ID</th><th>項目名</th><th>金額</th><th>編集</th>
                             </tr>
                         </thead>
                         <tbody>
                             { detailArray.map((data: any) => (
                                 <tr key={ data.category }>
+                                    <td>{ data.id } : </td>
                                     <td>{ data.name } : </td>
                                     <td>{ data.price }円</td>
                                     <td><button>編集</button></td>
