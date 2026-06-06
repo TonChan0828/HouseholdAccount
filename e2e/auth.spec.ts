@@ -6,9 +6,7 @@ test.describe("認証ルーティング", () => {
   }) => {
     await page.goto("/");
     await expect(page).toHaveURL(/\/login$/);
-    await expect(
-      page.getByRole("heading", { name: "ログイン" }),
-    ).toBeVisible();
+    await expect(page.getByLabel("メールアドレス")).toBeVisible();
   });
 
   test("未認証で /households にアクセスするとログインへリダイレクトされる", async ({
@@ -23,7 +21,7 @@ test.describe("認証ルーティング", () => {
     await page.getByRole("link", { name: "新規登録" }).click();
     await expect(page).toHaveURL(/\/register$/);
     await expect(
-      page.getByRole("heading", { name: "新規登録" }),
+      page.getByRole("button", { name: "登録する" }),
     ).toBeVisible();
   });
 });
