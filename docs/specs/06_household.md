@@ -3,25 +3,36 @@
 ## 概要
 
 家計簿グループ（household）と、そのメンバー（household_members）を管理する。
-本フェーズ（基盤構築）では DB スキーマ・RLS・初期化トリガを確定する。
-グループ作成・招待・切り替えの UI は次フェーズで実装する。
+本フェーズでは **グループの作成・切り替え・招待（トークン方式）の UI / Server Action** を実装する。
+（DB スキーマ・RLS・初期化トリガは基盤構築フェーズで確定済み）
+
+メンバー一覧・脱退・削除の UI は本フェーズ外（後続フェーズ）とする。
 
 ## 対象ユーザー・前提条件
 
 - ログインユーザーはグループを作成できる（作成者は自動的に `owner` になる）
-- メンバー招待・グループ削除は `owner` のみ
+- メンバー招待（招待リンク発行）・グループ削除は `owner` のみ
 - メンバーは自分の脱退（自分の行の削除）が可能
+- アクティブグループは Cookie (`active_household_id`) に保存する
 
 ## 画面・UI
 
 ### 表示内容
 
-- `/households`: グループ選択・作成（本フェーズはログイン確認用プレースホルダ）
+- `/households`: 所属グループ一覧（アクティブを強調）＋ グループ新規作成フォーム。
+  owner のグループには「招待リンク発行」セクション（人数上限の指定・既存リンクの上限変更・失効）。
+- `/invite/[token]`: 招待リンクの参加画面。グループ名を表示し「参加する」で加入。
+  期限切れ・上限到達・無効トークンはエラー表示。未ログインは middleware で `/login` へ。
 
 ### インタラクション・バリデーション
 
 - グループ名: 1〜100文字
-- （次フェーズ）メール招待、アクティブグループの切り替え（Cookie 保存）
+- 招待の人数上限 `max_uses`: 1〜50
+- アクティブグループ切り替え時に Cookie を更新する
+- 招待リンクは **オープン方式**（リンクを知っているログイン済みユーザーは誰でも参加可能）。
+  ただし `max_uses`（owner 指定の人数上限）・有効期限・owner による失効で参加範囲を制御する。
+- `max_uses` は発行後も owner が変更可能。上限を下げても既に参加済みのメンバーは外れず、
+  以降の新規参加のみを抑止する（`uses_count >= max_uses` で無効化）。
 
 ## データモデル
 
@@ -40,6 +51,9 @@ household_members.Insert  // { household_id, user_id, role? }
 type Household = { id; name; created_by; created_at };
 type HouseholdMember = { id; household_id; user_id; role; joined_at };
 type Member = HouseholdMember & { email?; display_name? };
+type HouseholdInvitation = {
+  id; household_id; token; created_by; max_uses; uses_count; expires_at; created_at;
+};
 ```
 
 ## Supabase
@@ -51,6 +65,13 @@ households(id, name, created_by, created_at)
 household_members(id, household_id, user_id, role['owner'|'member'], joined_at, unique(household_id,user_id))
 categories(id, household_id, name, color, icon, type['income'|'expense'|'both'], is_default)
 transactions(id, household_id, created_by, amount:int, type['income'|'expense'], category_id, date, memo, created_at)
+
+-- 0004 で追加（本フェーズ）
+household_invitations(
+  id, household_id, token UNIQUE, created_by,
+  max_uses:int CHECK(1..50), uses_count:int DEFAULT 0,
+  expires_at timestamptz, created_at
+)
 ```
 
 金額（`amount`）は円建てのため `integer`（小数なし）。
@@ -65,6 +86,8 @@ transactions(id, household_id, created_by, amount:int, type['income'|'expense'],
 - `household_members`: insert は owner（招待）、delete は owner または本人（脱退）
 - `categories`: 全操作メンバー可
 - `transactions`: insert はメンバー かつ `created_by = auth.uid()`、update/delete は `created_by = auth.uid()` のみ
+- `household_invitations`: select / insert / update / delete はすべて **owner のみ**
+  （参加処理は下記 `accept_invitation` 関数が SECURITY DEFINER で行うため、招待された人は本テーブルへ直接アクセスしない）
 
 ### 初期化トリガ
 
@@ -75,15 +98,39 @@ on_household_created (after insert on households):
   2. デフォルトカテゴリ（支出9 + 収入3）を付与
 ```
 
+### 招待参加関数（0004）
+
+```sql
+accept_invitation(_token text) returns uuid  -- SECURITY DEFINER
+  1. token で household_invitations を検索（無ければエラー）
+  2. expires_at 超過 / uses_count >= max_uses ならエラー（無効）
+  3. 既に household_members なら何もせず household_id を返す（冪等）
+  4. household_members に auth.uid() を member として追加
+  5. uses_count を +1
+  6. household_id を返す
+```
+
+`household_members` の insert ポリシーが owner 限定のため、招待された本人は自分を追加できない。
+この関数を SECURITY DEFINER（RLS バイパス）にし、`auth.uid()` で本人確認しつつ、上限判定を
+DB 側で原子的に行うことで「想定外の超過参加」を防ぐ。
+
 ### クエリ / Server Action
 
 ```typescript
 // lib/household.ts
 getActiveHouseholdId(): Cookie 優先、無ければ所属する最古のグループにフォールバック
+
+// app/households/actions.ts（Server Actions）
+createHousehold(formData)        // name(1-100) → insert → 新グループを active Cookie に → redirect("/")
+setActiveHousehold(householdId)  // メンバー確認 → Cookie set → revalidate
+createInvitation(formData)       // owner確認 → token生成(crypto) → insert(max_uses, expires_at=+7d)
+updateInvitation(id, max_uses)   // owner のみ → max_uses 更新
+revokeInvitation(id)             // owner のみ → delete
+acceptInvitation(token)          // rpc("accept_invitation") → 成功時 active Cookie set → redirect("/")
 ```
 
 ## 未解決の課題
 
-- グループ作成・招待・切り替えの Server Action と UI（次フェーズ）
-- メンバー一覧でのメール/表示名取得（auth.users との結合方法。Edge Function か admin API 検討）
-- アクティブグループ切り替え時の Cookie 設定 Server Action
+- メンバー一覧での auth.users 情報（email/表示名）取得方法（後続フェーズ。Edge Function か admin API 検討）
+- メンバー一覧・脱退・削除の UI（後続フェーズ）
+- 招待リンクの multi-user 参加は E2E では関数レベル（SQL）検証に留める
