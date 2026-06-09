@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createHouseholdSchema,
   invitationLimitSchema,
+  periodStartDaySchema,
 } from "@/lib/validations/household";
 import { cookies } from "next/headers";
 
@@ -148,6 +149,31 @@ export async function updateInvitation(formData: FormData): Promise<void> {
     .eq("id", invitationId);
 
   revalidatePath("/households");
+}
+
+/** owner が月の区切りの開始日（period_start_day）を変更する。 */
+export async function setPeriodStartDay(formData: FormData): Promise<void> {
+  const householdId = String(formData.get("household_id") ?? "");
+  if (!householdId) {
+    return;
+  }
+
+  const parsed = periodStartDaySchema.safeParse({
+    periodStartDay: formData.get("period_start_day"),
+  });
+  if (!parsed.success) {
+    return;
+  }
+
+  const supabase = await createClient();
+  // RLS の update ポリシーで owner 以外は弾かれる。
+  await supabase
+    .from("households")
+    .update({ period_start_day: parsed.data.periodStartDay })
+    .eq("id", householdId);
+
+  revalidatePath("/households");
+  revalidatePath("/transactions");
 }
 
 /** owner が招待リンクを失効（削除）する。 */

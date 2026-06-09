@@ -17,9 +17,17 @@ export default async function DashboardPage() {
     <main className="mx-auto w-full max-w-4xl flex-1 p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">ダッシュボード</h1>
-        <Link href="/households" className={buttonVariants({ variant: "outline" })}>
-          グループ選択
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/transactions"
+            className={buttonVariants({ variant: "default" })}
+          >
+            収支を記録
+          </Link>
+          <Link href="/households" className={buttonVariants({ variant: "outline" })}>
+            グループ選択
+          </Link>
+        </div>
       </div>
       <Card>
         <CardHeader>

@@ -6,6 +6,7 @@ import {
   createInvitation,
   revokeInvitation,
   setActiveHousehold,
+  setPeriodStartDay,
   updateInvitation,
 } from "@/app/households/actions";
 import { CreateHouseholdForm } from "@/components/features/household/create-household-form";
@@ -24,7 +25,7 @@ import type { HouseholdInvitation, MemberRole } from "@/types";
 
 type MembershipRow = {
   role: MemberRole;
-  household: { id: string; name: string } | null;
+  household: { id: string; name: string; period_start_day: number } | null;
 };
 
 export default async function HouseholdsPage() {
@@ -35,7 +36,7 @@ export default async function HouseholdsPage() {
 
   const { data: memberships } = await supabase
     .from("household_members")
-    .select("role, household:households(id, name)")
+    .select("role, household:households(id, name, period_start_day)")
     .order("joined_at", { ascending: true })
     .overrideTypes<MembershipRow[]>();
 
@@ -114,15 +115,50 @@ export default async function HouseholdsPage() {
                     </div>
                   </CardHeader>
                   {role === "owner" ? (
-                    <CardContent>
-                      <p className="mb-3 text-sm font-medium">メンバーを招待</p>
-                      <InvitationManager
-                        householdId={group.id}
-                        invitations={groupInvitations}
-                        createAction={createInvitation}
-                        updateAction={updateInvitation}
-                        revokeAction={revokeInvitation}
-                      />
+                    <CardContent className="space-y-6">
+                      <div>
+                        <p className="mb-2 text-sm font-medium">月の区切り</p>
+                        <form
+                          action={setPeriodStartDay}
+                          className="flex items-end gap-2"
+                        >
+                          <input
+                            type="hidden"
+                            name="household_id"
+                            value={group.id}
+                          />
+                          <div className="space-y-1">
+                            <label
+                              htmlFor={`start-day-${group.id}`}
+                              className="text-xs text-muted-foreground"
+                            >
+                              開始日（1〜28）
+                            </label>
+                            <input
+                              id={`start-day-${group.id}`}
+                              name="period_start_day"
+                              type="number"
+                              min={1}
+                              max={28}
+                              defaultValue={group.period_start_day}
+                              className="h-8 w-20 rounded-lg border border-border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                            />
+                          </div>
+                          <Button type="submit" variant="outline" size="sm">
+                            保存
+                          </Button>
+                        </form>
+                      </div>
+                      <div>
+                        <p className="mb-3 text-sm font-medium">メンバーを招待</p>
+                        <InvitationManager
+                          householdId={group.id}
+                          invitations={groupInvitations}
+                          createAction={createInvitation}
+                          updateAction={updateInvitation}
+                          revokeAction={revokeInvitation}
+                        />
+                      </div>
                     </CardContent>
                   ) : null}
                 </Card>
