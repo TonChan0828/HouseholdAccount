@@ -4,6 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 
 export const ACTIVE_HOUSEHOLD_COOKIE = "active_household_id";
 
+/** アクティブグループの Cookie を設定する（グループ作成・切り替え・招待参加時に使う）。 */
+export async function setActiveHouseholdCookie(householdId: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(ACTIVE_HOUSEHOLD_COOKIE, householdId, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365, // 1年
+  });
+}
+
 /**
  * 現在アクティブな household_id を取得する。
  *

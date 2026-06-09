@@ -61,6 +61,47 @@ export type Database = {
           },
         ]
       }
+      household_invitations: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          household_id: string
+          id: string
+          max_uses: number
+          token: string
+          uses_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          household_id: string
+          id?: string
+          max_uses: number
+          token: string
+          uses_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          household_id?: string
+          id?: string
+          max_uses?: number
+          token?: string
+          uses_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_invitations_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_members: {
         Row: {
           household_id: string
@@ -170,6 +211,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: { Args: { _token: string }; Returns: string }
+      invitation_preview: {
+        Args: { _token: string }
+        Returns: { household_name: string; status: string }[]
+      }
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
       is_household_owner: { Args: { _household_id: string }; Returns: boolean }
     }
