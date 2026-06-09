@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createHouseholdSchema, invitationLimitSchema } from "./household";
+import {
+  createHouseholdSchema,
+  invitationLimitSchema,
+  periodStartDaySchema,
+} from "./household";
 
 describe("createHouseholdSchema", () => {
   it("1〜100文字のグループ名を受け付ける", () => {
@@ -57,5 +61,33 @@ describe("invitationLimitSchema", () => {
 
   it("小数を拒否する", () => {
     expect(invitationLimitSchema.safeParse({ maxUses: 2.5 }).success).toBe(false);
+  });
+});
+
+describe("periodStartDaySchema", () => {
+  it("1〜28の開始日を受け付ける", () => {
+    expect(periodStartDaySchema.safeParse({ periodStartDay: 1 }).success).toBe(
+      true,
+    );
+    expect(periodStartDaySchema.safeParse({ periodStartDay: 28 }).success).toBe(
+      true,
+    );
+  });
+
+  it("文字列を数値に変換する", () => {
+    const result = periodStartDaySchema.safeParse({ periodStartDay: "25" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.periodStartDay).toBe(25);
+    }
+  });
+
+  it("0以下・29以上を拒否する", () => {
+    expect(periodStartDaySchema.safeParse({ periodStartDay: 0 }).success).toBe(
+      false,
+    );
+    expect(periodStartDaySchema.safeParse({ periodStartDay: 29 }).success).toBe(
+      false,
+    );
   });
 });
