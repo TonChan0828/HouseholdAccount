@@ -99,6 +99,12 @@ export default async function DashboardPage({
             分析
           </Link>
           <Link
+            href="/categories"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            カテゴリ
+          </Link>
+          <Link
             href="/households"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
