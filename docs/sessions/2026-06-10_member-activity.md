@@ -2,7 +2,12 @@
 
 ## やったこと
 
--
+- `docs/specs/07_member_activity.md` を作成（ブレスト→設計承認のうえで作成）
+- migration `0009_profiles.sql` を作成しリモートへ適用（profiles テーブル・auth.users INSERT トリガ・バックフィル・RLS・権限硬化）
+- `types/database.ts` に profiles / shares_household_with を追記、`types/index.ts` に `Profile` 型を追加
+- TDD で `lib/members.ts`（summarizeByMember）→ `MemberActivity` コンポーネント → `/members` ページを実装
+- ダッシュボードヘッダーに「メンバー」リンクを追加
+- ユニット4件・コンポーネント5件・E2E 1件を追加し、全テスト（Vitest 80件 / Playwright 11件）・typecheck・lint がパス
 
 ## 決めたこと・理由
 
@@ -14,10 +19,9 @@
 
 ## 次にやること
 
-- `docs/specs/07_member_activity.md` の作成
-- profiles マイグレーション（0009）の作成
-- TDD でユニット・コンポーネント・E2E テストと実装
+- feature/member-activity を develop へマージ（feature/categories も未マージのため順にマージする）
 
 ## 未解決の課題
 
--
+- 表示名の編集 UI（profiles の UPDATE ポリシー含む）は将来の設定画面で対応する
+- Supabase アドバイザリの WARN（SECURITY DEFINER 関数の authenticated 実行可）は既存ヘルパーと同種の意図的なもの
