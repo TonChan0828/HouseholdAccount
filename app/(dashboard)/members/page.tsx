@@ -87,16 +87,8 @@ export default async function MembersPage({
   const nextHref = `/members?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}`;
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:py-8">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">メンバー別アクティビティ</h1>
-        <Link
-          href="/households"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          グループ選択
-        </Link>
-      </div>
+    <main className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:py-8">
+      <h1 className="text-2xl font-bold">メンバー別アクティビティ</h1>
 
       <MonthNav
         label={formatPeriodLabel(range)}
