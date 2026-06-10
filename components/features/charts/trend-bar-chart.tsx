@@ -30,8 +30,8 @@ export function TrendBarChart({ data }: Props) {
           <XAxis dataKey="label" tick={{ fontSize: 11 }} />
           <YAxis tickFormatter={compact} tick={{ fontSize: 11 }} width={44} />
           <Tooltip formatter={(value: unknown) => yen(Number(value))} />
-          <Bar dataKey="income" name="収入" fill="#059669" radius={[2, 2, 0, 0]} />
-          <Bar dataKey="expense" name="支出" fill="#dc2626" radius={[2, 2, 0, 0]} />
+          <Bar dataKey="income" name="収入" fill="var(--income)" radius={[2, 2, 0, 0]} />
+          <Bar dataKey="expense" name="支出" fill="var(--expense)" radius={[2, 2, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
