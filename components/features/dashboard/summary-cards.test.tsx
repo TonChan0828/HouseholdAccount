@@ -20,4 +20,30 @@ describe("SummaryCards", () => {
     expect(screen.getByText("支出")).toBeInTheDocument();
     expect(screen.getByText("収支")).toBeInTheDocument();
   });
+
+  it("収支がマイナスのときはマイナス表記で表示する", () => {
+    render(<SummaryCards income={1000} expense={3000} />);
+
+    expect(screen.getByText("-¥2,000")).toBeInTheDocument();
+  });
+
+  it("前期の値が渡されたら前期比を表示する", () => {
+    render(
+      <SummaryCards
+        income={320000}
+        expense={185400}
+        prevIncome={300000}
+        prevExpense={200000}
+      />,
+    );
+
+    expect(screen.getByText(/前期比 \+¥20,000/)).toBeInTheDocument();
+    expect(screen.getByText(/前期比 -¥14,600/)).toBeInTheDocument();
+  });
+
+  it("前期の値が無いときは前期比を表示しない", () => {
+    render(<SummaryCards income={100} expense={100} />);
+
+    expect(screen.queryByText(/前期比/)).not.toBeInTheDocument();
+  });
 });
