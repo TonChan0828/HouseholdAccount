@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import type { Category } from "@/types";
@@ -28,18 +29,23 @@ const categories: Category[] = [
   },
 ];
 
+function renderForm() {
+  return render(
+    <TransactionForm
+      action={noop}
+      categories={categories}
+      submitLabel="登録する"
+    />,
+  );
+}
+
 describe("TransactionForm", () => {
   it("金額・日付・カテゴリ・メモの入力欄と送信ボタンを表示する", () => {
-    render(
-      <TransactionForm
-        action={noop}
-        categories={categories}
-        submitLabel="登録する"
-      />,
-    );
+    renderForm();
+
     expect(screen.getByLabelText("金額")).toBeInTheDocument();
     expect(screen.getByLabelText("日付")).toBeInTheDocument();
-    expect(screen.getByLabelText("カテゴリ")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "カテゴリ" })).toBeInTheDocument();
     expect(screen.getByLabelText("メモ")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "登録する" }),
@@ -47,27 +53,27 @@ describe("TransactionForm", () => {
   });
 
   it("支出/収入のトグルを表示する", () => {
-    render(
-      <TransactionForm
-        action={noop}
-        categories={categories}
-        submitLabel="登録する"
-      />,
-    );
+    renderForm();
+
     expect(screen.getByRole("radio", { name: "支出" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "収入" })).toBeInTheDocument();
   });
 
-  it("デフォルト（支出）では支出カテゴリを選択肢に出す", () => {
-    render(
-      <TransactionForm
-        action={noop}
-        categories={categories}
-        submitLabel="登録する"
-      />,
-    );
-    expect(
-      screen.getByRole("option", { name: "食費" }),
-    ).toBeInTheDocument();
+  it("デフォルト（支出）では支出カテゴリのチップを出す", () => {
+    renderForm();
+
+    expect(screen.getByRole("radio", { name: "食費" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "給与" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "未選択" })).toBeInTheDocument();
+  });
+
+  it("収入に切り替えると収入カテゴリのチップに入れ替わる", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getByRole("radio", { name: "収入" }));
+
+    expect(screen.getByRole("radio", { name: "給与" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "食費" })).not.toBeInTheDocument();
   });
 });

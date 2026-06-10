@@ -20,7 +20,7 @@ test.describe("メンバー別アクティビティ", () => {
     // 収支を追加（支出 / 食費 / 1500円）
     await page.goto("/transactions/new");
     await page.getByLabel("金額").fill("1500");
-    await page.getByLabel("カテゴリ").selectOption({ label: "食費" });
+    await page.getByRole("radio", { name: "食費" }).check();
     await page.getByLabel("メモ").fill(memo);
     await page.getByRole("button", { name: "登録する" }).click();
     await expect(page).toHaveURL(/\/transactions$/);

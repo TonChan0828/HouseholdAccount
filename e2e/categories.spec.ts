@@ -41,8 +41,8 @@ test.describe("カテゴリ管理", () => {
     // 収支フォームの選択肢に反映される
     await page.goto("/transactions/new");
     await expect(
-      page.getByLabel("カテゴリ").locator(`option:has-text("${name}")`),
-    ).toHaveCount(1);
+      page.getByRole("radio", { name }),
+    ).toBeVisible();
 
     // 編集して名前を変更
     await page.goto("/categories");
