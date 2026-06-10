@@ -82,16 +82,8 @@ export default async function AnalyticsPage({
   const nextHref = `/analytics?ref=${toISODate(shiftPeriod(base, 1, startDay).start)}`;
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:py-8">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">分析</h1>
-        <Link
-          href="/households"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          グループ選択
-        </Link>
-      </div>
+    <main className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:py-8">
+      <h1 className="text-2xl font-bold">分析</h1>
 
       <MonthNav
         label={formatPeriodLabel(base)}

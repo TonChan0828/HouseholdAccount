@@ -82,42 +82,8 @@ export default async function DashboardPage({
   const recent = transactions.slice(0, RECENT_LIMIT);
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:py-8">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">ダッシュボード</h1>
-        <div className="flex gap-2">
-          <Link
-            href="/transactions/new"
-            className={buttonVariants({ variant: "default", size: "sm" })}
-          >
-            収支を記録
-          </Link>
-          <Link
-            href="/analytics"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            分析
-          </Link>
-          <Link
-            href="/categories"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            カテゴリ
-          </Link>
-          <Link
-            href="/members"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            メンバー
-          </Link>
-          <Link
-            href="/households"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            グループ選択
-          </Link>
-        </div>
-      </div>
+    <main className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:py-8">
+      <h1 className="text-2xl font-bold">ダッシュボード</h1>
 
       <p className="text-sm font-medium text-muted-foreground tabular-nums">
         {formatPeriodLabel(range)}
