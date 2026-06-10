@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowRight, ReceiptText } from "lucide-react";
 
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
+import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDayLabel, groupByDate, yen } from "@/lib/format";
 import { getActiveHouseholdId } from "@/lib/household";
-import { formatPeriodLabel, getPeriodRange, toISODate } from "@/lib/period";
+import {
+  formatPeriodLabel,
+  getPeriodRange,
+  shiftPeriod,
+  toISODate,
+} from "@/lib/period";
 import { createClient } from "@/lib/supabase/server";
 
 type TransactionRow = {
@@ -20,8 +28,6 @@ type TransactionRow = {
 };
 
 const RECENT_LIMIT = 5;
-
-const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
 function scopeFromParam(scope: string | undefined): DashboardScope {
   return scope === "mine" ? "mine" : "all";
@@ -56,100 +62,127 @@ export default async function DashboardPage({
   const startDay = household?.period_start_day ?? 1;
 
   const range = getPeriodRange(new Date(), startDay);
-  const isoStart = toISODate(range.start);
-  const isoEnd = toISODate(range.end);
+  const prevRange = shiftPeriod(range, -1, startDay);
 
-  let query = supabase
-    .from("transactions")
-    .select("id, amount, type, date, memo, created_by, category:categories(name, color)")
-    .eq("household_id", householdId)
-    .gte("date", isoStart)
-    .lt("date", isoEnd)
-    .order("date", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (scope === "mine") {
-    query = query.eq("created_by", user.id);
-  }
-  const { data } = await query.overrideTypes<TransactionRow[]>();
+  const buildQuery = (start: Date, end: Date) => {
+    let query = supabase
+      .from("transactions")
+      .select("id, amount, type, date, memo, created_by, category:categories(name, color)")
+      .eq("household_id", householdId)
+      .gte("date", toISODate(start))
+      .lt("date", toISODate(end))
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (scope === "mine") {
+      query = query.eq("created_by", user.id);
+    }
+    return query;
+  };
+
+  const [{ data }, { data: prevData }] = await Promise.all([
+    buildQuery(range.start, range.end).overrideTypes<TransactionRow[]>(),
+    buildQuery(prevRange.start, prevRange.end).overrideTypes<TransactionRow[]>(),
+  ]);
+
+  const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
+    rows.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
 
   const transactions = data ?? [];
-  const income = transactions
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + t.amount, 0);
-  const expense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((s, t) => s + t.amount, 0);
-  const recent = transactions.slice(0, RECENT_LIMIT);
+  const prevTransactions = prevData ?? [];
+  const income = sumBy(transactions, "income");
+  const expense = sumBy(transactions, "expense");
+  const recentGroups = groupByDate(transactions.slice(0, RECENT_LIMIT));
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:py-8">
-      <h1 className="text-2xl font-bold">ダッシュボード</h1>
+    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">ダッシュボード</h1>
+          <p className="text-sm font-medium text-muted-foreground tabular-nums">
+            {formatPeriodLabel(range)}
+          </p>
+        </div>
+        <ScopeToggle scope={scope} />
+      </div>
 
-      <p className="text-sm font-medium text-muted-foreground tabular-nums">
-        {formatPeriodLabel(range)}
-      </p>
-
-      <ScopeToggle scope={scope} />
-
-      <SummaryCards income={income} expense={expense} />
+      <SummaryCards
+        income={income}
+        expense={expense}
+        prevIncome={sumBy(prevTransactions, "income")}
+        prevExpense={sumBy(prevTransactions, "expense")}
+      />
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium">最近の取引</h2>
-        <Link href="/transactions" className={buttonVariants({ variant: "link", size: "sm" })}>
-          すべて見る →
+        <h2 className="font-heading text-base font-bold">最近の取引</h2>
+        <Link
+          href="/transactions"
+          className={buttonVariants({ variant: "link", size: "sm" })}
+        >
+          すべて見る
+          <ArrowRight className="size-4" aria-hidden />
         </Link>
       </div>
 
-      {recent.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            この期間の収支はまだありません。
+      {recentGroups.length === 0 ? (
+        <Card className="shadow-soft ring-0">
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+              <ReceiptText className="size-6" aria-hidden />
+            </span>
+            <p className="text-sm text-muted-foreground">
+              この期間の収支はまだありません。
+              <br />
+              最初の一件を記録してみましょう。
+            </p>
+            <Link
+              href="/transactions/new"
+              className={buttonVariants({ size: "sm" })}
+            >
+              収支を記録
+            </Link>
           </CardContent>
         </Card>
       ) : (
-        <ul className="space-y-2">
-          {recent.map((t) => (
-            <li key={t.id}>
-              <Card data-testid="dashboard-transaction-row">
-                <CardContent className="flex items-center justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground tabular-nums">
-                        {t.date}
-                      </span>
-                      {t.category ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span
-                            className="inline-block size-2 rounded-full"
-                            style={{ backgroundColor: t.category.color ?? "#999" }}
-                          />
-                          {t.category.name}
+        <div className="space-y-4">
+          {recentGroups.map((group) => (
+            <section key={group.date} className="space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
+                {formatDayLabel(group.date)}
+              </h3>
+              <ul className="space-y-2">
+                {group.items.map((t) => (
+                  <li key={t.id}>
+                    <Card
+                      data-testid="dashboard-transaction-row"
+                      className="shadow-soft ring-0 transition-shadow hover:shadow-lifted"
+                    >
+                      <CardContent className="flex items-center justify-between gap-3 py-3">
+                        <div className="min-w-0 space-y-0.5">
+                          <CategoryBadge category={t.category} />
+                          {t.memo ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {t.memo}
+                            </p>
+                          ) : null}
+                        </div>
+                        <span
+                          className={
+                            t.type === "income"
+                              ? "shrink-0 font-heading font-bold text-income tabular-nums"
+                              : "shrink-0 font-heading font-bold text-expense tabular-nums"
+                          }
+                        >
+                          {t.type === "income" ? "+" : "-"}
+                          {yen(t.amount)}
                         </span>
-                      ) : (
-                        <span className="text-muted-foreground">未分類</span>
-                      )}
-                    </div>
-                    {t.memo ? (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {t.memo}
-                      </p>
-                    ) : null}
-                  </div>
-                  <span
-                    className={
-                      t.type === "income"
-                        ? "shrink-0 font-semibold text-income tabular-nums"
-                        : "shrink-0 font-semibold text-expense tabular-nums"
-                    }
-                  >
-                    {t.type === "income" ? "+" : "-"}
-                    {yen(t.amount)}
-                  </span>
-                </CardContent>
-              </Card>
-            </li>
+                      </CardContent>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );

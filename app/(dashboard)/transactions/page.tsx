@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Plus, ReceiptText } from "lucide-react";
 
 import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
+import { SummaryCards } from "@/components/features/dashboard/summary-cards";
+import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDayLabel, groupByDate, yen } from "@/lib/format";
 import { getActiveHouseholdId } from "@/lib/household";
 import {
   formatPeriodLabel,
@@ -23,8 +27,6 @@ type TransactionRow = {
   created_by: string;
   category: { name: string; color: string | null } | null;
 };
-
-const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
 function refFromParam(ref: string | undefined): Date {
   if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {
@@ -81,18 +83,20 @@ export default async function TransactionsPage({
   const expense = transactions
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + t.amount, 0);
+  const groups = groupByDate(transactions);
 
   const prevHref = `/transactions?ref=${toISODate(shiftPeriod(range, -1, startDay).start)}`;
   const nextHref = `/transactions?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}`;
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">収支</h1>
+        <h1 className="text-2xl font-bold">収支</h1>
         <Link
           href="/transactions/new"
           className={buttonVariants({ variant: "default", size: "sm" })}
         >
+          <Plus className="size-4" aria-hidden />
           収支を追加
         </Link>
       </div>
@@ -103,116 +107,104 @@ export default async function TransactionsPage({
         nextHref={nextHref}
       />
 
-      <Card>
-        <CardContent className="grid grid-cols-3 gap-2 py-4 text-center">
-          <div>
-            <p className="text-xs text-muted-foreground">収入</p>
-            <p className="font-semibold text-income">{yen(income)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">支出</p>
-            <p className="font-semibold text-expense">{yen(expense)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">収支</p>
-            <p className="font-semibold tabular-nums">{yen(income - expense)}</p>
-          </div>
-        </CardContent>
-      </Card>
+      <SummaryCards income={income} expense={expense} />
 
-      {transactions.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            この期間の収支はまだありません。
+      {groups.length === 0 ? (
+        <Card className="shadow-soft ring-0">
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+              <ReceiptText className="size-6" aria-hidden />
+            </span>
+            <p className="text-sm text-muted-foreground">
+              この期間の収支はまだありません。
+            </p>
+            <Link
+              href="/transactions/new"
+              className={buttonVariants({ size: "sm" })}
+            >
+              収支を記録
+            </Link>
           </CardContent>
         </Card>
       ) : (
-        <ul className="space-y-2">
-          {transactions.map((t) => {
-            const mine = t.created_by === user.id;
-            return (
-              <li key={t.id}>
-                <Card data-testid="transaction-row">
-                  <CardContent className="flex items-center justify-between gap-3 py-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground tabular-nums">
-                          {t.date}
-                        </span>
-                        {t.category ? (
-                          <span className="inline-flex items-center gap-1">
-                            <span
-                              className="inline-block size-2 rounded-full"
-                              style={{
-                                backgroundColor: t.category.color ?? "#999",
-                              }}
-                            />
-                            {t.category.name}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">未分類</span>
-                        )}
-                        {!mine ? (
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                            他のメンバー
-                          </span>
-                        ) : null}
-                      </div>
-                      {t.memo ? (
-                        <p className="truncate text-xs text-muted-foreground">
-                          {t.memo}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span
-                        className={
-                          t.type === "income"
-                            ? "font-semibold text-income tabular-nums"
-                            : "font-semibold text-expense tabular-nums"
-                        }
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <section key={group.date} className="space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
+                {formatDayLabel(group.date)}
+              </h3>
+              <ul className="space-y-2">
+                {group.items.map((t) => {
+                  const mine = t.created_by === user.id;
+                  return (
+                    <li key={t.id}>
+                      <Card
+                        data-testid="transaction-row"
+                        className="shadow-soft ring-0 transition-shadow hover:shadow-lifted"
                       >
-                        {t.type === "income" ? "+" : "-"}
-                        {yen(t.amount)}
-                      </span>
-                      {mine ? (
-                        <>
-                          <Link
-                            href={`/transactions/${t.id}/edit`}
-                            className={buttonVariants({
-                              variant: "ghost",
-                              size: "sm",
-                            })}
-                          >
-                            編集
-                          </Link>
-                          <form action={deleteTransaction}>
-                            <input type="hidden" name="id" value={t.id} />
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="sm"
-                              aria-label="削除"
+                        <CardContent className="flex items-center justify-between gap-3 py-3">
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <CategoryBadge category={t.category} />
+                              {!mine ? (
+                                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                  他のメンバー
+                                </span>
+                              ) : null}
+                            </div>
+                            {t.memo ? (
+                              <p className="truncate text-xs text-muted-foreground">
+                                {t.memo}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span
+                              className={
+                                t.type === "income"
+                                  ? "font-heading font-bold text-income tabular-nums"
+                                  : "font-heading font-bold text-expense tabular-nums"
+                              }
                             >
-                              削除
-                            </Button>
-                          </form>
-                        </>
-                      ) : null}
-                    </div>
-                  </CardContent>
-                </Card>
-              </li>
-            );
-          })}
-        </ul>
+                              {t.type === "income" ? "+" : "-"}
+                              {yen(t.amount)}
+                            </span>
+                            {mine ? (
+                              <>
+                                <Link
+                                  href={`/transactions/${t.id}/edit`}
+                                  className={buttonVariants({
+                                    variant: "ghost",
+                                    size: "sm",
+                                  })}
+                                >
+                                  編集
+                                </Link>
+                                <form action={deleteTransaction}>
+                                  <input type="hidden" name="id" value={t.id} />
+                                  <Button
+                                    type="submit"
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label="削除"
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    削除
+                                  </Button>
+                                </form>
+                              </>
+                            ) : null}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
-
-      <div className="text-center">
-        <Link href="/" className={buttonVariants({ variant: "link" })}>
-          ダッシュボードへ
-        </Link>
-      </div>
     </main>
   );
 }
