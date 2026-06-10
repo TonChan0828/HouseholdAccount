@@ -98,6 +98,7 @@ docs/specs/
   05_analytics.md        # 月次分析・グラフ
   06_household.md        # 家計簿グループ管理
   07_member_activity.md  # メンバー別アクティビティ
+  08_ui_overhaul.md      # UIオーバーホール（テーマ・アプリシェル・各ページ刷新）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
