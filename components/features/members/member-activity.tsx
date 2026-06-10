@@ -57,10 +57,10 @@ export function MemberActivity({ summaries, txs }: Props) {
                     </span>
                   </div>
                   <div className="flex gap-4 text-sm">
-                    <span className="text-emerald-600 tabular-nums">
+                    <span className="text-income tabular-nums">
                       {yen(m.income)}
                     </span>
-                    <span className="text-red-600 tabular-nums">
+                    <span className="text-expense tabular-nums">
                       {yen(m.expense)}
                     </span>
                   </div>
@@ -114,8 +114,8 @@ export function MemberActivity({ summaries, txs }: Props) {
                       <span
                         className={
                           t.type === "income"
-                            ? "shrink-0 font-semibold text-emerald-600 tabular-nums"
-                            : "shrink-0 font-semibold text-red-600 tabular-nums"
+                            ? "shrink-0 font-semibold text-income tabular-nums"
+                            : "shrink-0 font-semibold text-expense tabular-nums"
                         }
                       >
                         {t.type === "income" ? "+" : "-"}

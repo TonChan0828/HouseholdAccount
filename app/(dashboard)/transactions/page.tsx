@@ -107,11 +107,11 @@ export default async function TransactionsPage({
         <CardContent className="grid grid-cols-3 gap-2 py-4 text-center">
           <div>
             <p className="text-xs text-muted-foreground">収入</p>
-            <p className="font-semibold text-emerald-600">{yen(income)}</p>
+            <p className="font-semibold text-income">{yen(income)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">支出</p>
-            <p className="font-semibold text-red-600">{yen(expense)}</p>
+            <p className="font-semibold text-expense">{yen(expense)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">収支</p>
@@ -168,8 +168,8 @@ export default async function TransactionsPage({
                       <span
                         className={
                           t.type === "income"
-                            ? "font-semibold text-emerald-600 tabular-nums"
-                            : "font-semibold text-red-600 tabular-nums"
+                            ? "font-semibold text-income tabular-nums"
+                            : "font-semibold text-expense tabular-nums"
                         }
                       >
                         {t.type === "income" ? "+" : "-"}

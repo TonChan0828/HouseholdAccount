@@ -172,8 +172,8 @@ export default async function DashboardPage({
                   <span
                     className={
                       t.type === "income"
-                        ? "shrink-0 font-semibold text-emerald-600 tabular-nums"
-                        : "shrink-0 font-semibold text-red-600 tabular-nums"
+                        ? "shrink-0 font-semibold text-income tabular-nums"
+                        : "shrink-0 font-semibold text-expense tabular-nums"
                     }
                   >
                     {t.type === "income" ? "+" : "-"}
