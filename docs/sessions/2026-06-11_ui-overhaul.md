@@ -20,13 +20,21 @@
 - shadcn の dropdown-menu は Base UI ベースのため、jsdom 向けに vitest.setup.ts へ ResizeObserver 等の stub を追加
 - モバイルタブバーにカテゴリは載せず（4タブ+FAB）、ユーザーメニュー経由でアクセスする
 
+## Phase 2 でやったこと
+
+- `lib/format.ts` を新設（`yen`・`formatDayLabel`・`groupByDate`、TDD）し、各所の重複 `yen` を集約
+- SummaryCards を前期比付きの3枚カードに刷新（アイコン・収支のポジ/ネガで色が変化）。ダッシュボードで前期データも取得
+- 取引一覧（ダッシュボード・収支）を日付グルーピング+カテゴリ色バッジ（`CategoryBadge`）+ホバー演出+空状態CTAに刷新。冗長な「ダッシュボードへ」リンクを削除
+- 収支フォームを刷新: 支出/収入のセグメント切替（色付き）、¥付き大型金額入力、カテゴリの色チップ選択（select 廃止）
+- E2E のカテゴリ操作を `selectOption` から radio チップの `check()` に更新
+- Vitest 101件・Playwright 11件・typecheck・lint パス、Playwright MCP で表示確認
+
 ## 次にやること
 
-- Phase 1 の PR（feature/ui-overhaul-foundation → develop）のレビューとマージ
-- Phase 2: ダッシュボード（サマリー3枚カード化・前期比）と収支ページ（日付グルーピング・カテゴリバッジ・フォーム改善）
+- Phase 1 PR #6 / Phase 2 PR のレビューとマージ
 - Phase 3: 分析/メンバー/カテゴリ/グループ選択/認証画面の仕上げとアニメーション
 
 ## 未解決の課題
 
-- 収支ページ下部の「ダッシュボードへ」リンクが冗長になった（Phase 2 で整理）
 - /households（グループ選択）と認証画面はシェル対象外のため旧デザインのまま（Phase 3 で対応）
+- カテゴリチップは sr-only input だと Playwright の check() がヒットしないため、チップ全面を覆う透明 input にしている
