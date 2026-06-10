@@ -11,6 +11,7 @@ export type Household = Tables["households"]["Row"];
 export type HouseholdMember = Tables["household_members"]["Row"];
 export type HouseholdInvitation = Tables["household_invitations"]["Row"];
 export type Category = Tables["categories"]["Row"];
+export type Profile = Tables["profiles"]["Row"];
 export type Transaction = Tables["transactions"]["Row"];
 
 export type { CategoryType, MemberRole, TransactionType };

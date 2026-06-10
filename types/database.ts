@@ -158,6 +158,24 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -221,6 +239,7 @@ export type Database = {
       }
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
       is_household_owner: { Args: { _household_id: string }; Returns: boolean }
+      shares_household_with: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       category_type: "income" | "expense" | "both"
