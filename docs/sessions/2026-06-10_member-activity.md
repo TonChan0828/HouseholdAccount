@@ -19,7 +19,8 @@
 
 ## 次にやること
 
-- feature/member-activity を develop へマージ（feature/categories も未マージのため順にマージする）
+- PR #5（feature/member-activity → develop）のレビューとマージ
+- 全機能実装完了につき、次は仕上げフェーズ（表示名編集 UI・デプロイなど）の検討
 
 ## 未解決の課題
 
