@@ -105,6 +105,12 @@ export default async function DashboardPage({
             カテゴリ
           </Link>
           <Link
+            href="/members"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            メンバー
+          </Link>
+          <Link
             href="/households"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
