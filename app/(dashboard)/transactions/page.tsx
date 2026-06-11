@@ -89,7 +89,7 @@ export default async function TransactionsPage({
   const nextHref = `/transactions?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}`;
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">収支</h1>
         <Link

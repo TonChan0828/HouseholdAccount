@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CategoryPieChart } from "@/components/features/charts/category-pie-chart";
 import { TrendBarChart } from "@/components/features/charts/trend-bar-chart";
 import { MonthNav } from "@/components/features/transactions/month-nav";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   summarizeCategoryExpense,
@@ -82,7 +80,7 @@ export default async function AnalyticsPage({
   const nextHref = `/analytics?ref=${toISODate(shiftPeriod(base, 1, startDay).start)}`;
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
       <h1 className="text-2xl font-bold">分析</h1>
 
       <MonthNav
@@ -91,28 +89,24 @@ export default async function AnalyticsPage({
         nextHref={nextHref}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">月別推移（直近6期）</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TrendBarChart data={trend} />
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="shadow-soft ring-0">
+          <CardHeader>
+            <CardTitle className="text-base">月別推移（直近6期）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TrendBarChart data={trend} />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">カテゴリ別支出（当期）</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CategoryPieChart data={categories} />
-        </CardContent>
-      </Card>
-
-      <div className="text-center">
-        <Link href="/" className={buttonVariants({ variant: "link" })}>
-          ダッシュボードへ
-        </Link>
+        <Card className="shadow-soft ring-0">
+          <CardHeader>
+            <CardTitle className="text-base">カテゴリ別支出（当期）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryPieChart data={categories} />
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

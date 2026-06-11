@@ -46,7 +46,7 @@ export function AuthForm({
   );
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full shadow-lifted ring-0">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
