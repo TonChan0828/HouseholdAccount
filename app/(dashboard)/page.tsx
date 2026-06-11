@@ -2,13 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, ReceiptText } from "lucide-react";
 
+import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { buildCategoryMemberMatrix } from "@/lib/category-matrix";
 import { formatDayLabel, groupByDate, yen } from "@/lib/format";
 import { getActiveHouseholdId } from "@/lib/household";
+import type { MemberInfo } from "@/lib/members";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -24,6 +27,7 @@ type TransactionRow = {
   date: string;
   memo: string | null;
   created_by: string;
+  category_id: string | null;
   category: { name: string; color: string | null } | null;
 };
 
@@ -64,34 +68,60 @@ export default async function DashboardPage({
   const range = getPeriodRange(new Date(), startDay);
   const prevRange = shiftPeriod(range, -1, startDay);
 
-  const buildQuery = (start: Date, end: Date) => {
-    let query = supabase
+  // マトリクスが全メンバー分を必要とするため scope によらず無条件で取得し、
+  // スコープ絞り込みは JS 側（byScope）で行う
+  const buildQuery = (start: Date, end: Date) =>
+    supabase
       .from("transactions")
-      .select("id, amount, type, date, memo, created_by, category:categories(name, color)")
+      .select(
+        "id, amount, type, date, memo, created_by, category_id, category:categories(name, color)",
+      )
       .eq("household_id", householdId)
       .gte("date", toISODate(start))
       .lt("date", toISODate(end))
       .order("date", { ascending: false })
       .order("created_at", { ascending: false });
-    if (scope === "mine") {
-      query = query.eq("created_by", user.id);
-    }
-    return query;
+
+  const fetchMembers = async (): Promise<MemberInfo[]> => {
+    const { data: memberRows } = await supabase
+      .from("household_members")
+      .select("user_id, joined_at")
+      .eq("household_id", householdId)
+      .order("joined_at");
+    const userIds = (memberRows ?? []).map((m) => m.user_id);
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", userIds);
+    const nameById = new Map(
+      (profiles ?? []).map((p) => [p.id, p.display_name]),
+    );
+
+    return userIds.map((id) => ({
+      user_id: id,
+      display_name: nameById.get(id) ?? "不明なユーザー",
+    }));
   };
 
-  const [{ data }, { data: prevData }] = await Promise.all([
+  const [{ data }, { data: prevData }, members] = await Promise.all([
     buildQuery(range.start, range.end).overrideTypes<TransactionRow[]>(),
     buildQuery(prevRange.start, prevRange.end).overrideTypes<TransactionRow[]>(),
+    fetchMembers(),
   ]);
 
   const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
     rows.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
+  const byScope = (rows: TransactionRow[]) =>
+    scope === "mine" ? rows.filter((t) => t.created_by === user.id) : rows;
 
   const transactions = data ?? [];
-  const prevTransactions = prevData ?? [];
-  const income = sumBy(transactions, "income");
-  const expense = sumBy(transactions, "expense");
-  const recentGroups = groupByDate(transactions.slice(0, RECENT_LIMIT));
+  const scopedTransactions = byScope(transactions);
+  const prevTransactions = byScope(prevData ?? []);
+  const income = sumBy(scopedTransactions, "income");
+  const expense = sumBy(scopedTransactions, "expense");
+  const recentGroups = groupByDate(scopedTransactions.slice(0, RECENT_LIMIT));
+  const matrix = buildCategoryMemberMatrix(transactions, members);
 
   return (
     <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
@@ -111,6 +141,8 @@ export default async function DashboardPage({
         prevIncome={sumBy(prevTransactions, "income")}
         prevExpense={sumBy(prevTransactions, "expense")}
       />
+
+      <CategoryMemberMatrix matrix={matrix} />
 
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-base font-bold">最近の取引</h2>
