@@ -94,7 +94,7 @@ export default async function DashboardPage({
   const recentGroups = groupByDate(transactions.slice(0, RECENT_LIMIT));
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">ダッシュボード</h1>

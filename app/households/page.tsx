@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check, LogOut, PiggyBank } from "lucide-react";
 
 import { signOut } from "@/app/(auth)/actions";
 import {
@@ -51,16 +52,26 @@ export default async function HouseholdsPage() {
   const invitations = (invitationRows ?? []) as HouseholdInvitation[];
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 p-4 sm:py-8">
+    <div className="mx-auto w-full max-w-2xl animate-in space-y-6 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
+      <div className="flex items-center gap-2">
+        <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
+          <PiggyBank className="size-5" aria-hidden />
+        </span>
+        <span className="font-heading text-base font-bold tracking-wide">
+          家計簿アプリ
+        </span>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">家計簿グループ</h1>
+          <h1 className="text-2xl font-bold">家計簿グループ</h1>
           <p className="text-sm text-muted-foreground">
             ログイン中: {user?.email}
           </p>
         </div>
         <form action={signOut}>
           <Button type="submit" variant="ghost">
+            <LogOut className="size-4" aria-hidden />
             ログアウト
           </Button>
         </form>
@@ -82,22 +93,30 @@ export default async function HouseholdsPage() {
             );
             return (
               <li key={group.id}>
-                <Card data-testid="household-card">
+                <Card
+                  data-testid="household-card"
+                  className={
+                    isActive
+                      ? "shadow-soft ring-0 outline-2 outline-primary"
+                      : "shadow-soft ring-0"
+                  }
+                >
                   <CardHeader>
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="flex items-center gap-2">
                         {group.name}
                         {role === "owner" ? (
-                          <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">
+                          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
                             オーナー
                           </span>
                         ) : null}
                       </CardTitle>
                       {isActive ? (
                         <span
-                          className="text-sm font-medium text-primary"
+                          className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-sm font-semibold text-primary"
                           data-testid="active-badge"
                         >
+                          <Check className="size-4" aria-hidden />
                           利用中
                         </span>
                       ) : (
