@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { MemberActivity, type MemberTxRow } from "@/components/features/members/member-activity";
 import { MonthNav } from "@/components/features/transactions/month-nav";
-import { buttonVariants } from "@/components/ui/button";
 import { getActiveHouseholdId } from "@/lib/household";
 import { summarizeByMember, type MemberInfo } from "@/lib/members";
 import {
@@ -87,7 +85,7 @@ export default async function MembersPage({
   const nextHref = `/members?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}`;
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl animate-in space-y-4 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
       <h1 className="text-2xl font-bold">メンバー別アクティビティ</h1>
 
       <MonthNav
@@ -97,12 +95,6 @@ export default async function MembersPage({
       />
 
       <MemberActivity summaries={summaries} txs={txs} />
-
-      <div className="text-center">
-        <Link href="/" className={buttonVariants({ variant: "link" })}>
-          ダッシュボードへ
-        </Link>
-      </div>
     </main>
   );
 }

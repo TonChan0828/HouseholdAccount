@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Plus } from "lucide-react";
 
 import { deleteCategory } from "@/app/(dashboard)/categories/actions";
 import { DeleteCategoryButton } from "@/components/features/categories/delete-category-button";
@@ -37,13 +38,14 @@ export default async function CategoriesPage() {
   const categories = (data ?? []) as Category[];
 
   return (
-    <main className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">カテゴリ</h1>
+        <h1 className="text-2xl font-bold">カテゴリ</h1>
         <Link
           href="/categories/new"
           className={buttonVariants({ variant: "default", size: "sm" })}
         >
+          <Plus className="size-4" aria-hidden />
           カテゴリを追加
         </Link>
       </div>
@@ -55,27 +57,31 @@ export default async function CategoriesPage() {
         }
         return (
           <section key={group.type} className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground">
+            <h2 className="text-xs font-semibold text-muted-foreground">
               {group.label}
             </h2>
-            <ul className="space-y-2">
+            <ul className="grid gap-2 sm:grid-cols-2">
               {items.map((c) => (
                 <li key={c.id}>
-                  <Card data-testid="category-row">
+                  <Card
+                    data-testid="category-row"
+                    className="shadow-soft ring-0 transition-shadow hover:shadow-lifted"
+                  >
                     <CardContent className="flex items-center justify-between gap-3 py-3">
-                      <span className="inline-flex min-w-0 items-center gap-2 text-sm">
+                      <span className="inline-flex min-w-0 items-center gap-3 text-sm">
                         <span
-                          className="inline-block size-3 shrink-0 rounded-full"
+                          aria-hidden
+                          className="inline-block size-8 shrink-0 rounded-xl shadow-soft"
                           style={{ backgroundColor: c.color ?? "#999" }}
                         />
-                        <span className="truncate">{c.name}</span>
+                        <span className="truncate font-medium">{c.name}</span>
                       </span>
                       {c.is_default ? (
-                        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           デフォルト
                         </span>
                       ) : (
-                        <span className="flex shrink-0 items-center gap-2">
+                        <span className="flex shrink-0 items-center gap-1">
                           <Link
                             href={`/categories/${c.id}/edit`}
                             className={buttonVariants({
@@ -99,12 +105,6 @@ export default async function CategoriesPage() {
           </section>
         );
       })}
-
-      <div className="text-center">
-        <Link href="/" className={buttonVariants({ variant: "link" })}>
-          ダッシュボードへ
-        </Link>
-      </div>
     </main>
   );
 }
