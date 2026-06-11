@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PiggyBank } from "lucide-react";
 
 export default function AuthLayout({
@@ -6,9 +7,12 @@ export default function AuthLayout({
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
       <div className="flex animate-in flex-col items-center gap-3 duration-700 fade-in slide-in-from-bottom-3">
-        <span className="flex size-14 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-lifted">
+        <Link
+          href="/"
+          className="flex size-14 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-lifted"
+        >
           <PiggyBank className="size-8" aria-hidden />
-        </span>
+        </Link>
         <div className="text-center">
           <p className="font-heading text-xl font-bold tracking-wide">
             家計簿アプリ
