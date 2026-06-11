@@ -30,8 +30,9 @@ export function ThemeMenuItems() {
         value={theme}
         onValueChange={(value) => setTheme(value as string)}
       >
+        {/* closeOnClick: Base UI のラジオ項目は既定でメニューが閉じないため、他項目と挙動を揃える */}
         {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
-          <DropdownMenuRadioItem key={value} value={value}>
+          <DropdownMenuRadioItem key={value} value={value} closeOnClick>
             <Icon aria-hidden />
             {label}
           </DropdownMenuRadioItem>
