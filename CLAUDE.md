@@ -99,6 +99,7 @@ docs/specs/
   06_household.md        # 家計簿グループ管理
   07_member_activity.md  # メンバー別アクティビティ
   08_ui_overhaul.md      # UIオーバーホール（テーマ・アプリシェル・各ページ刷新）
+  09_dark_mode.md        # ダークモード（テーマ切り替え）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
