@@ -24,3 +24,4 @@
 
 - 脱退メンバーの取引はマトリクスから除外されるため、scope=all のサマリー合計とマトリクス総計が乖離し得る
 - E2E 実行中のブラウザログに React の duplicate key 警告（UUID キー重複）が出る。auth setup（ログインのみ）の段階でも発生しており今回の変更とは無関係の既存問題。発生箇所の特定と修正は別タスク
+  - → 2026-06-12 に解決済み（グループ選択画面の memberships クエリが user_id 未絞り込みだったのが原因。`docs/sessions/2026-06-12_household-membership-duplicate.md` 参照）

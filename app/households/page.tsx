@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft, Check, LogOut, PiggyBank } from "lucide-react";
 
 import { signOut } from "@/app/(auth)/actions";
@@ -34,10 +35,15 @@ export default async function HouseholdsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
 
+  // RLS は同居メンバー全員の行を返すため、自分の所属行に絞る（重複表示防止）。
   const { data: memberships } = await supabase
     .from("household_members")
     .select("role, household:households(id, name, period_start_day)")
+    .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .overrideTypes<MembershipRow[]>();
 
