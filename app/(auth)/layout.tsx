@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { PiggyBank } from "lucide-react";
 
+import { ThemeToggleButton } from "@/components/features/layout/theme-toggle";
+
 export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
+    <div className="relative flex flex-1 flex-col items-center justify-center gap-6 p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggleButton />
+      </div>
       <div className="flex animate-in flex-col items-center gap-3 duration-700 fade-in slide-in-from-bottom-3">
         <Link
           href="/"
