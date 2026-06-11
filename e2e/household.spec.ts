@@ -1,8 +1,52 @@
 import { expect, test } from "@playwright/test";
 
+import { MULTI_MEMBER_HOUSEHOLD } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 
 test.describe("家計簿グループ管理", () => {
+  test("同じグループがグループ選択画面に重複表示されない", async ({
+    page,
+  }) => {
+    // 前提: E2E ユーザーは2人メンバーのグループ（MULTI_MEMBER_HOUSEHOLD）に所属している。
+    const duplicateKeyErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && msg.text().includes("same key")) {
+        duplicateKeyErrors.push(msg.text());
+      }
+    });
+
+    await page.goto("/households");
+    const titles = page.locator(
+      '[data-testid="household-card"] [data-slot="card-title"] span.break-all',
+    );
+    await expect(titles.first()).toBeVisible();
+
+    const names = await titles.allInnerTexts();
+    expect(names.length).toBeGreaterThan(0);
+    expect([...new Set(names)]).toEqual(names);
+    expect(duplicateKeyErrors).toEqual([]);
+  });
+
+  test("複数メンバーのグループに切り替えできる", async ({ page }) => {
+    // 別グループを作成してアクティブにし、切り替えボタンを表示させる
+    const stamp = Date.now();
+    await page.goto("/households");
+    await page.getByLabel("グループ名").fill(`E2E切替元-${stamp}`);
+    await page.getByRole("button", { name: "グループを作成" }).click();
+    await expect(page).toHaveURL(/\/$/);
+
+    // 2人メンバーのグループ（seed 済み）へ切り替えると利用中になる
+    await page.goto("/households");
+    const card = page
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: MULTI_MEMBER_HOUSEHOLD });
+    await card
+      .getByRole("button", { name: "このグループに切り替え" })
+      .click();
+    await expect(card.getByTestId("active-badge")).toHaveText("利用中");
+  });
+
   test("グループを作成すると利用中になり、別グループへ切り替えできる", async ({
     page,
   }) => {
