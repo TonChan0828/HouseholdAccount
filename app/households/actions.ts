@@ -68,11 +68,20 @@ export async function setActiveHousehold(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  // メンバーであることを確認（RLS により他グループは取得できない）。
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 自分がメンバーであることを確認する。
+  // RLS は同居メンバー全員の行を返すため、user_id で絞らないと複数行になり maybeSingle が失敗する。
   const { data } = await supabase
     .from("household_members")
     .select("household_id")
     .eq("household_id", householdId)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (data) {

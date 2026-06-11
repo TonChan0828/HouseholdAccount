@@ -31,9 +31,18 @@ export async function getActiveHouseholdId(): Promise<string | null> {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return null;
+  }
+
+  // RLS は同居メンバー全員の行を返すため、自分の参加日時で最古のグループを選ぶ。
   const { data } = await supabase
     .from("household_members")
     .select("household_id")
+    .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .limit(1)
     .maybeSingle();
