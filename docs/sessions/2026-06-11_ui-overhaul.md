@@ -29,12 +29,22 @@
 - E2E のカテゴリ操作を `selectOption` から radio チップの `check()` に更新
 - Vitest 101件・Playwright 11件・typecheck・lint パス、Playwright MCP で表示確認
 
+## Phase 3 でやったこと
+
+- 分析: チャート2枚をデスクトップ2カラムのカードに、soft シャドウ適用
+- メンバー: イニシャルアバター（チャートパレット色を順番に割当）+ CategoryBadge + lib/format の yen に統一
+- カテゴリ: 大きめ色スウォッチ付きカードグリッド（sm:2カラム）に刷新
+- グループ選択: ブランドロゴヘッダー追加、利用中カードを outline-primary + チェック付きバッジで強調
+- 認証画面: ロゴ + キャッチコピーのブランドパネルを追加
+- 全ページの main に出現アニメーションを付与、残っていた「ダッシュボードへ」リンクを削除
+- Vitest 101件・Playwright 11件・typecheck・lint パス、Playwright MCP で全ページ表示確認
+
 ## 次にやること
 
-- Phase 1 PR #6 / Phase 2 PR のレビューとマージ
-- Phase 3: 分析/メンバー/カテゴリ/グループ選択/認証画面の仕上げとアニメーション
+- PR #6（Phase 1）→ PR #7（Phase 2）→ PR #8（Phase 3）の順にレビュー・マージ（スタックPRのため、前段マージ後にベースを付け替える）
+- マージ後の候補: Vercel デプロイ、表示名編集 UI、ダークモード
 
 ## 未解決の課題
 
-- /households（グループ選択）と認証画面はシェル対象外のため旧デザインのまま（Phase 3 で対応）
 - カテゴリチップは sr-only input だと Playwright の check() がヒットしないため、チップ全面を覆う透明 input にしている
+- アプリ名は「家計簿アプリ」のまま（ブランド名を付けるかは未決定）
