@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, PiggyBank, Plus, Repeat, Tags } from "lucide-react";
 
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
+import { ThemeMenuItems } from "@/components/features/layout/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -107,6 +108,8 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
                 <Tags aria-hidden />
                 カテゴリ管理
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <ThemeMenuItems />
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"

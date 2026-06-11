@@ -13,6 +13,7 @@ import {
 } from "@/app/households/actions";
 import { CreateHouseholdForm } from "@/components/features/household/create-household-form";
 import { InvitationManager } from "@/components/features/household/invitation-manager";
+import { ThemeToggleButton } from "@/components/features/layout/theme-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -84,6 +85,7 @@ export default async function HouseholdsPage() {
               ログアウト
             </Button>
           </form>
+          <ThemeToggleButton />
         </div>
       </div>
 

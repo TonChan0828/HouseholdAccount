@@ -65,6 +65,23 @@ describe("AppHeader", () => {
     );
   });
 
+  it("ユーザーメニューにテーマ切り替えを表示する", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(screen.getByRole("button", { name: /show/ }));
+
+    expect(
+      await screen.findByRole("menuitemradio", { name: "ライト" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitemradio", { name: "ダーク" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitemradio", { name: "システム" }),
+    ).toBeInTheDocument();
+  });
+
   it("ユーザーメニューにグループ名とグループ切替・ログアウトを表示する", async () => {
     const user = userEvent.setup();
     renderHeader();

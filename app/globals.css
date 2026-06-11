@@ -63,7 +63,7 @@
 /*
  * 「温かみのある家計簿」ライトテーマ。
  * クリーム系の背景 + 純白カード + 深いグリーンの primary。
- * ダークテーマは未提供だが、同じ変数セットを .dark で上書きすれば追加できる。
+ * ダークテーマは同じ変数セットを .dark で上書きして提供する。
  */
 :root {
   --background: oklch(0.976 0.013 85);
@@ -104,6 +104,48 @@
   --sidebar-ring: oklch(0.6 0.1 155);
 }
 
+/*
+ * ダークテーマ。純黒ではなく深いグリーン系のダークトーンで世界観を維持し、
+ * income/expense/chart はダーク背景でのコントラスト確保のため明度を上げる。
+ */
+.dark {
+  --background: oklch(0.22 0.02 150);
+  --foreground: oklch(0.93 0.015 95);
+  --card: oklch(0.27 0.022 150);
+  --card-foreground: oklch(0.93 0.015 95);
+  --popover: oklch(0.27 0.022 150);
+  --popover-foreground: oklch(0.93 0.015 95);
+  --primary: oklch(0.72 0.11 155);
+  --primary-foreground: oklch(0.2 0.03 150);
+  --secondary: oklch(0.33 0.035 150);
+  --secondary-foreground: oklch(0.9 0.03 140);
+  --muted: oklch(0.3 0.02 150);
+  --muted-foreground: oklch(0.72 0.02 135);
+  --accent: oklch(0.34 0.04 130);
+  --accent-foreground: oklch(0.9 0.03 140);
+  --destructive: oklch(0.66 0.19 28);
+  --border: oklch(0.34 0.02 150);
+  --input: oklch(0.34 0.02 150);
+  --ring: oklch(0.7 0.1 155);
+  --income: oklch(0.74 0.13 158);
+  --income-soft: oklch(0.32 0.05 158);
+  --expense: oklch(0.72 0.15 35);
+  --expense-soft: oklch(0.32 0.04 40);
+  --chart-1: oklch(0.72 0.11 155);
+  --chart-2: oklch(0.76 0.13 55);
+  --chart-3: oklch(0.84 0.12 95);
+  --chart-4: oklch(0.7 0.09 220);
+  --chart-5: oklch(0.72 0.1 330);
+  --sidebar: oklch(0.27 0.022 150);
+  --sidebar-foreground: oklch(0.93 0.015 95);
+  --sidebar-primary: oklch(0.72 0.11 155);
+  --sidebar-primary-foreground: oklch(0.2 0.03 150);
+  --sidebar-accent: oklch(0.34 0.04 130);
+  --sidebar-accent-foreground: oklch(0.9 0.03 140);
+  --sidebar-border: oklch(0.34 0.02 150);
+  --sidebar-ring: oklch(0.7 0.1 155);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -115,6 +157,12 @@
       radial-gradient(70rem 35rem at 115% -10%, oklch(0.93 0.05 135 / 0.55), transparent 60%),
       radial-gradient(55rem 28rem at -15% 5%, oklch(0.96 0.04 90 / 0.7), transparent 55%);
     background-attachment: fixed;
+  }
+  .dark body {
+    /* ダーク背景では光彩を減光したグリーンに差し替える */
+    background-image:
+      radial-gradient(70rem 35rem at 115% -10%, oklch(0.3 0.05 155 / 0.45), transparent 60%),
+      radial-gradient(55rem 28rem at -15% 5%, oklch(0.28 0.03 90 / 0.5), transparent 55%);
   }
   html {
     @apply font-sans;
