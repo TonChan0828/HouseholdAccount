@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, LogOut, PiggyBank } from "lucide-react";
+import { ArrowLeft, Check, LogOut, PiggyBank } from "lucide-react";
 
 import { signOut } from "@/app/(auth)/actions";
 import {
@@ -53,28 +53,39 @@ export default async function HouseholdsPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl animate-in space-y-6 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
-      <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-          <PiggyBank className="size-5" aria-hidden />
-        </span>
-        <span className="font-heading text-base font-bold tracking-wide">
-          家計簿アプリ
-        </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
+            <PiggyBank className="size-5" aria-hidden />
+          </span>
+          <span className="font-heading text-base font-bold tracking-wide">
+            家計簿アプリ
+          </span>
+        </Link>
+        <div className="ml-auto flex items-center gap-1">
+          {activeId ? (
+            <Link
+              href="/"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <ArrowLeft className="size-4" aria-hidden />
+              ダッシュボードへ
+            </Link>
+          ) : null}
+          <form action={signOut}>
+            <Button type="submit" variant="ghost" size="sm">
+              <LogOut className="size-4" aria-hidden />
+              ログアウト
+            </Button>
+          </form>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">家計簿グループ</h1>
-          <p className="text-sm text-muted-foreground">
-            ログイン中: {user?.email}
-          </p>
-        </div>
-        <form action={signOut}>
-          <Button type="submit" variant="ghost">
-            <LogOut className="size-4" aria-hidden />
-            ログアウト
-          </Button>
-        </form>
+      <div>
+        <h1 className="text-2xl font-bold">家計簿グループ</h1>
+        <p className="text-sm text-muted-foreground">
+          ログイン中: {user?.email}
+        </p>
       </div>
 
       {groups.length === 0 ? (
@@ -102,18 +113,18 @@ export default async function HouseholdsPage() {
                   }
                 >
                   <CardHeader>
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="flex items-center gap-2">
-                        {group.name}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <CardTitle className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="break-all">{group.name}</span>
                         {role === "owner" ? (
-                          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                          <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs whitespace-nowrap text-secondary-foreground">
                             オーナー
                           </span>
                         ) : null}
                       </CardTitle>
                       {isActive ? (
                         <span
-                          className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-sm font-semibold text-primary"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-sm font-semibold whitespace-nowrap text-primary"
                           data-testid="active-badge"
                         >
                           <Check className="size-4" aria-hidden />
