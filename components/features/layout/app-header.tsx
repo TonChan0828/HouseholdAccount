@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, PiggyBank, Plus, Repeat, Tags } from "lucide-react";
+import { LogOut, PiggyBank, Plus, Repeat, Tags, UserCog } from "lucide-react";
 
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
 import { ThemeMenuItems } from "@/components/features/layout/theme-toggle";
@@ -107,6 +107,10 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
               <DropdownMenuItem render={<Link href="/categories" />}>
                 <Tags aria-hidden />
                 カテゴリ管理
+              </DropdownMenuItem>
+              <DropdownMenuItem render={<Link href="/settings" />}>
+                <UserCog aria-hidden />
+                プロフィール設定
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <ThemeMenuItems />
