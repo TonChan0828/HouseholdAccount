@@ -28,6 +28,8 @@ export function ProfileForm({ action, defaultDisplayName }: Props) {
       <div className="space-y-2">
         <Label htmlFor="displayName">表示名</Label>
         <Input
+          // 保存成功後の revalidate で defaultValue が変わるため、再マウントして追従させる
+          key={defaultDisplayName}
           id="displayName"
           name="displayName"
           maxLength={20}
