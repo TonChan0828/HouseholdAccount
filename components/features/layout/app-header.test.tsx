@@ -99,4 +99,15 @@ describe("AppHeader", () => {
       screen.getByRole("menuitem", { name: /ログアウト/ }),
     ).toBeInTheDocument();
   });
+
+  it("ユーザーメニューにプロフィール設定へのリンクを表示する", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(screen.getByRole("button", { name: /show/ }));
+
+    expect(
+      await screen.findByRole("menuitem", { name: /プロフィール設定/ }),
+    ).toHaveAttribute("href", "/settings");
+  });
 });
