@@ -101,6 +101,7 @@ docs/specs/
   08_ui_overhaul.md      # UIオーバーホール（テーマ・アプリシェル・各ページ刷新）
   09_dark_mode.md        # ダークモード（テーマ切り替え）
   10_profile_settings.md # 表示名編集（プロフィール設定）
+  11_security_hardening.md # セキュリティハードニング（認可の多層防御・ヘッダー）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
