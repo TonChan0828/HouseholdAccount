@@ -61,7 +61,7 @@ export async function createTransaction(
   redirect("/transactions");
 }
 
-/** 収支を編集する（RLS により登録者本人のみ更新できる）。 */
+/** 収支を編集する（RLS に加えてアクティブグループでもスコープする多層防御）。 */
 export async function updateTransaction(
   _prevState: TransactionActionState,
   formData: FormData,
@@ -77,8 +77,20 @@ export async function updateTransaction(
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const householdId = await getActiveHouseholdId();
+  if (!householdId) {
+    redirect("/households");
+  }
+
   const { type, amount, date, category_id, memo } = parsed.data;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("transactions")
     .update({
       type,
@@ -87,17 +99,22 @@ export async function updateTransaction(
       category_id: category_id ?? null,
       memo: memo || null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("household_id", householdId)
+    .select("id");
 
   if (error) {
     return { error: "収支の更新に失敗しました" };
+  }
+  if (!data || data.length === 0) {
+    return { error: "対象の収支が見つかりません" };
   }
 
   revalidatePath("/transactions");
   redirect("/transactions");
 }
 
-/** 収支を削除する（RLS により登録者本人のみ削除できる）。 */
+/** 収支を削除する（RLS に加えてアクティブグループでもスコープする多層防御）。 */
 export async function deleteTransaction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) {
@@ -105,7 +122,23 @@ export async function deleteTransaction(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  await supabase.from("transactions").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const householdId = await getActiveHouseholdId();
+  if (!householdId) {
+    redirect("/households");
+  }
+
+  await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+    .eq("household_id", householdId);
 
   revalidatePath("/transactions");
   redirect("/transactions");
