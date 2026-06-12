@@ -30,8 +30,10 @@ test.describe("メンバー別アクティビティ", () => {
     await page.getByRole("link", { name: "メンバー" }).click();
     await expect(page).toHaveURL(/\/members$/);
 
-    // サマリーカードに表示名（メールの@前）と当期集計が表示される
-    const card = page.getByTestId("member-card").filter({ hasText: "e2e" });
+    // サマリーカードに当期集計が表示される。
+    // 作成直後のグループはメンバーが自分だけなのでカードは1枚。
+    // 表示名は settings.spec.ts が並列で変更しうるため、値そのものには依存しない。
+    const card = page.getByTestId("member-card");
     await expect(card).toBeVisible();
     await expect(card.getByText("¥1,500")).toBeVisible();
     await expect(card.getByText("1件")).toBeVisible();
@@ -41,7 +43,7 @@ test.describe("メンバー別アクティビティ", () => {
 
     // カードをクリックすると取引一覧が展開される
     await card.click();
-    await expect(page.getByText("e2e の取引")).toBeVisible();
+    await expect(page.getByText(/の取引$/)).toBeVisible();
     await expect(page.getByText(memo)).toBeVisible();
 
     // 再クリックで閉じる
