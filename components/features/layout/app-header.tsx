@@ -34,7 +34,7 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
+        <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
             <PiggyBank className="size-5" aria-hidden />
           </span>

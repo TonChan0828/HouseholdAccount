@@ -5,7 +5,7 @@ import { NAV_ITEMS, isNavActive } from "./nav-items";
 describe("NAV_ITEMS", () => {
   it("主要5ページへのリンクを定義する", () => {
     expect(NAV_ITEMS.map((i) => i.href)).toEqual([
-      "/",
+      "/dashboard",
       "/transactions",
       "/analytics",
       "/members",
@@ -15,9 +15,9 @@ describe("NAV_ITEMS", () => {
 });
 
 describe("isNavActive", () => {
-  it("ホーム（/）は完全一致のときのみアクティブ", () => {
-    expect(isNavActive("/", "/")).toBe(true);
-    expect(isNavActive("/transactions", "/")).toBe(false);
+  it("ホーム（/dashboard）は完全一致のときのみアクティブ", () => {
+    expect(isNavActive("/dashboard", "/dashboard")).toBe(true);
+    expect(isNavActive("/transactions", "/dashboard")).toBe(false);
   });
 
   it("配下のパスでもアクティブになる", () => {
