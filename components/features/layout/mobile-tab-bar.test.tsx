@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MobileTabBar } from "./mobile-tab-bar";
 
-const usePathnameMock = vi.fn(() => "/");
+const usePathnameMock = vi.fn(() => "/dashboard");
 
 vi.mock("next/navigation", () => ({
   usePathname: () => usePathnameMock(),
@@ -13,7 +13,7 @@ describe("MobileTabBar", () => {
   it("主要タブと記録ボタンを表示する", () => {
     render(<MobileTabBar />);
 
-    expect(screen.getByRole("link", { name: "ホーム" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "ホーム" })).toHaveAttribute("href", "/dashboard");
     expect(screen.getByRole("link", { name: "収支" })).toHaveAttribute(
       "href",
       "/transactions",

@@ -24,7 +24,7 @@ describe("AppHeader", () => {
   it("主要ページへのナビリンクを表示する", () => {
     renderHeader();
 
-    expect(screen.getByRole("link", { name: "ホーム" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "ホーム" })).toHaveAttribute("href", "/dashboard");
     expect(screen.getByRole("link", { name: "収支" })).toHaveAttribute(
       "href",
       "/transactions",

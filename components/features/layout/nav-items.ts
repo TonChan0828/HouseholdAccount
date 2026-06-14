@@ -15,7 +15,7 @@ export type NavItem = {
 
 /** ヘッダー（デスクトップ）に表示する主要ナビ。 */
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "ホーム", icon: House },
+  { href: "/dashboard", label: "ホーム", icon: House },
   { href: "/transactions", label: "収支", icon: ReceiptJapaneseYen },
   { href: "/analytics", label: "分析", icon: ChartPie },
   { href: "/members", label: "メンバー", icon: Users },
@@ -29,8 +29,8 @@ export const TAB_ITEMS: NavItem[] = NAV_ITEMS.filter(
 
 /** ホームは完全一致、それ以外はセグメント単位の前方一致でアクティブ判定する。 */
 export function isNavActive(pathname: string, href: string): boolean {
-  if (href === "/") {
-    return pathname === "/";
+  if (href === "/dashboard") {
+    return pathname === "/dashboard";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

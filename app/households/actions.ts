@@ -57,7 +57,7 @@ export async function createHousehold(
   }
 
   await setActiveHouseholdCookie(householdId);
-  redirect("/");
+  redirect("/dashboard");
 }
 
 /** アクティブグループを切り替える。所属していないグループは無視する。 */
@@ -226,7 +226,7 @@ export async function acceptInvitation(
   }
 
   await setActiveHouseholdCookie(data);
-  redirect("/");
+  redirect("/dashboard");
 }
 
 /** accept_invitation 関数が投げる英語メッセージを日本語に変換する。 */
