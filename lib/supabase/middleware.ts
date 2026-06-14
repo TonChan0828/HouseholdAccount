@@ -2,14 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
+import { isPublicPath } from "@/lib/route-access";
 import type { Database } from "@/types/database";
-
-/** 認証不要（未ログインでもアクセス可）なパスの接頭辞 */
-const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/auth"];
-
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-}
 
 /**
  * リクエストごとに Supabase セッションを更新し、認証状態に応じてリダイレクトする。
@@ -45,6 +39,13 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // ログイン済みでランディングページに来たらグループ選択へ
+  if (user && pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/households";
+    return NextResponse.redirect(url);
+  }
 
   // 未ログインで保護ルートにアクセス → ログインへ
   if (!user && !isPublicPath(pathname)) {
