@@ -22,7 +22,7 @@ export function ScopeToggle({ scope }: Props) {
         return (
           <Link
             key={item.value}
-            href={`/?scope=${item.value}`}
+            href={`/dashboard?scope=${item.value}`}
             aria-current={active ? "true" : undefined}
             className={cn(
               "rounded px-3 py-1 text-sm transition-colors",
