@@ -15,7 +15,7 @@ test.describe("ダッシュボード", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // 収支を追加（支出 / 食費 / 1200円）
     await page.goto("/transactions/new");
@@ -26,7 +26,7 @@ test.describe("ダッシュボード", () => {
     await expect(page).toHaveURL(/\/transactions$/);
 
     // ダッシュボードでサマリー（支出計）に反映される
-    await page.goto("/");
+    await page.goto("/dashboard");
     await expect(page.getByTestId("summary-cards")).toContainText("¥1,200");
 
     // メンバー別カテゴリマトリクスの支出セクションに食費行が表示される
@@ -59,5 +59,12 @@ test.describe("ダッシュボード", () => {
     await page.getByRole("link", { name: "全体" }).click();
     await expect(page).toHaveURL(/\?scope=all$/);
     await expect(page.getByTestId("summary-cards")).toContainText("¥1,200");
+  });
+
+  test("ログイン済みで / に来るとグループ選択へリダイレクトされる", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/households$/);
   });
 });

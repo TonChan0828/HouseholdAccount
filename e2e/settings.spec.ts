@@ -15,7 +15,7 @@ test.describe("プロフィール設定", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // ユーザーメニューからプロフィール設定へ遷移
     await page.getByRole("button", { name: /のメニュー/ }).click();

@@ -15,7 +15,7 @@ test.describe("月次分析", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // 収支を追加（支出 / 食費 / 1200円）
     await page.goto("/transactions/new");
@@ -26,7 +26,7 @@ test.describe("月次分析", () => {
     await expect(page).toHaveURL(/\/transactions$/);
 
     // ダッシュボードの「分析」リンクから遷移できる
-    await page.goto("/");
+    await page.goto("/dashboard");
     await page.getByRole("link", { name: "分析" }).click();
     await expect(page).toHaveURL(/\/analytics$/);
 

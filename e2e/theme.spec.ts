@@ -33,7 +33,7 @@ test.describe("テーマ切り替え", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // ユーザーメニュー内のテーマ項目でダークに切り替え
     await page.getByRole("button", { name: /のメニュー/ }).click();

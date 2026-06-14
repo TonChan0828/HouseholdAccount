@@ -15,7 +15,7 @@ test.describe("メンバー別アクティビティ", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // 収支を追加（支出 / 食費 / 1500円）
     await page.goto("/transactions/new");
@@ -26,7 +26,7 @@ test.describe("メンバー別アクティビティ", () => {
     await expect(page).toHaveURL(/\/transactions$/);
 
     // ダッシュボードの「メンバー」リンクから遷移できる
-    await page.goto("/");
+    await page.goto("/dashboard");
     await page.getByRole("link", { name: "メンバー" }).click();
     await expect(page).toHaveURL(/\/members$/);
 

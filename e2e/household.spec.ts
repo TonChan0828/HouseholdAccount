@@ -34,7 +34,7 @@ test.describe("家計簿グループ管理", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(`E2E切替元-${stamp}`);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // 2人メンバーのグループ（seed 済み）へ切り替えると利用中になる
     await page.goto("/households");
@@ -61,7 +61,7 @@ test.describe("家計簿グループ管理", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(groupA);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // 作成直後は A がアクティブ
     await page.goto("/households");
@@ -71,7 +71,7 @@ test.describe("家計簿グループ管理", () => {
     // グループ B を作成 → B がアクティブになる
     await page.getByLabel("グループ名").fill(groupB);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto("/households");
     await expect(card(groupB).getByTestId("active-badge")).toHaveText("利用中");
 
@@ -95,7 +95,7 @@ test.describe("家計簿グループ管理", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto("/households");
 
     // 人数上限 2 で招待リンクを発行
