@@ -31,7 +31,7 @@ test.describe("認証ルーティング", () => {
     await page.goto("/");
     await expect(page).toHaveURL(/\/$/);
     await expect(
-      page.getByRole("heading", { name: /家計を.*みんなで一緒に。/s }),
+      page.getByRole("heading", { name: /家計を[\s\S]*みんなで一緒に。/ }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: /無料で始める/ }).first(),
