@@ -102,6 +102,7 @@ docs/specs/
   09_dark_mode.md        # ダークモード（テーマ切り替え）
   10_profile_settings.md # 表示名編集（プロフィール設定）
   11_security_hardening.md # セキュリティハードニング（認可の多層防御・ヘッダー）
+  12_landing_page.md     # ランディングページ（公開トップ・/ をLP化しダッシュボードを /dashboard へ）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
