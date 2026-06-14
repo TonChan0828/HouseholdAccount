@@ -72,7 +72,7 @@ export default async function HouseholdsPage() {
         <div className="ml-auto flex items-center gap-1">
           {activeId ? (
             <Link
-              href="/"
+              href="/dashboard"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <ArrowLeft className="size-4" aria-hidden />
@@ -219,7 +219,7 @@ export default async function HouseholdsPage() {
       </Card>
 
       <div className="text-center">
-        <Link href="/" className={buttonVariants({ variant: "link" })}>
+        <Link href="/dashboard" className={buttonVariants({ variant: "link" })}>
           ダッシュボードへ
         </Link>
       </div>
