@@ -87,7 +87,7 @@ export async function setActiveHousehold(formData: FormData): Promise<void> {
   if (data) {
     await setActiveHouseholdCookie(householdId);
     revalidatePath("/households");
-    revalidatePath("/");
+    revalidatePath("/dashboard");
   }
 }
 
