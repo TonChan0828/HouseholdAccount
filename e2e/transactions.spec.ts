@@ -13,7 +13,7 @@ test.describe("収支記録", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // 収支を追加（支出 / 食費 / 1200円）
     await page.goto("/transactions/new");

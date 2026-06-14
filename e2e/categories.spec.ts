@@ -16,7 +16,7 @@ test.describe("カテゴリ管理", () => {
     await page.goto("/households");
     await page.getByLabel("グループ名").fill(group);
     await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
     // カテゴリを追加（支出）
     await page.goto("/categories/new");
