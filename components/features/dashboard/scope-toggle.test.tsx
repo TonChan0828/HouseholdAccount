@@ -9,8 +9,8 @@ describe("ScopeToggle", () => {
 
     const all = screen.getByRole("link", { name: "全体" });
     const mine = screen.getByRole("link", { name: "自分" });
-    expect(all).toHaveAttribute("href", "/?scope=all");
-    expect(mine).toHaveAttribute("href", "/?scope=mine");
+    expect(all).toHaveAttribute("href", "/dashboard?scope=all");
+    expect(mine).toHaveAttribute("href", "/dashboard?scope=mine");
   });
 
   it("現在のスコープ（全体）を強調する", () => {
