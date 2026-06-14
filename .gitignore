@@ -47,3 +47,6 @@ next-env.d.ts
 .mcp.json
 # Playwright auth state
 e2e/.auth/
+
+# Visual brainstorming companion
+.superpowers/
