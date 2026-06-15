@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { PiggyBank } from "lucide-react";
 
 import { ThemeToggleButton } from "@/components/features/layout/theme-toggle";
+import { ShalletMark } from "@/components/shallet-mark";
 
 export default function AuthLayout({
   children,
@@ -16,7 +16,7 @@ export default function AuthLayout({
           href="/"
           className="flex size-14 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-lifted"
         >
-          <PiggyBank className="size-8" aria-hidden />
+          <ShalletMark className="size-8" />
         </Link>
         <div className="text-center">
           <p className="font-heading text-xl font-bold tracking-wide">

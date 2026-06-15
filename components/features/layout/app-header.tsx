@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, PiggyBank, Plus, Repeat, Tags, UserCog } from "lucide-react";
+import { LogOut, Plus, Repeat, Tags, UserCog } from "lucide-react";
 
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
+import { ShalletMark } from "@/components/shallet-mark";
 import { ThemeMenuItems } from "@/components/features/layout/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -36,7 +37,7 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4">
         <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-            <PiggyBank className="size-5" aria-hidden />
+            <ShalletMark className="size-5" />
           </span>
           <span className="font-heading text-base font-bold tracking-wide">
             Shallet
