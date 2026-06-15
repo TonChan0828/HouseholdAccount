@@ -36,7 +36,7 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label="モバイルナビ"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
     >
       <div className="mx-auto flex max-w-md items-center px-2 py-1">
         {left.map(renderTab)}

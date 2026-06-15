@@ -60,3 +60,32 @@ export async function getActiveHouseholdId(): Promise<string | null> {
 
   return data?.household_id ?? null;
 }
+
+/**
+ * ログイン中ユーザーが所属する全グループを参加日時の昇順で返す。
+ * ヘッダーのグループ・スイッチャー用。
+ *
+ * RLS は同居メンバー全員の行を返すため、必ず user_id で自分の所属行に絞る。
+ */
+export async function getUserHouseholds(): Promise<
+  { id: string; name: string }[]
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
+
+  const { data } = await supabase
+    .from("household_members")
+    .select("household:households(id, name)")
+    .eq("user_id", user.id)
+    .order("joined_at", { ascending: true })
+    .overrideTypes<{ household: { id: string; name: string } | null }[]>();
+
+  return (data ?? [])
+    .map((row) => row.household)
+    .filter((h): h is { id: string; name: string } => h !== null);
+}

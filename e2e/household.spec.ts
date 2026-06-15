@@ -82,6 +82,34 @@ test.describe("家計簿グループ管理", () => {
     await expect(card(groupA).getByTestId("active-badge")).toHaveText("利用中");
   });
 
+  test("ヘッダーのスイッチャーから別グループへワンクリックで切り替えできる", async ({
+    page,
+  }) => {
+    const stamp = Date.now();
+    const groupA = `E2EスイッチャーA-${stamp}`;
+    const groupB = `E2EスイッチャーB-${stamp}`;
+
+    // A → B の順で作成（最後に作った B がアクティブになる）
+    await page.goto("/households");
+    await page.getByLabel("グループ名").fill(groupA);
+    await page.getByRole("button", { name: "グループを作成" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.goto("/households");
+    await page.getByLabel("グループ名").fill(groupB);
+    await page.getByRole("button", { name: "グループを作成" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    // ダッシュボード上のヘッダー・スイッチャーを開き、A に切り替える
+    const switcher = page.getByRole("button", { name: /グループを切り替え/ });
+    await expect(switcher).toContainText(groupB);
+    await switcher.click();
+    await page.getByRole("menuitem", { name: groupA }).click();
+
+    // /households を経由せず、今いるページ（ダッシュボード）のまま表示が A に変わる
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(switcher).toContainText(groupA);
+  });
+
   test("オーナーは招待リンクを発行でき、招待ページでグループ名が表示される", async ({
     page,
   }) => {
