@@ -23,7 +23,11 @@ export function CategoryPieChart({ data }: Props) {
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row">
       <div className="h-48 w-48 shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          initialDimension={{ width: 192, height: 192 }}
+        >
           <PieChart>
             <Pie
               data={data}

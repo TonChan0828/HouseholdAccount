@@ -31,7 +31,11 @@ export function BalanceBarChart({ income, expense }: Props) {
 
   return (
     <div className="h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        initialDimension={{ width: 0, height: 224 }}
+      >
         <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 11 }} />
