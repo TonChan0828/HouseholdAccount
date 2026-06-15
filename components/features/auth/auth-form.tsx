@@ -29,6 +29,9 @@ type AuthFormProps = {
   altText: string;
   altHref: string;
   altLinkLabel: string;
+  forgotPasswordHref?: string;
+  /** 指定するとパスワード欄の下に要件を補足表示し、最小文字数を 8 に引き上げる */
+  passwordHint?: string;
 };
 
 export function AuthForm({
@@ -39,6 +42,8 @@ export function AuthForm({
   altText,
   altHref,
   altLinkLabel,
+  forgotPasswordHref,
+  passwordHint,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     action,
@@ -70,10 +75,26 @@ export function AuthForm({
               id="password"
               name="password"
               type="password"
-              autoComplete="current-password"
-              minLength={6}
+              autoComplete={passwordHint ? "new-password" : "current-password"}
+              minLength={passwordHint ? 8 : 6}
+              aria-describedby={passwordHint ? "password-hint" : undefined}
               required
             />
+            {passwordHint ? (
+              <p id="password-hint" className="text-sm text-muted-foreground">
+                {passwordHint}
+              </p>
+            ) : null}
+            {forgotPasswordHref ? (
+              <p className="text-right text-sm">
+                <Link
+                  href={forgotPasswordHref}
+                  className="text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  パスワードをお忘れですか？
+                </Link>
+              </p>
+            ) : null}
           </div>
           {state?.error ? (
             <p className="text-sm text-destructive" role="alert">

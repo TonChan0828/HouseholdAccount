@@ -1,4 +1,5 @@
 import { AuthForm } from "@/components/features/auth/auth-form";
+import { PASSWORD_POLICY_HINT } from "@/lib/validations/auth";
 
 import { signUp } from "../actions";
 
@@ -12,6 +13,7 @@ export default function RegisterPage() {
       altText="すでにアカウントをお持ちの方は"
       altHref="/login"
       altLinkLabel="ログイン"
+      passwordHint={PASSWORD_POLICY_HINT}
     />
   );
 }

@@ -25,6 +25,29 @@ test.describe("認証ルーティング", () => {
     ).toBeVisible();
   });
 
+  test("ログイン画面からパスワード再設定画面へ遷移できる", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    await page.getByRole("link", { name: "パスワードをお忘れですか？" }).click();
+    await expect(page).toHaveURL(/\/forgot-password$/);
+    await expect(
+      page.getByRole("button", { name: "再設定メールを送信" }),
+    ).toBeVisible();
+  });
+
+  test("未認証でも /forgot-password にアクセスできる", async ({ page }) => {
+    await page.goto("/forgot-password");
+    await expect(page).toHaveURL(/\/forgot-password$/);
+    await expect(page.getByLabel("メールアドレス")).toBeVisible();
+  });
+
+  test("未認証でも /reset-password にアクセスできる", async ({ page }) => {
+    await page.goto("/reset-password");
+    await expect(page).toHaveURL(/\/reset-password$/);
+    await expect(page.getByLabel("新しいパスワード", { exact: true })).toBeVisible();
+  });
+
   test("未認証で / にアクセスするとランディングが表示される", async ({
     page,
   }) => {
