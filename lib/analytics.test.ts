@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildBalanceBars,
   summarizeCategoryExpense,
   summarizeTrend,
   type TxLite,
@@ -47,6 +48,24 @@ describe("summarizeTrend", () => {
   it("データが無くても各期を0で返す", () => {
     const result = summarizeTrend([], [range("2026-06-01", "2026-07-01")]);
     expect(result[0]).toMatchObject({ income: 0, expense: 0 });
+  });
+});
+
+describe("buildBalanceBars", () => {
+  it("収入・支出の順に2本の棒データを返す", () => {
+    const result = buildBalanceBars(1000, 300);
+
+    expect(result).toEqual([
+      { label: "収入", amount: 1000, key: "income" },
+      { label: "支出", amount: 300, key: "expense" },
+    ]);
+  });
+
+  it("収入・支出が0でも2本の棒データを返す", () => {
+    const result = buildBalanceBars(0, 0);
+
+    expect(result).toHaveLength(2);
+    expect(result.map((b) => b.amount)).toEqual([0, 0]);
   });
 });
 
