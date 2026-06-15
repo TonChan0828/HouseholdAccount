@@ -8,7 +8,7 @@ import { LandingHeader } from "@/components/features/landing/landing-header";
 import { Steps } from "@/components/features/landing/steps";
 
 export const metadata: Metadata = {
-  title: "家計簿アプリ｜家計を、みんなで一緒に。",
+  title: "Shallet｜家計を、みんなで一緒に。",
   description:
     "家族やパートナーとグループで収支を共有し、月次で自動集計。誰が何に使ったか一目で分かる家計簿アプリ。",
 };

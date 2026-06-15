@@ -20,7 +20,7 @@ export default function AuthLayout({
         </Link>
         <div className="text-center">
           <p className="font-heading text-xl font-bold tracking-wide">
-            家計簿アプリ
+            Shallet
           </p>
           <p className="text-sm text-muted-foreground">
             家族と一緒に、楽しく家計を見える化

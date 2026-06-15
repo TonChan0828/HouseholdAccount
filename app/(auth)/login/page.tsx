@@ -6,7 +6,7 @@ export default function LoginPage() {
   return (
     <AuthForm
       title="ログイン"
-      description="家計簿アプリにログインします"
+      description="Shallet にログインします"
       submitLabel="ログイン"
       action={signIn}
       altText="アカウントをお持ちでない方は"

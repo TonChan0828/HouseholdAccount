@@ -23,8 +23,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "家計簿アプリ",
-  description: "複数アカウントで家計簿グループを共有できる家計簿アプリ",
+  title: "Shallet",
+  description: "複数アカウントで家計簿グループを共有できる家計簿アプリ「Shallet」",
 };
 
 export default function RootLayout({
