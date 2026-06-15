@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, Check, LogOut } from "lucide-react";
 
 import { signOut } from "@/app/(auth)/actions";
-import { ShalletMark } from "@/components/shallet-mark";
+import { ShalletLogo } from "@/components/shallet-logo";
 import {
   createHousehold,
   createInvitation,
@@ -63,9 +63,7 @@ export default async function HouseholdsPage() {
     <div className="mx-auto w-full max-w-2xl animate-in space-y-6 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-            <ShalletMark className="size-5" />
-          </span>
+          <ShalletLogo className="size-9 shrink-0 rounded-[10px] shadow-soft" />
           <span className="font-heading text-base font-bold tracking-wide">
             Shallet
           </span>

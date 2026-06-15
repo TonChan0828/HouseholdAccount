@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ThemeToggleButton } from "@/components/features/layout/theme-toggle";
-import { ShalletMark } from "@/components/shallet-mark";
+import { ShalletLogo } from "@/components/shallet-logo";
 
 export default function AuthLayout({
   children,
@@ -12,11 +12,8 @@ export default function AuthLayout({
         <ThemeToggleButton />
       </div>
       <div className="flex animate-in flex-col items-center gap-3 duration-700 fade-in slide-in-from-bottom-3">
-        <Link
-          href="/"
-          className="flex size-14 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-lifted"
-        >
-          <ShalletMark className="size-8" />
+        <Link href="/" className="rounded-2xl shadow-lifted">
+          <ShalletLogo className="size-16" />
         </Link>
         <div className="text-center">
           <p className="font-heading text-xl font-bold tracking-wide">
