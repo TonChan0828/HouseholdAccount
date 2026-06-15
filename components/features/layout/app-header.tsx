@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, Plus, Repeat, Tags, UserCog } from "lucide-react";
 
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
-import { ShalletMark } from "@/components/shallet-mark";
+import { ShalletLogo } from "@/components/shallet-logo";
 import { ThemeMenuItems } from "@/components/features/layout/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -36,9 +36,7 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4">
         <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-            <ShalletMark className="size-5" />
-          </span>
+          <ShalletLogo className="size-9 shrink-0 rounded-[10px] shadow-soft" />
           <span className="font-heading text-base font-bold tracking-wide">
             Shallet
           </span>

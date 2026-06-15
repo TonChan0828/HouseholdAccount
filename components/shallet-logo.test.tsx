@@ -1,23 +1,23 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { ShalletMark } from "./shallet-mark";
+import { ShalletLogo } from "./shallet-logo";
 
-describe("ShalletMark", () => {
+describe("ShalletLogo", () => {
   it("SVG ロゴをレンダリングし、className を適用する", () => {
-    const { container } = render(<ShalletMark className="size-5" />);
+    const { container } = render(<ShalletLogo className="size-9" />);
 
     const svg = container.querySelector("svg");
     expect(svg).not.toBeNull();
-    expect(svg).toHaveClass("size-5");
+    expect(svg).toHaveClass("size-9");
   });
 
-  it("装飾目的のため aria-hidden を持つ", () => {
-    const { container } = render(<ShalletMark />);
+  it("アクセシブルな名前 Shallet を持つ", () => {
+    const { container } = render(<ShalletLogo />);
 
     expect(container.querySelector("svg")).toHaveAttribute(
-      "aria-hidden",
-      "true",
+      "aria-label",
+      "Shallet",
     );
   });
 });
