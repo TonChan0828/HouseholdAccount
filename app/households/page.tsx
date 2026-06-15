@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Check, LogOut, PiggyBank } from "lucide-react";
+import { ArrowLeft, Check, LogOut } from "lucide-react";
 
 import { signOut } from "@/app/(auth)/actions";
+import { ShalletMark } from "@/components/shallet-mark";
 import {
   createHousehold,
   createInvitation,
@@ -63,7 +64,7 @@ export default async function HouseholdsPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-            <PiggyBank className="size-5" aria-hidden />
+            <ShalletMark className="size-5" />
           </span>
           <span className="font-heading text-base font-bold tracking-wide">
             Shallet
