@@ -13,7 +13,12 @@ vi.mock("next/navigation", () => ({
 function renderHeader() {
   return render(
     <AppHeader
-      householdName="わが家"
+      households={[
+        { id: "h1", name: "わが家" },
+        { id: "h2", name: "シェアハウス" },
+      ]}
+      activeHouseholdId="h1"
+      switchAction={vi.fn()}
       displayName="show"
       signOutAction={vi.fn()}
     />,
@@ -82,18 +87,22 @@ describe("AppHeader", () => {
     ).toBeInTheDocument();
   });
 
-  it("ユーザーメニューにグループ名とグループ切替・ログアウトを表示する", async () => {
+  it("ヘッダーにグループ・スイッチャー（現在のグループ名）を表示する", () => {
+    renderHeader();
+
+    expect(
+      screen.getByRole("button", { name: /わが家/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("ユーザーメニューにカテゴリ管理・ログアウトを表示する", async () => {
     const user = userEvent.setup();
     renderHeader();
 
     await user.click(screen.getByRole("button", { name: /show/ }));
 
-    expect(await screen.findByText("わが家")).toBeInTheDocument();
     expect(
-      screen.getByRole("menuitem", { name: /グループを切り替え/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitem", { name: /カテゴリ管理/ }),
+      await screen.findByRole("menuitem", { name: /カテゴリ管理/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", { name: /ログアウト/ }),

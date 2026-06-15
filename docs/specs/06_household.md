@@ -21,6 +21,10 @@
 
 - `/households`: 所属グループ一覧（アクティブを強調）＋ グループ新規作成フォーム。
   owner のグループには「招待リンク発行」セクション（人数上限の指定・既存リンクの上限変更・失効）。
+- **ヘッダー・グループスイッチャー**（全ダッシュボードページ共通）: ロゴ隣に現在のグループ名を
+  トリガーとして常設。クリックで所属グループ一覧をドロップダウン表示し、ワンクリックで切り替える。
+  アクティブなグループには `Check` を表示し再選択は無効。フッターに `/households`（グループ管理・追加）
+  へのリンクを置く。`components/features/layout/household-switcher.tsx`。
 - `/invite/[token]`: 招待リンクの参加画面。グループ名を表示し「参加する」で加入。
   期限切れ・上限到達・無効トークンはエラー表示。未ログインは middleware で `/login` へ。
 
@@ -28,7 +32,9 @@
 
 - グループ名: 1〜100文字
 - 招待の人数上限 `max_uses`: 1〜50
-- アクティブグループ切り替え時に Cookie を更新する
+- アクティブグループ切り替え時に Cookie を更新する。スイッチャーからの切り替えは
+  `revalidatePath("/", "layout")` でレイアウトごと再検証し、今いるページをそのまま新グループの
+  データに更新する（リダイレクトしない）。
 - 招待リンクは **オープン方式**（リンクを知っているログイン済みユーザーは誰でも参加可能）。
   ただし `max_uses`（owner 指定の人数上限）・有効期限・owner による失効で参加範囲を制御する。
 - `max_uses` は発行後も owner が変更可能。上限を下げても既に参加済みのメンバーは外れず、
@@ -119,10 +125,11 @@ DB 側で原子的に行うことで「想定外の超過参加」を防ぐ。
 ```typescript
 // lib/household.ts
 getActiveHouseholdId(): Cookie 優先、無ければ所属する最古のグループにフォールバック
+getUserHouseholds(): 所属する全グループ {id, name}[] を joined_at 昇順で返す（スイッチャー用）
 
 // app/households/actions.ts（Server Actions）
 createHousehold(formData)        // name(1-100) → insert → 新グループを active Cookie に → redirect("/")
-setActiveHousehold(householdId)  // メンバー確認 → Cookie set → revalidate
+setActiveHousehold(householdId)  // メンバー確認 → Cookie set → revalidatePath("/", "layout")
 createInvitation(formData)       // owner確認 → token生成(crypto) → insert(max_uses, expires_at=+7d)
 updateInvitation(id, max_uses)   // owner のみ → max_uses 更新
 revokeInvitation(id)             // owner のみ → delete

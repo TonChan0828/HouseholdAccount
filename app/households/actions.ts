@@ -86,8 +86,9 @@ export async function setActiveHousehold(formData: FormData): Promise<void> {
 
   if (data) {
     await setActiveHouseholdCookie(householdId);
-    revalidatePath("/households");
-    revalidatePath("/dashboard");
+    // ヘッダーのスイッチャーはどのページからでも呼ばれる。レイアウトごと
+    // 再検証して、今いるページがその場で新グループのデータに更新されるようにする。
+    revalidatePath("/", "layout");
   }
 }
 

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Plus, Repeat, Tags, UserCog } from "lucide-react";
+import { LogOut, Plus, Tags, UserCog } from "lucide-react";
 
+import { HouseholdSwitcher } from "@/components/features/layout/household-switcher";
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
 import { ShalletLogo } from "@/components/shallet-logo";
 import { ThemeMenuItems } from "@/components/features/layout/theme-toggle";
@@ -11,38 +12,52 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  /** アクティブな家計簿グループ名 */
-  householdName: string;
+  /** ログイン中ユーザーが所属する全グループ */
+  households: { id: string; name: string }[];
+  /** 現在アクティブなグループ ID */
+  activeHouseholdId: string;
+  /** アクティブグループを切り替える Server Action */
+  switchAction: (formData: FormData) => Promise<void>;
   /** ログイン中ユーザーの表示名 */
   displayName: string;
   /** ログアウト用 Server Action */
   signOutAction: () => Promise<void>;
 };
 
-/** 全ページ共通のスティッキーヘッダー（ロゴ・ナビ・ユーザーメニュー）。 */
-export function AppHeader({ householdName, displayName, signOutAction }: Props) {
+/** 全ページ共通のスティッキーヘッダー（ロゴ・グループ切替・ナビ・ユーザーメニュー）。 */
+export function AppHeader({
+  households,
+  activeHouseholdId,
+  switchAction,
+  displayName,
+  signOutAction,
+}: Props) {
   const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
         <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
           <ShalletLogo className="size-9 shrink-0 rounded-[10px] shadow-soft" />
-          <span className="font-heading text-base font-bold tracking-wide">
+          <span className="hidden font-heading text-base font-bold tracking-wide sm:inline">
             Shallet
           </span>
         </Link>
 
-        <nav aria-label="メイン" className="ml-2 hidden flex-1 items-center gap-1 md:flex">
+        <HouseholdSwitcher
+          households={households}
+          activeId={activeHouseholdId}
+          switchAction={switchAction}
+        />
+
+        <nav aria-label="メイン" className="ml-2 hidden flex-1 items-center gap-1 lg:flex">
           {NAV_ITEMS.map((item) => {
             const active = isNavActive(pathname, item.href);
             const Icon = item.icon;
@@ -52,7 +67,7 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors",
+                  "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm transition-colors",
                   active
                     ? "bg-secondary font-semibold text-secondary-foreground"
                     : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -70,7 +85,7 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
             href="/transactions/new"
             className={cn(
               buttonVariants({ size: "sm" }),
-              "hidden rounded-full shadow-soft md:inline-flex",
+              "hidden whitespace-nowrap rounded-full shadow-soft lg:inline-flex",
             )}
           >
             <Plus className="size-4" aria-hidden />
@@ -88,21 +103,6 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
               <span className="max-w-24 truncate">{displayName}</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="space-y-0.5">
-                  <span className="block text-xs font-normal text-muted-foreground">
-                    いまのグループ
-                  </span>
-                  <span className="block truncate font-heading text-sm text-foreground">
-                    {householdName}
-                  </span>
-                </DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem render={<Link href="/households" />}>
-                <Repeat aria-hidden />
-                グループを切り替え
-              </DropdownMenuItem>
               <DropdownMenuItem render={<Link href="/categories" />}>
                 <Tags aria-hidden />
                 カテゴリ管理
