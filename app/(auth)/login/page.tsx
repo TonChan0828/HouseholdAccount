@@ -12,6 +12,7 @@ export default function LoginPage() {
       altText="アカウントをお持ちでない方は"
       altHref="/register"
       altLinkLabel="新規登録"
+      forgotPasswordHref="/forgot-password"
     />
   );
 }

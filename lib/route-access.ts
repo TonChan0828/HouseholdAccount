@@ -1,5 +1,11 @@
 /** 認証不要（未ログインでもアクセス可）なパスの接頭辞 */
-const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/auth"];
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/register",
+  "/auth",
+  "/forgot-password",
+  "/reset-password",
+];
 
 /**
  * 未ログインでもアクセスできるパスかを判定する。

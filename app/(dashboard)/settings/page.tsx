@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 
-import { updateProfile } from "@/app/(dashboard)/settings/actions";
+import {
+  changePassword,
+  updateProfile,
+} from "@/app/(dashboard)/settings/actions";
+import { PasswordForm } from "@/components/features/profile/password-form";
 import { ProfileForm } from "@/components/features/profile/profile-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
@@ -31,6 +35,15 @@ export default async function SettingsPage() {
             action={updateProfile}
             defaultDisplayName={profile?.display_name ?? user.email ?? ""}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>パスワード変更</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PasswordForm action={changePassword} />
         </CardContent>
       </Card>
     </main>

@@ -13,6 +13,11 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/auth/callback")).toBe(true);
   });
 
+  it("パスワード再設定の各パスは公開", () => {
+    expect(isPublicPath("/forgot-password")).toBe(true);
+    expect(isPublicPath("/reset-password")).toBe(true);
+  });
+
   it("ダッシュボード・保護ルートは非公開", () => {
     expect(isPublicPath("/dashboard")).toBe(false);
     expect(isPublicPath("/transactions")).toBe(false);
