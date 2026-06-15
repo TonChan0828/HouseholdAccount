@@ -66,7 +66,7 @@ export default async function HouseholdsPage() {
             <PiggyBank className="size-5" aria-hidden />
           </span>
           <span className="font-heading text-base font-bold tracking-wide">
-            家計簿アプリ
+            Shallet
           </span>
         </Link>
         <div className="ml-auto flex items-center gap-1">

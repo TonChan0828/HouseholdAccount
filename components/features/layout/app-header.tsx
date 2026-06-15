@@ -39,7 +39,7 @@ export function AppHeader({ householdName, displayName, signOutAction }: Props) 
             <PiggyBank className="size-5" aria-hidden />
           </span>
           <span className="font-heading text-base font-bold tracking-wide">
-            家計簿アプリ
+            Shallet
           </span>
         </Link>
 
