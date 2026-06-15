@@ -3,8 +3,8 @@
 ## 概要
 
 ログイン後の起点画面（`/`）。アクティブな household の「当期間」の収支を一目で把握する。
-月次サマリー（収入計・支出計・収支差）、メンバー別カテゴリマトリクス、最近の取引を表示し、
-サマリーと最近の取引は「全体/自分」で絞り込める。
+月次サマリー（収入計・支出計・収支差）、当期収支グラフ、メンバー別カテゴリマトリクス、最近の取引を表示し、
+サマリー・当期収支グラフ・最近の取引は「全体/自分」で絞り込める。
 期間の移動や全件閲覧・追加は収支記録（`/transactions`）に委譲する。
 
 ## 対象ユーザー・前提条件
@@ -32,6 +32,12 @@
 │¥320,000│ │¥185,400│ │+¥134,600│
 └────────┘ └────────┘ └────────┘
 
+当期の収支                       ← 棒グラフ（収入=緑 / 支出=赤 の2本）
+ ┃
+ ┃ █          █
+ ┗━━━━━━━━━━━━━━
+   収入        支出
+
 メンバー別カテゴリ
 【支出】
  カテゴリ   太郎      花子      合計
@@ -54,6 +60,7 @@
 - 期間ラベル（`formatPeriodLabel`）
 - スコープトグル `全体 | 自分`（`?scope=all|mine`、既定 `all`）。現在のスコープを強調
 - サマリーカード: 収入計（緑）・支出計（赤）・収支差
+- 当期収支グラフ: 当期の収入・支出を2本の棒で並べた棒グラフ（収入=緑 `--income` / 支出=赤 `--expense`）。Y軸は円表記（1万以上は「○万」）、ツールチップは `¥` 表記。**scope トグルに連動**し、サマリーカードと同じ絞り込み後の値を表示する
 - メンバー別カテゴリマトリクス: 行=カテゴリ / 列=メンバー＋合計列。【支出】→【収入】の2セクション構成で、各セクションに合計行（メンバーごと）を持つ
   - 当期間に取引のあるカテゴリのみ行として表示（行は合計降順）。`category_id` が null の取引は「未分類」行に集約
   - セクション振り分けは取引の `type` で行う（`both` 型カテゴリは両セクションに現れ得る）
@@ -65,7 +72,7 @@
 
 ### インタラクション・バリデーション
 
-- スコープ `mine` のとき `created_by = auth.uid()` で絞る。サマリー・最近の取引に適用（マトリクスには適用しない）。絞り込みは DB クエリではなく JS 側で行う（マトリクスが全メンバー分を必要とするため、取引は無条件で1回取得して使い分ける）
+- スコープ `mine` のとき `created_by = auth.uid()` で絞る。サマリー・当期収支グラフ・最近の取引に適用（マトリクスには適用しない）。当期収支グラフはサマリーと同じ `income`/`expense` を共有する。絞り込みは DB クエリではなく JS 側で行う（マトリクスが全メンバー分を必要とするため、取引は無条件で1回取得して使い分ける）
 - トグルはリンク（`/` ?scope=...）。Server Component が `searchParams.scope` を読む
 - 入力フォームは無し（閲覧専用画面）
 
@@ -101,6 +108,11 @@ type CategoryMemberMatrix = {
   income: MatrixSection;
 };
 buildCategoryMemberMatrix(txs: MatrixTx[], members: MemberInfo[]): CategoryMemberMatrix
+
+// lib/analytics.ts（当期収支グラフ用・純関数）
+type BalanceBar = { label: string; amount: number; key: "income" | "expense" };
+buildBalanceBars(income: number, expense: number): BalanceBar[]
+// => [{ label: "収入", amount: income, key: "income" }, { label: "支出", amount: expense, key: "expense" }]
 
 // lib/period.ts（既存・流用）
 getPeriodRange(refDate, startDay) / formatPeriodLabel(range) / toISODate(d)
@@ -141,16 +153,19 @@ Server Action は不要（閲覧専用）。
 - `components/features/dashboard/summary-cards.tsx` — 収入/支出/収支の表示（presentational）
 - `components/features/dashboard/scope-toggle.tsx` — 全体/自分のリンク（presentational、現在値を強調）
 - `components/features/dashboard/category-member-matrix.tsx` — メンバー別カテゴリマトリクス（presentational、`lib/category-matrix.ts` の集計結果を表示）
+- `components/features/charts/balance-bar-chart.tsx` — 当期収支の棒グラフ（presentational・client、`income`/`expense` を props で受け取り `buildBalanceBars` で整形。Recharts）
 - 最近の取引はページ内でレンダリング（`/transactions` の行表示と整合）
 - `/transactions` の既存コードは変更しない（DRY のための無関係改修を避ける）
 
 ## テスト
 
 - Unit: `lib/category-matrix.ts#buildCategoryMemberMatrix`（セクション振り分け・合計行/列・列順維持・未分類集約・脱退者除外・0件時）
+- Unit: `lib/analytics.ts#buildBalanceBars`（収入→支出の順・ラベル・key・金額、0円時も2本返す）
 - Component: `SummaryCards`（収入/支出/収支の金額表示）、`ScopeToggle`（全体/自分のリンク・現在値の強調）、`CategoryMemberMatrix`（セクション見出し・カテゴリ行・合計・ゼロセル `-`・空時非描画）
 - E2E: グループ作成 → 収支追加 → ダッシュボードでサマリーに金額反映 → 全体/自分トグルの遷移 → マトリクスにカテゴリ行と金額が表示・scope=mine でも全メンバー表示のまま
 
 ## 未解決の課題
 
 - 脱退メンバーの取引はマトリクスから除外されるため、scope=all のサマリー合計とマトリクス総計が乖離し得る（将来「その他」列で吸収する選択肢あり）
-- カテゴリ別内訳・推移グラフは分析（05）の領域でダッシュボードには含めない
+- 当期収支グラフは「当期の収入・支出の2本」のみ。カテゴリ別内訳・複数期の推移グラフは分析（05）の領域でダッシュボードには含めない
+- 収入・支出ともに0の期間は空に近い軸のみ表示される（専用の「データなし」表示は設けていない）

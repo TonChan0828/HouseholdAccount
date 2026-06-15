@@ -22,6 +22,13 @@ export type PeriodSummary = {
   expense: number;
 };
 
+/** 当期収支グラフの1本ぶん（収入 or 支出）。 */
+export type BalanceBar = {
+  label: string;
+  amount: number;
+  key: "income" | "expense";
+};
+
 /** カテゴリ別内訳の1項目。 */
 export type CategorySlice = {
   categoryId: string | null;
@@ -57,6 +64,17 @@ export function summarizeTrend(
     }
     return { label: periodLabel(range), income, expense };
   });
+}
+
+/** 当期の収入・支出を収入→支出の順で棒グラフ用データにする。 */
+export function buildBalanceBars(
+  income: number,
+  expense: number,
+): BalanceBar[] {
+  return [
+    { label: "収入", amount: income, key: "income" },
+    { label: "支出", amount: expense, key: "expense" },
+  ];
 }
 
 /** 支出をカテゴリ別に集計し、金額降順で返す。未設定は「未分類」に集約する。 */

@@ -2,12 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, ReceiptText } from "lucide-react";
 
+import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { buildCategoryMemberMatrix } from "@/lib/category-matrix";
 import { formatDayLabel, groupByDate, yen } from "@/lib/format";
 import { getActiveHouseholdId } from "@/lib/household";
@@ -141,6 +147,15 @@ export default async function DashboardPage({
         prevIncome={sumBy(prevTransactions, "income")}
         prevExpense={sumBy(prevTransactions, "expense")}
       />
+
+      <Card className="shadow-soft ring-0">
+        <CardHeader>
+          <CardTitle className="text-base">当期の収支</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BalanceBarChart income={income} expense={expense} />
+        </CardContent>
+      </Card>
 
       <CategoryMemberMatrix matrix={matrix} />
 
