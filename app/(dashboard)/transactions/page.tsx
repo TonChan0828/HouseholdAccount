@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, ReceiptText } from "lucide-react";
+import { Download, Plus, ReceiptText } from "lucide-react";
 
 import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
@@ -92,13 +92,24 @@ export default async function TransactionsPage({
     <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">収支</h1>
-        <Link
-          href="/transactions/new"
-          className={buttonVariants({ variant: "default", size: "sm" })}
-        >
-          <Plus className="size-4" aria-hidden />
-          収支を追加
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Route Handler（CSV）へは素の <a> を使う。<Link> だと RSC を
+              プリフェッチしようとして "unexpected response" エラーになる。 */}
+          <a
+            href={`/transactions/export?ref=${toISODate(range.start)}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <Download className="size-4" aria-hidden />
+            CSV出力
+          </a>
+          <Link
+            href="/transactions/new"
+            className={buttonVariants({ variant: "default", size: "sm" })}
+          >
+            <Plus className="size-4" aria-hidden />
+            収支を追加
+          </Link>
+        </div>
       </div>
 
       <MonthNav
