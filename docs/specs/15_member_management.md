@@ -97,7 +97,9 @@ transfer_ownership(_household_id uuid, _new_owner uuid) returns void  -- SECURIT
 
 ## 未解決の課題
 
-- **単独 owner（自分1人）の脱退＝実質グループ削除は本スコープ外**。グループ削除機能は別途。
+- 単独 owner の脱退＝実質グループ削除は **`16_household_deletion.md` で実装済み**（owner はカードの
+  「グループを削除」から削除する）。これに伴い member-list の「委譲してから脱退できます」注記は
+  **他メンバーがいる場合のみ**表示する。
 - 複数 owner は許容しない（委譲＝単一オーナーのスワップ）。
 - 2人以上の実メンバーを要する破壊的 E2E（実除外・実委譲・実脱退）は、E2E ユーザーが1名・共有 DB の
   ため未追加。代わりに DB シミュレーション（ROLLBACK）で多層検証する（`14_account_deletion.md` と同方針）。
