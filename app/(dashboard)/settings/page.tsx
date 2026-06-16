@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 
 import {
   changePassword,
+  deleteAccount,
   updateProfile,
 } from "@/app/(dashboard)/settings/actions";
+import { AccountDeletionForm } from "@/components/features/profile/account-deletion-form";
 import { PasswordForm } from "@/components/features/profile/password-form";
 import { ProfileForm } from "@/components/features/profile/profile-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +46,18 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <PasswordForm action={changePassword} />
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-destructive">アカウント削除</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AccountDeletionForm
+            action={deleteAccount}
+            email={user.email ?? ""}
+          />
         </CardContent>
       </Card>
     </main>
