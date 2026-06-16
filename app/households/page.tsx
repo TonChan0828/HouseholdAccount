@@ -7,6 +7,7 @@ import { ShalletLogo } from "@/components/shallet-logo";
 import {
   createHousehold,
   createInvitation,
+  deleteHousehold,
   leaveHousehold,
   removeMember,
   revokeInvitation,
@@ -16,6 +17,7 @@ import {
   updateInvitation,
 } from "@/app/households/actions";
 import { CreateHouseholdForm } from "@/components/features/household/create-household-form";
+import { DeleteHouseholdDialog } from "@/components/features/household/delete-household-dialog";
 import { InvitationManager } from "@/components/features/household/invitation-manager";
 import {
   MemberList,
@@ -249,6 +251,20 @@ export default async function HouseholdsPage() {
                             createAction={createInvitation}
                             updateAction={updateInvitation}
                             revokeAction={revokeInvitation}
+                          />
+                        </div>
+                        <div className="border-t border-border pt-4">
+                          <p className="mb-1 text-sm font-medium text-destructive">
+                            危険な操作
+                          </p>
+                          <p className="mb-3 text-xs text-muted-foreground">
+                            グループを削除すると、取引・カテゴリ・メンバーがすべて失われ元に戻せません。
+                          </p>
+                          <DeleteHouseholdDialog
+                            householdId={group.id}
+                            householdName={group.name}
+                            memberCount={membersOf(group.id).length}
+                            deleteAction={deleteHousehold}
                           />
                         </div>
                       </>

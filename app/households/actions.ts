@@ -306,6 +306,46 @@ export async function transferOwnership(formData: FormData): Promise<void> {
   revalidatePath("/households");
 }
 
+/** owner がグループを削除する。子テーブル（メンバー・取引・カテゴリ・招待）は CASCADE で消える。 */
+export async function deleteHousehold(formData: FormData): Promise<void> {
+  const householdId = String(formData.get("household_id") ?? "");
+  if (!householdId) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 防御的に owner であることを確認する（RLS の delete ポリシーでも owner 以外は 0 行）。
+  const { data: membership } = await supabase
+    .from("household_members")
+    .select("role")
+    .eq("household_id", householdId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (membership?.role !== "owner") {
+    return;
+  }
+
+  // RLS の households_delete_owner で owner を強制。子テーブルは on delete cascade。
+  await supabase.from("households").delete().eq("id", householdId);
+
+  // 削除グループがアクティブだった場合は Cookie を消す
+  // （getActiveHouseholdId が残りの所属グループへフォールバックする）。
+  const cookieStore = await cookies();
+  if (cookieStore.get(ACTIVE_HOUSEHOLD_COOKIE)?.value === householdId) {
+    cookieStore.delete(ACTIVE_HOUSEHOLD_COOKIE);
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/households");
+}
+
 /** 招待リンクの参加を確定する。成功時はそのグループをアクティブにしてダッシュボードへ。 */
 export async function acceptInvitation(
   _prevState: HouseholdActionState,

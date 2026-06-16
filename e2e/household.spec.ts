@@ -147,7 +147,7 @@ test.describe("家計簿グループ管理", () => {
     ).toBeVisible();
   });
 
-  test("メンバー一覧に自分が表示され、単独オーナーには脱退ではなく委譲の案内が出る", async ({
+  test("メンバー一覧に自分が表示され、単独オーナーには脱退ではなく削除導線が出る", async ({
     page,
   }) => {
     const stamp = Date.now();
@@ -172,9 +172,12 @@ test.describe("家計簿グループ管理", () => {
     ).toBeVisible();
     await expect(memberItem.getByText("あなた")).toBeVisible();
 
-    // 単独オーナーは脱退ボタンが出ず、委譲を促す案内が出る（委譲必須）
+    // 単独オーナーは脱退ボタンも委譲案内も出ず、グループ削除の導線が出る
     await expect(card.getByRole("button", { name: "脱退" })).toHaveCount(0);
-    await expect(card.getByText(/委譲してから脱退/)).toBeVisible();
+    await expect(card.getByText(/委譲してから脱退/)).toHaveCount(0);
+    await expect(
+      card.getByRole("button", { name: "グループを削除" }),
+    ).toBeVisible();
   });
 
   test("オーナーは複数メンバーのグループで他メンバーに委譲・除外操作を表示できる", async ({
@@ -198,5 +201,36 @@ test.describe("家計簿グループ管理", () => {
       otherRow.getByRole("button", { name: "オーナーを委譲" }),
     ).toBeVisible();
     await expect(otherRow.getByRole("button", { name: "除外" })).toBeVisible();
+  });
+
+  test("オーナーは確認モーダルを経てグループを削除できる", async ({ page }) => {
+    const stamp = Date.now();
+    const group = `E2E削除-${stamp}`;
+
+    // 使い捨てグループを作成（作成者＝オーナー＝唯一のメンバー）
+    await page.goto("/households");
+    await page.getByLabel("グループ名").fill(group);
+    await page.getByRole("button", { name: "グループを作成" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.goto("/households");
+
+    const card = page
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: group });
+    await expect(card).toBeVisible();
+
+    // 「グループを削除」→ モーダルで再確認 → 「削除する」
+    await card.getByRole("button", { name: "グループを削除" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText(group, { exact: false })).toBeVisible();
+    await dialog.getByRole("button", { name: "削除する" }).click();
+
+    // 一覧から消える
+    await expect(page).toHaveURL(/\/households$/);
+    await expect(
+      page
+        .locator('[data-testid="household-card"]')
+        .filter({ hasText: group }),
+    ).toHaveCount(0);
   });
 });

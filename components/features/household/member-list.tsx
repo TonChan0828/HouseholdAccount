@@ -97,7 +97,7 @@ export function MemberList({
             {m.isSelf && m.role !== "owner" ? (
               <LeaveButton householdId={householdId} leaveAction={leaveAction} />
             ) : null}
-            {m.isSelf && m.role === "owner" ? (
+            {m.isSelf && m.role === "owner" && members.length > 1 ? (
               <span className="text-xs text-muted-foreground">
                 委譲してから脱退できます
               </span>

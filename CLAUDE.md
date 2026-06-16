@@ -106,6 +106,7 @@ docs/specs/
   13_password_reset.md   # パスワード再設定・パスワード変更
   14_account_deletion.md # アカウント削除（退会・オーナー委譲）
   15_member_management.md # メンバー管理（一覧・除外・脱退・オーナー委譲）
+  16_household_deletion.md # グループ削除（オーナーによる削除・モーダル確認）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
