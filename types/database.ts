@@ -233,6 +233,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      delete_own_account: { Args: never; Returns: undefined }
       invitation_preview: {
         Args: { _token: string }
         Returns: { household_name: string; status: string }[]

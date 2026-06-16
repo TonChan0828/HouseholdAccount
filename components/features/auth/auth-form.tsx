@@ -32,6 +32,8 @@ type AuthFormProps = {
   forgotPasswordHref?: string;
   /** 指定するとパスワード欄の下に要件を補足表示し、最小文字数を 8 に引き上げる */
   passwordHint?: string;
+  /** 指定するとフォーム上部に通知メッセージ（role="status"）を表示する */
+  notice?: string;
 };
 
 export function AuthForm({
@@ -44,6 +46,7 @@ export function AuthForm({
   altLinkLabel,
   forgotPasswordHref,
   passwordHint,
+  notice,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     action,
@@ -58,6 +61,11 @@ export function AuthForm({
       </CardHeader>
       <form action={formAction}>
         <CardContent className="space-y-4">
+          {notice ? (
+            <p className="text-sm text-primary" role="status">
+              {notice}
+            </p>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="email">メールアドレス</Label>
             <Input

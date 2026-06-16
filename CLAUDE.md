@@ -103,6 +103,8 @@ docs/specs/
   10_profile_settings.md # 表示名編集（プロフィール設定）
   11_security_hardening.md # セキュリティハードニング（認可の多層防御・ヘッダー）
   12_landing_page.md     # ランディングページ（公開トップ・/ をLP化しダッシュボードを /dashboard へ）
+  13_password_reset.md   # パスワード再設定・パスワード変更
+  14_account_deletion.md # アカウント削除（退会・オーナー委譲）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
