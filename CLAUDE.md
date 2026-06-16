@@ -105,6 +105,7 @@ docs/specs/
   12_landing_page.md     # ランディングページ（公開トップ・/ をLP化しダッシュボードを /dashboard へ）
   13_password_reset.md   # パスワード再設定・パスワード変更
   14_account_deletion.md # アカウント削除（退会・オーナー委譲）
+  15_member_management.md # メンバー管理（一覧・除外・脱退・オーナー委譲）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）

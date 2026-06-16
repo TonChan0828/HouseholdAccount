@@ -241,6 +241,10 @@ export type Database = {
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
       is_household_owner: { Args: { _household_id: string }; Returns: boolean }
       shares_household_with: { Args: { _user_id: string }; Returns: boolean }
+      transfer_ownership: {
+        Args: { _household_id: string; _new_owner: string }
+        Returns: undefined
+      }
     }
     Enums: {
       category_type: "income" | "expense" | "both"

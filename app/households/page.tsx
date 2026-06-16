@@ -7,13 +7,20 @@ import { ShalletLogo } from "@/components/shallet-logo";
 import {
   createHousehold,
   createInvitation,
+  leaveHousehold,
+  removeMember,
   revokeInvitation,
   setActiveHousehold,
   setPeriodStartDay,
+  transferOwnership,
   updateInvitation,
 } from "@/app/households/actions";
 import { CreateHouseholdForm } from "@/components/features/household/create-household-form";
 import { InvitationManager } from "@/components/features/household/invitation-manager";
+import {
+  MemberList,
+  type MemberListItem,
+} from "@/components/features/household/member-list";
 import { ThemeToggleButton } from "@/components/features/layout/theme-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -58,6 +65,40 @@ export default async function HouseholdsPage() {
     .select("*")
     .order("created_at", { ascending: false });
   const invitations = (invitationRows ?? []) as HouseholdInvitation[];
+
+  // 所属グループ全員のメンバーを取得する（RLS により自分の所属グループ分のみ返る）。
+  const groupIds = groups.map((m) => m.household!.id);
+  const { data: memberRows } = groupIds.length
+    ? await supabase
+        .from("household_members")
+        .select("household_id, user_id, role, joined_at")
+        .in("household_id", groupIds)
+        .order("joined_at", { ascending: true })
+    : { data: [] };
+  const allMembers = memberRows ?? [];
+
+  // 表示名は profiles から引く（/members ページと同じ手法）。
+  const memberUserIds = [...new Set(allMembers.map((m) => m.user_id))];
+  const { data: profileRows } = memberUserIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", memberUserIds)
+    : { data: [] };
+  const nameById = new Map(
+    (profileRows ?? []).map((p) => [p.id, p.display_name]),
+  );
+
+  const membersOf = (householdId: string): MemberListItem[] =>
+    allMembers
+      .filter((m) => m.household_id === householdId)
+      .map((m) => ({
+        user_id: m.user_id,
+        display_name: nameById.get(m.user_id) ?? "不明なユーザー",
+        role: m.role,
+        joined_at: m.joined_at,
+        isSelf: m.user_id === user.id,
+      }));
 
   return (
     <div className="mx-auto w-full max-w-2xl animate-in space-y-6 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
@@ -151,10 +192,22 @@ export default async function HouseholdsPage() {
                       )}
                     </div>
                   </CardHeader>
-                  {role === "owner" ? (
-                    <CardContent className="space-y-6">
-                      <div>
-                        <p className="mb-2 text-sm font-medium">月の区切り</p>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <p className="mb-2 text-sm font-medium">メンバー</p>
+                      <MemberList
+                        householdId={group.id}
+                        members={membersOf(group.id)}
+                        viewerIsOwner={role === "owner"}
+                        removeAction={removeMember}
+                        leaveAction={leaveHousehold}
+                        transferAction={transferOwnership}
+                      />
+                    </div>
+                    {role === "owner" ? (
+                      <>
+                        <div>
+                          <p className="mb-2 text-sm font-medium">月の区切り</p>
                         <form
                           action={setPeriodStartDay}
                           className="flex items-end gap-2"
@@ -185,19 +238,22 @@ export default async function HouseholdsPage() {
                             保存
                           </Button>
                         </form>
-                      </div>
-                      <div>
-                        <p className="mb-3 text-sm font-medium">メンバーを招待</p>
-                        <InvitationManager
-                          householdId={group.id}
-                          invitations={groupInvitations}
-                          createAction={createInvitation}
-                          updateAction={updateInvitation}
-                          revokeAction={revokeInvitation}
-                        />
-                      </div>
-                    </CardContent>
-                  ) : null}
+                        </div>
+                        <div>
+                          <p className="mb-3 text-sm font-medium">
+                            メンバーを招待
+                          </p>
+                          <InvitationManager
+                            householdId={group.id}
+                            invitations={groupInvitations}
+                            createAction={createInvitation}
+                            updateAction={updateInvitation}
+                            revokeAction={revokeInvitation}
+                          />
+                        </div>
+                      </>
+                    ) : null}
+                  </CardContent>
                 </Card>
               </li>
             );

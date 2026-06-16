@@ -200,6 +200,112 @@ export async function revokeInvitation(formData: FormData): Promise<void> {
   revalidatePath("/households");
 }
 
+export type LeaveHouseholdActionState = { error: string } | undefined;
+
+/** owner がメンバーをグループから除外する。自分自身は対象外（脱退を使う）。 */
+export async function removeMember(formData: FormData): Promise<void> {
+  const householdId = String(formData.get("household_id") ?? "");
+  const targetUserId = String(formData.get("user_id") ?? "");
+  if (!householdId || !targetUserId) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 自分自身は除外できない（脱退 leaveHousehold を使う）。
+  if (targetUserId === user.id) {
+    return;
+  }
+
+  // RLS の delete ポリシー（members_delete_owner_or_self）で owner 以外は弾かれる。
+  // 除外されたメンバーのトランザクション等は household スコープのデータとして残す。
+  await supabase
+    .from("household_members")
+    .delete()
+    .eq("household_id", householdId)
+    .eq("user_id", targetUserId);
+
+  revalidatePath("/households");
+}
+
+/** メンバーが自分でグループを脱退する。owner は委譲してからでないと脱退できない。 */
+export async function leaveHousehold(
+  _prevState: LeaveHouseholdActionState,
+  formData: FormData,
+): Promise<LeaveHouseholdActionState> {
+  const householdId = String(formData.get("household_id") ?? "");
+  if (!householdId) {
+    return { error: "グループが指定されていません" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 自分のロールを確認する。owner は別メンバーへ委譲してからでないと脱退できない。
+  const { data: membership } = await supabase
+    .from("household_members")
+    .select("role")
+    .eq("household_id", householdId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return { error: "このグループに参加していません" };
+  }
+  if (membership.role === "owner") {
+    return {
+      error: "オーナーは別のメンバーにオーナーを委譲してから脱退してください",
+    };
+  }
+
+  // RLS の delete ポリシーで自分の行のみ削除できる。
+  await supabase
+    .from("household_members")
+    .delete()
+    .eq("household_id", householdId)
+    .eq("user_id", user.id);
+
+  // 脱退したグループがアクティブだった場合は Cookie を消す（getActiveHouseholdId が
+  // 残りの所属グループへフォールバックする）。
+  const cookieStore = await cookies();
+  if (cookieStore.get(ACTIVE_HOUSEHOLD_COOKIE)?.value === householdId) {
+    cookieStore.delete(ACTIVE_HOUSEHOLD_COOKIE);
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/households");
+}
+
+/** owner が同じグループの別メンバーへオーナーを委譲する（自分は member に降格）。 */
+export async function transferOwnership(formData: FormData): Promise<void> {
+  const householdId = String(formData.get("household_id") ?? "");
+  const newOwnerId = String(formData.get("user_id") ?? "");
+  if (!householdId || !newOwnerId) {
+    return;
+  }
+
+  const supabase = await createClient();
+  // 複数行の更新を原子的に行うため SECURITY DEFINER の RPC を使う。
+  // owner 判定・後継者の所属確認は関数内で行う。
+  await supabase.rpc("transfer_ownership", {
+    _household_id: householdId,
+    _new_owner: newOwnerId,
+  });
+
+  revalidatePath("/households");
+}
+
 /** 招待リンクの参加を確定する。成功時はそのグループをアクティブにしてダッシュボードへ。 */
 export async function acceptInvitation(
   _prevState: HouseholdActionState,
