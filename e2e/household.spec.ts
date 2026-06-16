@@ -146,4 +146,34 @@ test.describe("家計簿グループ管理", () => {
       page.getByRole("button", { name: "このグループに参加する" }),
     ).toBeVisible();
   });
+
+  test("メンバー一覧に自分が表示され、単独オーナーには脱退ではなく委譲の案内が出る", async ({
+    page,
+  }) => {
+    const stamp = Date.now();
+    const group = `E2Eメンバー-${stamp}`;
+
+    // グループ作成（作成者はオーナー＝唯一のメンバー）
+    await page.goto("/households");
+    await page.getByLabel("グループ名").fill(group);
+    await page.getByRole("button", { name: "グループを作成" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.goto("/households");
+
+    const card = page
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: group });
+
+    // メンバー一覧に自分が「オーナー」「あなた」として表示される
+    const memberItem = card.getByTestId("member-item").first();
+    await expect(memberItem).toBeVisible();
+    await expect(
+      memberItem.getByText("オーナー", { exact: true }),
+    ).toBeVisible();
+    await expect(memberItem.getByText("あなた")).toBeVisible();
+
+    // 単独オーナーは脱退ボタンが出ず、委譲を促す案内が出る（委譲必須）
+    await expect(card.getByRole("button", { name: "脱退" })).toHaveCount(0);
+    await expect(card.getByText(/委譲してから脱退/)).toBeVisible();
+  });
 });
