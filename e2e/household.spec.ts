@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { MULTI_MEMBER_HOUSEHOLD } from "./constants";
+import { E2E_MEMBER_USER, MULTI_MEMBER_HOUSEHOLD } from "./constants";
 
 // ログイン済み（storageState）で実行される。
 
@@ -175,5 +175,28 @@ test.describe("家計簿グループ管理", () => {
     // 単独オーナーは脱退ボタンが出ず、委譲を促す案内が出る（委譲必須）
     await expect(card.getByRole("button", { name: "脱退" })).toHaveCount(0);
     await expect(card.getByText(/委譲してから脱退/)).toBeVisible();
+  });
+
+  test("オーナーは複数メンバーのグループで他メンバーに委譲・除外操作を表示できる", async ({
+    page,
+  }) => {
+    // 前提: E2E ユーザーは MULTI_MEMBER_HOUSEHOLD のオーナーで、
+    // 2人目（E2E_MEMBER_USER）が member として参加している（seed 済み）。
+    await page.goto("/households");
+    const card = page
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: MULTI_MEMBER_HOUSEHOLD });
+
+    // メンバーが2人以上表示される
+    await expect(card.getByTestId("member-item")).toHaveCount(2);
+
+    // 2人目（テストメンバー）の行に委譲・除外が出る（クリックはしない＝非破壊）
+    const otherRow = card
+      .getByTestId("member-item")
+      .filter({ hasText: E2E_MEMBER_USER.displayName });
+    await expect(
+      otherRow.getByRole("button", { name: "オーナーを委譲" }),
+    ).toBeVisible();
+    await expect(otherRow.getByRole("button", { name: "除外" })).toBeVisible();
   });
 });
