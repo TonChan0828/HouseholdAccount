@@ -10,7 +10,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.{test,spec}.{ts,tsx}"],
-    exclude: ["node_modules", ".next", "e2e/**"],
+    // Playwright のスペック/セットアップは Vitest 対象外。
+    // e2e 配下のユニットテスト（*.test.ts、例: constants.test.ts）は Vitest で実行する。
+    exclude: ["node_modules", ".next", "e2e/**/*.spec.ts", "e2e/**/*.setup.ts"],
   },
   resolve: {
     alias: {

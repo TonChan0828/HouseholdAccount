@@ -4,6 +4,10 @@ import { STORAGE_STATE } from "./e2e/constants";
 
 export default defineConfig({
   testDir: "./e2e",
+  // *.test.ts は Vitest 用のユニットテスト（例: constants.test.ts）。Playwright では実行しない。
+  testIgnore: /\.test\.ts$/,
+  // 実行開始時に前回までの一時データ（接頭辞付きグループ）をクリーンアップする。
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -28,7 +32,8 @@ export default defineConfig({
     // ログイン済みで検証するテスト（グループ管理など）
     {
       name: "chromium-auth",
-      testIgnore: /auth\.(spec|setup)\.ts/,
+      // プロジェクト単位の testIgnore はトップレベルを上書きするため .test.ts もここで除外する。
+      testIgnore: [/auth\.(spec|setup)\.ts/, /\.test\.ts$/],
       use: {
         ...devices["Desktop Chrome"],
         storageState: STORAGE_STATE,

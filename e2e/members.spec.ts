@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // メンバー別アクティビティは当期のメンバー別集計と取引展開を表示する。各テストでグループを作成する。
 
@@ -8,7 +10,7 @@ test.describe("メンバー別アクティビティ", () => {
     page,
   }) => {
     const stamp = Date.now();
-    const group = `E2Eメンバー-${stamp}`;
+    const group = ephemeralName("メンバー");
     const memo = `メンバーランチ-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）→ ダッシュボードへ

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // 分析は当期の支出カテゴリ内訳と直近6期の推移を表示する。各テストでグループを作成する。
 
@@ -8,7 +10,7 @@ test.describe("月次分析", () => {
     page,
   }) => {
     const stamp = Date.now();
-    const group = `E2E分析-${stamp}`;
+    const group = ephemeralName("分析");
     const memo = `分析ランチ-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）→ ダッシュボードへ

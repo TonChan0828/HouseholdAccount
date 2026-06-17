@@ -1,6 +1,29 @@
 /** ログイン済みセッションを保存するファイル */
 export const STORAGE_STATE = "e2e/.auth/user.json";
 
+/**
+ * E2E が生成する一時データ（グループ等）に付与する接頭辞。
+ * クリーンアップ（global-setup）の識別子を兼ねる。seed 済みフィクスチャは
+ * この接頭辞を持たないため、クリーンアップ対象から自動的に除外される。
+ */
+export const E2E_EPHEMERAL_PREFIX = "__e2e_tmp_";
+
+/**
+ * クリーンアップ対象として識別できる一時データ名を生成する。
+ * 例: ephemeralName("分析") => "__e2e_tmp_分析-1718600000000"
+ */
+export function ephemeralName(label: string): string {
+  return `${E2E_EPHEMERAL_PREFIX}${label}-${Date.now()}`;
+}
+
+/**
+ * 名前が E2E の一時データ（クリーンアップ対象）かどうかを判定する。
+ * global-setup の SQL `name LIKE '<prefix>%'` と同じ規約。
+ */
+export function isEphemeralName(name: string): boolean {
+  return name.startsWith(E2E_EPHEMERAL_PREFIX);
+}
+
 /** E2E 用の確認済みテストユーザー（Supabase に seed 済み。MULTI_MEMBER_HOUSEHOLD のオーナー） */
 export const E2E_USER = {
   email: "e2e@e2etest.dev",

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // カテゴリはグループ共有のため、各テストでグループを作成する。
 
@@ -8,7 +10,7 @@ test.describe("カテゴリ管理", () => {
     page,
   }) => {
     const stamp = Date.now();
-    const group = `E2Eカテゴリ-${stamp}`;
+    const group = ephemeralName("カテゴリ");
     const name = `ペット-${stamp}`;
     const renamed = `ペット改-${stamp}`;
 

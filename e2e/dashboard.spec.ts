@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // ダッシュボードは当期間のサマリーと最近の取引を表示する。各テストでグループを作成する。
 
@@ -8,7 +10,7 @@ test.describe("ダッシュボード", () => {
     page,
   }) => {
     const stamp = Date.now();
-    const group = `E2Eダッシュボード-${stamp}`;
+    const group = ephemeralName("ダッシュボード");
     const memo = `ランチ-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）→ ダッシュボードへ
