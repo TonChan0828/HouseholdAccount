@@ -87,4 +87,41 @@ describe("toTransactionsCsv", () => {
     // 改行を含むのでフィールドはクオートされ、行全体としては 2 物理行になる
     expect(csv).toContain('"1行目\n2行目"');
   });
+
+  describe("数式インジェクション対策（CSV formula injection）", () => {
+    // 先頭が = + - @ \t \r で始まる値は、Excel/Sheets で数式として実行されうる。
+    // 先頭に ' を付与して無害化する（RFC4180 のクオート判定はその後に適用）。
+    it.each(["=1+1", "+1", "-1", "@SUM(A1)", "\t=cmd"])(
+      "危険な先頭文字を持つメモ %j は先頭に ' を付与して無害化する",
+      (memo) => {
+        const csv = toTransactionsCsv([row({ memo })]);
+        expect(dataLines(csv)[0].split(",")[4]).toBe(`'${memo}`);
+      },
+    );
+
+    it("先頭が \\r の値は無害化したうえでクオートする（改行扱い）", () => {
+      const csv = toTransactionsCsv([row({ memo: "\r=cmd" })]);
+      expect(csv).toContain('"\'\r=cmd"');
+    });
+
+    it("カテゴリ名の数式インジェクションも無害化する", () => {
+      const csv = toTransactionsCsv([row({ categoryName: "=HYPERLINK(1)" })]);
+      expect(dataLines(csv)[0].split(",")[2]).toBe("'=HYPERLINK(1)");
+    });
+
+    it("登録者名の数式インジェクションも無害化する", () => {
+      const csv = toTransactionsCsv([row({ memberName: "=1+1" })]);
+      expect(dataLines(csv)[0].split(",")[5]).toBe("'=1+1");
+    });
+
+    it("無害化した値がカンマを含む場合はクオートも併用する", () => {
+      const csv = toTransactionsCsv([row({ memo: "=1,2" })]);
+      expect(dataLines(csv)[0]).toContain('"\'=1,2"');
+    });
+
+    it("先頭が安全な値には ' を付与しない", () => {
+      const csv = toTransactionsCsv([row({ memo: "1=2" })]);
+      expect(dataLines(csv)[0].split(",")[4]).toBe("1=2");
+    });
+  });
 });
