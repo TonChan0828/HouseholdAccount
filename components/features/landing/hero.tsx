@@ -32,15 +32,27 @@ export function Hero() {
             <ArrowRight className="size-4" aria-hidden />
           </Link>
           <Link
-            href="/login"
+            href="/demo"
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
+              "w-full rounded-full sm:w-auto",
+            )}
+          >
+            ログインせずに試す
+          </Link>
+          <Link
+            href="/login"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "lg" }),
               "w-full rounded-full sm:w-auto",
             )}
           >
             ログイン
           </Link>
         </div>
+        <p className="mt-3 text-center text-xs text-muted-foreground md:text-left">
+          登録不要・その場で操作できます（データは保存されません）。
+        </p>
       </div>
 
       {/* アプリプレビュー（CSS のみのモック） */}

@@ -5,6 +5,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/auth",
   "/forgot-password",
   "/reset-password",
+  "/demo",
 ];
 
 /**

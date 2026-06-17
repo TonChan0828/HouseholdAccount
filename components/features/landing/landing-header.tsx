@@ -38,6 +38,15 @@ export function LandingHeader() {
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggleButton />
           <Link
+            href="/demo"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "hidden rounded-full sm:inline-flex",
+            )}
+          >
+            デモを試す
+          </Link>
+          <Link
             href="/login"
             className={cn(
               buttonVariants({ variant: "ghost", size: "sm" }),

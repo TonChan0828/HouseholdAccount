@@ -18,6 +18,9 @@ describe("LandingHeader", () => {
     expect(
       screen.getByRole("link", { name: /無料で始める/ }),
     ).toHaveAttribute("href", "/register");
+    expect(
+      screen.getByRole("link", { name: "デモを試す" }),
+    ).toHaveAttribute("href", "/demo");
   });
 
   it("テーマ切り替えを表示する", () => {
