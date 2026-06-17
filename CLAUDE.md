@@ -108,6 +108,7 @@ docs/specs/
   15_member_management.md # メンバー管理（一覧・除外・脱退・オーナー委譲）
   16_household_deletion.md # グループ削除（オーナーによる削除・モーダル確認）
   17_data_export.md      # データエクスポート（収支のCSV出力）
+  18_e2e_data_lifecycle.md # E2Eテストデータライフサイクル（接頭辞分離・開始時クリーンアップ）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
