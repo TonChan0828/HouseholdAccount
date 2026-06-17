@@ -23,17 +23,17 @@ export default defineConfig({
       name: "setup",
       testMatch: /auth\.setup\.ts/,
     },
-    // 未認証で検証するテスト（認証ルーティングなど）
+    // 未認証で検証するテスト（認証ルーティング・デモモードなど）
     {
       name: "chromium-guest",
-      testMatch: /auth\.spec\.ts/,
+      testMatch: /(auth|demo)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     // ログイン済みで検証するテスト（グループ管理など）
     {
       name: "chromium-auth",
       // プロジェクト単位の testIgnore はトップレベルを上書きするため .test.ts もここで除外する。
-      testIgnore: [/auth\.(spec|setup)\.ts/, /\.test\.ts$/],
+      testIgnore: [/auth\.(spec|setup)\.ts/, /demo\.spec\.ts/, /\.test\.ts$/],
       use: {
         ...devices["Desktop Chrome"],
         storageState: STORAGE_STATE,
