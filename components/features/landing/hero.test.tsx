@@ -23,5 +23,8 @@ describe("Hero", () => {
       "href",
       "/login",
     );
+    expect(
+      screen.getByRole("link", { name: /ログインせずに試す/ }),
+    ).toHaveAttribute("href", "/demo");
   });
 });

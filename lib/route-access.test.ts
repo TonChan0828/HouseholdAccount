@@ -18,6 +18,12 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/reset-password")).toBe(true);
   });
 
+  it("デモモード（/demo 配下）は公開", () => {
+    expect(isPublicPath("/demo")).toBe(true);
+    expect(isPublicPath("/demo/dashboard")).toBe(true);
+    expect(isPublicPath("/demo/transactions/new")).toBe(true);
+  });
+
   it("ダッシュボード・保護ルートは非公開", () => {
     expect(isPublicPath("/dashboard")).toBe(false);
     expect(isPublicPath("/transactions")).toBe(false);
