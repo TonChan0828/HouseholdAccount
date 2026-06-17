@@ -2,13 +2,15 @@ import { readFileSync } from "node:fs";
 
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // CSV 出力には収支データが必要なため、各テストでグループと収支を作成する。
 
 test.describe("収支のCSV出力", () => {
   test("現在期間の収支をCSVでダウンロードできる", async ({ page }) => {
     const stamp = Date.now();
-    const group = `E2E出力グループ-${stamp}`;
+    const group = ephemeralName("出力グループ");
     const memo = `エクスポート-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）

@@ -1,12 +1,14 @@
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // 収支操作にはアクティブな household が必要なため、各テストでグループを作成する。
 
 test.describe("収支記録", () => {
   test("収支を追加・編集・削除できる", async ({ page }) => {
     const stamp = Date.now();
-    const group = `E2E収支グループ-${stamp}`;
+    const group = ephemeralName("収支グループ");
     const memo = `ランチ-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // テーマ切り替え（ライト/ダーク/システム）と localStorage による永続化を検証する。
 
@@ -27,7 +29,7 @@ test.describe("テーマ切り替え", () => {
   test("ヘッダーのユーザーメニューからテーマを切り替えられる", async ({
     page,
   }) => {
-    const group = `E2Eテーマ-${Date.now()}`;
+    const group = ephemeralName("テーマ");
 
     // グループを作成してダッシュボード（AppHeader あり）へ
     await page.goto("/households");

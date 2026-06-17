@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { ephemeralName } from "./constants";
+
 // ログイン済み（storageState）で実行される。
 // 注意: 表示名は共有 E2E ユーザーのグローバル状態で、members.spec.ts が表示名 "e2e" に
 // 依存している。このテストは末尾で必ず "e2e" に復元すること（fullyParallel のローカル
@@ -8,7 +10,7 @@ import { expect, test } from "@playwright/test";
 test.describe("プロフィール設定", () => {
   test("表示名を変更するとヘッダーに反映され、元に戻せる", async ({ page }) => {
     const stamp = Date.now();
-    const group = `E2Eプロフィール-${stamp}`;
+    const group = ephemeralName("プロフィール");
     const newName = `e2e改${stamp}`;
 
     // グループを作成してダッシュボード（AppHeader あり）へ

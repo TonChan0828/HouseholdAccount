@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-import { E2E_MEMBER_USER, MULTI_MEMBER_HOUSEHOLD } from "./constants";
+import {
+  E2E_MEMBER_USER,
+  ephemeralName,
+  MULTI_MEMBER_HOUSEHOLD,
+} from "./constants";
 
 // ログイン済み（storageState）で実行される。
 
@@ -30,9 +34,8 @@ test.describe("家計簿グループ管理", () => {
 
   test("複数メンバーのグループに切り替えできる", async ({ page }) => {
     // 別グループを作成してアクティブにし、切り替えボタンを表示させる
-    const stamp = Date.now();
     await page.goto("/households");
-    await page.getByLabel("グループ名").fill(`E2E切替元-${stamp}`);
+    await page.getByLabel("グループ名").fill(ephemeralName("切替元"));
     await page.getByRole("button", { name: "グループを作成" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -50,9 +53,8 @@ test.describe("家計簿グループ管理", () => {
   test("グループを作成すると利用中になり、別グループへ切り替えできる", async ({
     page,
   }) => {
-    const stamp = Date.now();
-    const groupA = `E2EグループA-${stamp}`;
-    const groupB = `E2EグループB-${stamp}`;
+    const groupA = ephemeralName("グループA");
+    const groupB = ephemeralName("グループB");
 
     const card = (name: string) =>
       page.locator('[data-testid="household-card"]').filter({ hasText: name });
@@ -85,9 +87,8 @@ test.describe("家計簿グループ管理", () => {
   test("ヘッダーのスイッチャーから別グループへワンクリックで切り替えできる", async ({
     page,
   }) => {
-    const stamp = Date.now();
-    const groupA = `E2EスイッチャーA-${stamp}`;
-    const groupB = `E2EスイッチャーB-${stamp}`;
+    const groupA = ephemeralName("スイッチャーA");
+    const groupB = ephemeralName("スイッチャーB");
 
     // A → B の順で作成（最後に作った B がアクティブになる）
     await page.goto("/households");
@@ -113,8 +114,7 @@ test.describe("家計簿グループ管理", () => {
   test("オーナーは招待リンクを発行でき、招待ページでグループ名が表示される", async ({
     page,
   }) => {
-    const stamp = Date.now();
-    const group = `E2E招待-${stamp}`;
+    const group = ephemeralName("招待");
     const card = page
       .locator('[data-testid="household-card"]')
       .filter({ hasText: group });
@@ -150,8 +150,7 @@ test.describe("家計簿グループ管理", () => {
   test("メンバー一覧に自分が表示され、単独オーナーには脱退ではなく削除導線が出る", async ({
     page,
   }) => {
-    const stamp = Date.now();
-    const group = `E2Eメンバー-${stamp}`;
+    const group = ephemeralName("メンバー");
 
     // グループ作成（作成者はオーナー＝唯一のメンバー）
     await page.goto("/households");
@@ -204,8 +203,7 @@ test.describe("家計簿グループ管理", () => {
   });
 
   test("オーナーは確認モーダルを経てグループを削除できる", async ({ page }) => {
-    const stamp = Date.now();
-    const group = `E2E削除-${stamp}`;
+    const group = ephemeralName("削除");
 
     // 使い捨てグループを作成（作成者＝オーナー＝唯一のメンバー）
     await page.goto("/households");
