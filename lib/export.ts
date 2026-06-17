@@ -19,12 +19,28 @@ const BOM = "﻿";
 
 const HEADER = ["日付", "種別", "カテゴリ", "金額", "メモ", "登録者"];
 
-/** RFC4180: `,` `"` 改行 を含む場合のみクオートし、内部の `"` は二重化する。 */
-function escapeCsvField(value: string): string {
-  if (/[",\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+/**
+ * 数式インジェクション対策: `=` `+` `-` `@` および先頭の `\t` `\r` で始まる値は、
+ * Excel/Sheets で数式として実行されうるため先頭に `'` を付与して無害化する。
+ */
+function neutralizeFormula(value: string): string {
+  if (/^[=+\-@\t\r]/.test(value)) {
+    return `'${value}`;
   }
   return value;
+}
+
+/**
+ * フィールドをエスケープする。
+ * 1. 数式インジェクションを無害化（先頭に `'`）。
+ * 2. RFC4180: `,` `"` 改行 を含む場合のみクオートし、内部の `"` は二重化する。
+ */
+function escapeCsvField(value: string): string {
+  const safe = neutralizeFormula(value);
+  if (/[",\r\n]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
+  }
+  return safe;
 }
 
 function toCsvLine(fields: string[]): string {
