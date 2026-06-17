@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Plus, Tags, UserCog } from "lucide-react";
+import { CircleHelp, LogOut, Plus, Tags, UserCog } from "lucide-react";
 
 import { HouseholdSwitcher } from "@/components/features/layout/household-switcher";
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
@@ -110,6 +110,10 @@ export function AppHeader({
               <DropdownMenuItem render={<Link href="/settings" />}>
                 <UserCog aria-hidden />
                 プロフィール設定
+              </DropdownMenuItem>
+              <DropdownMenuItem render={<Link href="/help" />}>
+                <CircleHelp aria-hidden />
+                ヘルプ
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <ThemeMenuItems />
