@@ -84,7 +84,27 @@ await supabase
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 
+## 追加ハードニング（2026-06-18 監査ラウンド）
+
+システムテスト・セキュリティテストの結果に基づく追加対応。
+
+| 重要度 | 脅威 | 現状 | 対応 |
+| --- | --- | --- | --- |
+| 中 | CSV フォーミュラインジェクション | `escapeCsvField` は RFC4180 クオートのみで `= + - @` 始まりの値を無害化していない | `memo`・カテゴリ名・登録者名が `= + - @ \t \r` で始まる場合、先頭に `'` を付与して無害化（`lib/export.ts` `neutralizeFormula`） |
+| 低 | オープンリダイレクト | `auth/callback` の `next` パラメータが未検証 | 単一スラッシュ始まりの相対パスのみ許可する `safeNextPath`（`lib/route-access.ts`）を通す。`//`・`/\`・絶対 URL は既定値へフォールバック |
+| 低 | SECURITY DEFINER ヘルパーの RPC 公開 | `is_household_member` / `is_household_owner` / `shares_household_with` が `public` にあり `/rest/v1/rpc/...` で直接実行可能 | `private` スキーマへ移動し RPC エンドポイントを除去（migration 0015）。RLS 評価に必要なため `authenticated` の EXECUTE は維持（EXECUTE 剥奪は RLS を壊すため不可） |
+| 低(Perf) | RLS の `auth.uid()` 行ごと再評価 | 8 ポリシーが該当（advisors `auth_rls_initplan`） | `auth.uid()` → `(select auth.uid())`（migration 0014） |
+
+### マイグレーション
+- `0014_rls_initplan.sql` — RLS ポリシーの `auth.uid()` を `(select auth.uid())` に置換（挙動等価）
+- `0015_move_helpers_to_private.sql` — ヘルパー3関数を `private` スキーマへ移し、参照する全 RLS ポリシー（6テーブル18ポリシー）を再作成
+
+### advisors の残課題（仕様上の意図的公開・人手対応）
+- `accept_invitation` / `delete_own_account` / `invitation_preview` / `transfer_ownership` は Server Action から呼ぶ意図的な公開 RPC。各関数が内部で自己認可するため WARN は許容
+- Leaked Password Protection（HaveIBeenPwned 照合）は Supabase ダッシュボードで有効化する（コードでは変更不可）
+
 ## 未解決の課題
 
 - CSP（Content-Security-Policy）は Next.js のインラインスクリプトとの相性問題（nonce 対応が必要）のため今回は見送り
 - npm audit の moderate 以下の指摘は記録のみで対応しない
+- パフォーマンス INFO（FK 未インデックス×2・未使用インデックス×1）は影響軽微のため見送り
