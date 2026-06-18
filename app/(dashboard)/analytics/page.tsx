@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { CategoryPieChart } from "@/components/features/charts/category-pie-chart";
-import { TrendBarChart } from "@/components/features/charts/trend-bar-chart";
+import { CategoryPieChart } from "@/components/features/charts/category-pie-chart.client";
+import { TrendBarChart } from "@/components/features/charts/trend-bar-chart.client";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -9,7 +9,11 @@ import {
   summarizeTrend,
   type TxLite,
 } from "@/lib/analytics";
-import { getActiveHouseholdId } from "@/lib/household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getHouseholdSettings,
+} from "@/lib/household";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -35,9 +39,7 @@ export default async function AnalyticsPage({
   const { ref } = await searchParams;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
@@ -47,12 +49,7 @@ export default async function AnalyticsPage({
     redirect("/households");
   }
 
-  const { data: household } = await supabase
-    .from("households")
-    .select("period_start_day")
-    .eq("id", householdId)
-    .maybeSingle();
-  const startDay = household?.period_start_day ?? 1;
+  const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const base = getPeriodRange(refFromParam(ref), startDay);
   const ranges = Array.from({ length: TREND_PERIODS }, (_, i) =>

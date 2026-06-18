@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, ReceiptText } from "lucide-react";
 
-import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart";
+import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.client";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
@@ -16,7 +16,11 @@ import {
 } from "@/components/ui/card";
 import { buildCategoryMemberMatrix } from "@/lib/category-matrix";
 import { formatDayLabel, groupByDate, yen } from "@/lib/format";
-import { getActiveHouseholdId } from "@/lib/household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getHouseholdSettings,
+} from "@/lib/household";
 import type { MemberInfo } from "@/lib/members";
 import {
   formatPeriodLabel,
@@ -52,9 +56,7 @@ export default async function DashboardPage({
   const scope = scopeFromParam(scopeParam);
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
@@ -64,12 +66,7 @@ export default async function DashboardPage({
     redirect("/households");
   }
 
-  const { data: household } = await supabase
-    .from("households")
-    .select("period_start_day")
-    .eq("id", householdId)
-    .maybeSingle();
-  const startDay = household?.period_start_day ?? 1;
+  const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const range = getPeriodRange(new Date(), startDay);
   const prevRange = shiftPeriod(range, -1, startDay);
