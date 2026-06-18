@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getActiveHouseholdId, setActiveHouseholdCookie } from "./household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getHouseholdSettings,
+  setActiveHouseholdCookie,
+} from "./household";
 
 type MemberRow = { user_id: string; household_id: string; joined_at: string };
 
@@ -8,6 +13,7 @@ const state = vi.hoisted(() => ({
   cookieValue: undefined as string | undefined,
   user: null as { id: string } | null,
   members: [] as { user_id: string; household_id: string; joined_at: string }[],
+  households: [] as { id: string; period_start_day: number }[],
   setCalls: [] as { name: string; value: string; options: Record<string, unknown> }[],
 }));
 
@@ -28,7 +34,7 @@ vi.mock("@/lib/supabase/server", () => ({
     auth: {
       getUser: async () => ({ data: { user: state.user } }),
     },
-    from: () => {
+    from: (table: string) => {
       const filters: Record<string, string> = {};
       const query = {
         select: () => query,
@@ -39,6 +45,11 @@ vi.mock("@/lib/supabase/server", () => ({
         order: () => query,
         limit: () => query,
         maybeSingle: async () => {
+          if (table === "households") {
+            const row =
+              state.households.find((h) => h.id === filters.id) ?? null;
+            return { data: row, error: null };
+          }
           const rows = state.members
             .filter((row) =>
               Object.entries(filters).every(
@@ -61,6 +72,10 @@ beforeEach(() => {
     { user_id: "user-1", household_id: "h-old", joined_at: "2026-01-01" },
     { user_id: "user-1", household_id: "h-new", joined_at: "2026-06-01" },
     { user_id: "user-2", household_id: "h-other", joined_at: "2026-03-01" },
+  ];
+  state.households = [
+    { id: "h-old", period_start_day: 1 },
+    { id: "h-new", period_start_day: 25 },
   ];
   state.setCalls = [];
 });
@@ -97,6 +112,30 @@ describe("getActiveHouseholdId", () => {
     state.members = [];
 
     expect(await getActiveHouseholdId()).toBeNull();
+  });
+});
+
+describe("getCurrentUser", () => {
+  it("ログイン中はユーザーを返す", async () => {
+    expect(await getCurrentUser()).toEqual({ id: "user-1" });
+  });
+
+  it("未ログインの場合は null を返す", async () => {
+    state.user = null;
+
+    expect(await getCurrentUser()).toBeNull();
+  });
+});
+
+describe("getHouseholdSettings", () => {
+  it("グループの period_start_day を返す", async () => {
+    expect(await getHouseholdSettings("h-new")).toEqual({ periodStartDay: 25 });
+  });
+
+  it("グループが見つからない場合は既定値 1 を返す", async () => {
+    expect(await getHouseholdSettings("h-missing")).toEqual({
+      periodStartDay: 1,
+    });
   });
 });
 

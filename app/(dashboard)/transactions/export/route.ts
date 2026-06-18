@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { type ExportRow, toTransactionsCsv } from "@/lib/export";
-import { getActiveHouseholdId } from "@/lib/household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getHouseholdSettings,
+} from "@/lib/household";
 import { getPeriodRange, toISODate } from "@/lib/period";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,9 +32,7 @@ function refFromParam(ref: string | null): Date {
  */
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
@@ -40,12 +42,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse("No active household", { status: 403 });
   }
 
-  const { data: household } = await supabase
-    .from("households")
-    .select("period_start_day")
-    .eq("id", householdId)
-    .maybeSingle();
-  const startDay = household?.period_start_day ?? 1;
+  const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const ref = request.nextUrl.searchParams.get("ref");
   const range = getPeriodRange(refFromParam(ref), startDay);
