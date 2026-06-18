@@ -4,18 +4,20 @@ import { signOut } from "@/app/(auth)/actions";
 import { setActiveHousehold } from "@/app/households/actions";
 import { AppHeader } from "@/components/features/layout/app-header";
 import { MobileTabBar } from "@/components/features/layout/mobile-tab-bar";
-import { getActiveHouseholdId, getUserHouseholds } from "@/lib/household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getUserHouseholds,
+} from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
-  // middleware でも保護しているが、二重防御として確認する。
+  // proxy.ts でも保護しているが、二重防御として確認する。
   if (!user) {
     redirect("/login");
   }

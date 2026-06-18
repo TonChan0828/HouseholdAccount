@@ -9,7 +9,11 @@ import { MonthNav } from "@/components/features/transactions/month-nav";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDayLabel, groupByDate, yen } from "@/lib/format";
-import { getActiveHouseholdId } from "@/lib/household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getHouseholdSettings,
+} from "@/lib/household";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -43,9 +47,7 @@ export default async function TransactionsPage({
   const { ref } = await searchParams;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
@@ -55,12 +57,7 @@ export default async function TransactionsPage({
     redirect("/households");
   }
 
-  const { data: household } = await supabase
-    .from("households")
-    .select("period_start_day")
-    .eq("id", householdId)
-    .maybeSingle();
-  const startDay = household?.period_start_day ?? 1;
+  const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const range = getPeriodRange(refFromParam(ref), startDay);
   const isoStart = toISODate(range.start);

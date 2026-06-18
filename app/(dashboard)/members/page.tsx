@@ -2,7 +2,11 @@ import { redirect } from "next/navigation";
 
 import { MemberActivity, type MemberTxRow } from "@/components/features/members/member-activity";
 import { MonthNav } from "@/components/features/transactions/month-nav";
-import { getActiveHouseholdId } from "@/lib/household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getHouseholdSettings,
+} from "@/lib/household";
 import { summarizeByMember, type MemberInfo } from "@/lib/members";
 import {
   formatPeriodLabel,
@@ -27,9 +31,7 @@ export default async function MembersPage({
   const { ref } = await searchParams;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
@@ -39,12 +41,7 @@ export default async function MembersPage({
     redirect("/households");
   }
 
-  const { data: household } = await supabase
-    .from("households")
-    .select("period_start_day")
-    .eq("id", householdId)
-    .maybeSingle();
-  const startDay = household?.period_start_day ?? 1;
+  const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const range = getPeriodRange(refFromParam(ref), startDay);
   const isoStart = toISODate(range.start);

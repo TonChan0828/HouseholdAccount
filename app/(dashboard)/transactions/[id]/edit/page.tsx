@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getActiveHouseholdId } from "@/lib/household";
+import { getActiveHouseholdId, getCurrentUser } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
 
@@ -25,9 +25,7 @@ export default async function EditTransactionPage({
   const { id } = await params;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }

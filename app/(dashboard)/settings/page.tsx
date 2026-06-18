@@ -9,13 +9,12 @@ import { AccountDeletionForm } from "@/components/features/profile/account-delet
 import { PasswordForm } from "@/components/features/profile/password-form";
 import { ProfileForm } from "@/components/features/profile/profile-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }

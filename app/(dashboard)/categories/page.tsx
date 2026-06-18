@@ -6,7 +6,7 @@ import { deleteCategory } from "@/app/(dashboard)/categories/actions";
 import { DeleteCategoryButton } from "@/components/features/categories/delete-category-button";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getActiveHouseholdId } from "@/lib/household";
+import { getActiveHouseholdId, getCurrentUser } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { Category, CategoryType } from "@/types";
 
@@ -18,9 +18,7 @@ const GROUPS: { type: CategoryType; label: string }[] = [
 
 export default async function CategoriesPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
   }
