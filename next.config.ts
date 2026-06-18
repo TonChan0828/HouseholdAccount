@@ -10,6 +10,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // バレル import のツリーシェイクを強化し、初期 JS を削減する。
+    optimizePackageImports: ["recharts", "lucide-react"],
+  },
   async headers() {
     return [
       {
