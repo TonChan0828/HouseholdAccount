@@ -32,7 +32,7 @@
 - `cache()` はリクエストスコープのため vitest（リクエスト文脈なし）でも各呼び出しは memo されず、既存テストは全 pass を確認。
 - migration 0016 を新PJ `bkljkdkldaiemwpnjuks`（東京）へ適用 → `list_migrations` に反映、`get_advisors(performance)` は INFO のみ（新インデックス2件が "unused"=作成直後で当然、既存の unindexed FK INFO は据え置き）。新規 WARN なし。
 - build 出力に `ƒ Proxy (Middleware)` を確認＝認証は `proxy.ts`（Next 16 で middleware から改称）で edge 保護されている。`lib/supabase/middleware.ts` は proxy 経由で稼働中（死蔵ではない）。layout のコメントを「proxy.ts でも保護」に修正。
-- **E2E は環境要因で部分未実行**: 東京PJ作り直しで E2E seed ユーザーが未移行（`auth.users` に `e2e@e2etest.dev` 等が存在しないことを SQL で確認）。auth.setup がログイン失敗し認証必須18件が未実行、guest/demo 11件は pass。今回の変更に起因する失敗ではない。
+- **E2E**: 当初は東京PJ作り直しで seed ユーザーが未移行のため auth.setup が失敗し認証必須18件が未実行だった（今回の変更に起因しない）。→ **`e2e/seed.mjs`（冪等・Supabase Admin API）で seed を再作成し、`test:e2e` 30件 all pass を確認**。高速化の変更が authed フローを壊していないことも併せて実証。
 
 ## 決めたこと・理由
 
