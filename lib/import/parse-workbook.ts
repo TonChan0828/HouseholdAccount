@@ -15,7 +15,8 @@ function cellToAmount(value: ExcelJS.CellValue | undefined): number | null {
     return value;
   }
   if (typeof value === "string") {
-    const n = Number(value.replace(/[,¥\s]/g, ""));
+    // 半角¥(U+00A5)・全角￥(U+FFE5)・「円」・カンマ・空白を除去してから数値化する。
+    const n = Number(value.replace(/[,¥￥円\s]/g, ""));
     return Number.isFinite(n) ? n : null;
   }
   return null;
@@ -26,8 +27,22 @@ function cellToText(value: ExcelJS.CellValue | undefined): string {
   if (value == null) {
     return "";
   }
-  if (typeof value === "object" && "result" in value) {
-    return cellToText((value as { result?: ExcelJS.CellValue }).result);
+  if (typeof value === "object") {
+    // 数式セルは { formula, result } 形式。result を採用する。
+    if ("result" in value) {
+      return cellToText((value as { result?: ExcelJS.CellValue }).result);
+    }
+    // リッチテキストセルは { richText: [{ text }, ...] }。各断片を連結する。
+    if ("richText" in value) {
+      return (value as { richText: { text: string }[] }).richText
+        .map((r) => r.text)
+        .join("")
+        .trim();
+    }
+    // ハイパーリンクセルは { text, hyperlink }。表示テキストを使う。
+    if ("text" in value) {
+      return String((value as { text: unknown }).text).trim();
+    }
   }
   return String(value).trim();
 }

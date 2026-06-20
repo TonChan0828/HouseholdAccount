@@ -31,6 +31,11 @@ describe("parseMonthFromFilename", () => {
   it("年月を含まない場合は null", () => {
     expect(parseMonthFromFilename("budget.xlsx")).toBeNull();
   });
+
+  it("月が範囲外（13月・0月）の場合は null", () => {
+    expect(parseMonthFromFilename("2026年13月.xlsx")).toBeNull();
+    expect(parseMonthFromFilename("2026年0月.xlsx")).toBeNull();
+  });
 });
 
 describe("classifyRows", () => {
@@ -203,6 +208,24 @@ describe("parseWorkbook", () => {
     expect(rows.some((r) => r.item === "項目")).toBe(false);
     expect(rows.some((r) => r.item.includes("割合"))).toBe(false);
     expect(rows.some((r) => r.item.includes("合計"))).toBe(false);
+  });
+
+  it("リッチテキストの項目名と全角￥付き文字列の金額を正しく解釈する", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("月々の収支 (簡易版)");
+    ws.getCell("B12").value = "1 か月の支出";
+    ws.getCell("B13").value = "項目";
+    ws.getCell("C13").value = "金額";
+    // 項目名がリッチテキスト（太字断片を含む）
+    ws.getCell("B14").value = {
+      richText: [{ text: "食" }, { text: "費" }],
+    } as ExcelJS.CellValue;
+    // 金額が全角￥付きの文字列
+    ws.getCell("C14").value = "￥24,224";
+    const buf = (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+
+    const [{ rows }] = await parseWorkbook(buf);
+    expect(rows[0]).toMatchObject({ item: "食費", amount: 24224 });
   });
 
   it("テンプレ一致シートが複数あればシート名つきで全て返す（順序保持）", async () => {
