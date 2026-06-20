@@ -91,7 +91,7 @@ export async function parseImportFile(
 }
 
 const confirmSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/, "対象月が不正です"),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "対象月が不正です"),
   rows: z
     .array(
       z.object({
@@ -162,6 +162,8 @@ export async function confirmImport(
   }
 
   if (toCreate.length > 0) {
+    // 色は既存カテゴリ数からのオフセットで循環させ、毎回赤から始まる偏りを避ける。
+    const colorBase = existing?.length ?? 0;
     const { data: created, error: createError } = await supabase
       .from("categories")
       .insert(
@@ -169,7 +171,7 @@ export async function confirmImport(
           household_id: householdId,
           name: c.name,
           type: c.type,
-          color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+          color: CATEGORY_COLORS[(colorBase + i) % CATEGORY_COLORS.length],
           is_default: false,
         })),
       )
