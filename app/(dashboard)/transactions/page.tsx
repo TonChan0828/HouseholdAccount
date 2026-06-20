@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Download, Plus, ReceiptText } from "lucide-react";
+import { Download, Plus, ReceiptText, Upload } from "lucide-react";
 
 import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
@@ -99,6 +99,13 @@ export default async function TransactionsPage({
             <Download className="size-4" aria-hidden />
             CSV出力
           </a>
+          <Link
+            href="/transactions/import"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <Upload className="size-4" aria-hidden />
+            インポート
+          </Link>
           <Link
             href="/transactions/new"
             className={buttonVariants({ variant: "default", size: "sm" })}
