@@ -51,3 +51,6 @@ e2e/.auth/
 
 # Visual brainstorming companion
 .superpowers/
+
+# 個人データ（インポート元の家計簿など。コミットしない）
+docs/inputs/
