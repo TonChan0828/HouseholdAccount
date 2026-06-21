@@ -166,17 +166,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* クリーム背景にグリーン系の淡い光彩を重ねて平板さをなくす */
-    background-image:
-      radial-gradient(70rem 35rem at 115% -10%, oklch(0.93 0.05 135 / 0.55), transparent 60%),
-      radial-gradient(55rem 28rem at -15% 5%, oklch(0.96 0.04 90 / 0.7), transparent 55%);
-    background-attachment: fixed;
-  }
-  .dark body {
-    /* ダーク背景では光彩を減光したグリーンに差し替える */
-    background-image:
-      radial-gradient(70rem 35rem at 115% -10%, oklch(0.3 0.05 155 / 0.45), transparent 60%),
-      radial-gradient(55rem 28rem at -15% 5%, oklch(0.28 0.03 90 / 0.5), transparent 55%);
   }
   html {
     @apply font-sans;

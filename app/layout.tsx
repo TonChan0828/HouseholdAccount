@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, M_PLUS_Rounded_1c, Noto_Sans_JP, Zen_Maru_Gothic } from "next/font/google";
 
+import { AmbientBackground } from "@/components/shared/ambient-background";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
+          <AmbientBackground />
           {children}
           <Toaster />
         </ThemeProvider>
