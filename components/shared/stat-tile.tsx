@@ -4,8 +4,7 @@ import { cn } from "@/lib/utils";
 
 import { AnimatedNumber } from "./animated-number";
 import { IconChip } from "./icon-chip";
-
-type Tone = "income" | "expense" | "neutral";
+import { TONE_TEXT, type Tone } from "./tone";
 
 type Props = {
   label: string;
@@ -14,12 +13,6 @@ type Props = {
   icon?: LucideIcon;
   tone?: Tone;
   className?: string;
-};
-
-const VALUE_TONE: Record<Tone, string> = {
-  income: "text-income",
-  expense: "text-expense",
-  neutral: "text-foreground",
 };
 
 /** アイコンチップ + ラベル + カウントアップ値のタイル。 */
@@ -42,7 +35,7 @@ export function StatTile({
         format={format}
         className={cn(
           "font-heading text-xl font-bold tabular-nums",
-          VALUE_TONE[tone],
+          TONE_TEXT[tone],
         )}
       />
     </div>
