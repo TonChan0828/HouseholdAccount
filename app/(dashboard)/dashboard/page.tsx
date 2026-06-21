@@ -8,14 +8,13 @@ import { ScopeToggle, type DashboardScope } from "@/components/features/dashboar
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { Amount } from "@/components/shared/amount";
+import { PageHeader } from "@/components/shared/page-header";
+import { SectionHeading } from "@/components/shared/section-heading";
+import { Surface } from "@/components/shared/surface";
 import { buildCategoryMemberMatrix } from "@/lib/category-matrix";
-import { formatDayLabel, groupByDate, yen } from "@/lib/format";
+import { formatDayLabel, groupByDate } from "@/lib/format";
 import {
   getActiveHouseholdId,
   getCurrentUser,
@@ -132,29 +131,24 @@ export default async function DashboardPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
-      <div
-        className={cn("flex flex-wrap items-end justify-between gap-3", reveal)}
-      >
-        <div className="space-y-0.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            ホーム
-          </p>
-          <h1 className="text-2xl font-bold">ダッシュボード</h1>
-          <p className="text-sm font-medium text-muted-foreground tabular-nums">
-            {formatPeriodLabel(range)}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <ScopeToggle scope={scope} />
-          <Link
-            href="/transactions/new"
-            className={buttonVariants({ size: "sm" })}
-          >
-            <Plus className="size-4" aria-hidden />
-            記録する
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="ホーム"
+        title="ダッシュボード"
+        meta={formatPeriodLabel(range)}
+        className={reveal}
+        actions={
+          <>
+            <ScopeToggle scope={scope} />
+            <Link
+              href="/transactions/new"
+              className={buttonVariants({ size: "sm" })}
+            >
+              <Plus className="size-4" aria-hidden />
+              記録する
+            </Link>
+          </>
+        }
+      />
 
       <div className={reveal} style={{ animationDelay: "60ms" }}>
         <SummaryCards
@@ -165,17 +159,14 @@ export default async function DashboardPage({
         />
       </div>
 
-      <Card
-        className={cn("shadow-soft ring-0", reveal)}
-        style={{ animationDelay: "120ms" }}
-      >
-        <CardHeader>
-          <CardTitle className="text-base">当期の収支</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BalanceBarChart income={income} expense={expense} />
-        </CardContent>
-      </Card>
+      <div className={reveal} style={{ animationDelay: "120ms" }}>
+        <SectionHeading>当期の収支</SectionHeading>
+        <Surface variant="raised">
+          <CardContent>
+            <BalanceBarChart income={income} expense={expense} />
+          </CardContent>
+        </Surface>
+      </div>
 
       <div className={reveal} style={{ animationDelay: "180ms" }}>
         <CategoryMemberMatrix matrix={matrix} />
@@ -194,7 +185,7 @@ export default async function DashboardPage({
         </div>
 
         {recentGroups.length === 0 ? (
-          <Card className="mt-2 shadow-soft ring-0">
+          <Surface variant="raised" className="mt-2">
             <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
               <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
                 <ReceiptText className="size-6" aria-hidden />
@@ -211,7 +202,7 @@ export default async function DashboardPage({
                 収支を記録
               </Link>
             </CardContent>
-          </Card>
+          </Surface>
         ) : (
           <div className="mt-2 space-y-4">
             {recentGroups.map((group) => (
@@ -222,9 +213,10 @@ export default async function DashboardPage({
                 <ul className="space-y-2">
                   {group.items.map((t) => (
                     <li key={t.id}>
-                      <Card
+                      <Surface
+                        variant="raised"
                         data-testid="dashboard-transaction-row"
-                        className="shadow-soft ring-0 transition-shadow hover:shadow-lifted"
+                        className="transition-shadow hover:shadow-lifted"
                       >
                         <CardContent className="flex items-center justify-between gap-3 py-3">
                           <div className="flex min-w-0 items-center gap-3">
@@ -246,19 +238,13 @@ export default async function DashboardPage({
                               ) : null}
                             </div>
                           </div>
-                          <span
-                            className={cn(
-                              "shrink-0 font-heading font-bold tabular-nums",
-                              t.type === "income"
-                                ? "text-income"
-                                : "text-expense",
-                            )}
-                          >
-                            {t.type === "income" ? "+" : "-"}
-                            {yen(t.amount)}
-                          </span>
+                          <Amount
+                            value={t.amount}
+                            type={t.type}
+                            className="shrink-0"
+                          />
                         </CardContent>
-                      </Card>
+                      </Surface>
                     </li>
                   ))}
                 </ul>
