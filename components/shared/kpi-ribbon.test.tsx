@@ -29,13 +29,13 @@ describe("KpiRibbon", () => {
     render(
       <KpiRibbon
         items={[
-          { label: "当期収入", value: 1000, format: (n) => `¥${Math.round(n)}` },
+          { label: "当期収入", value: 1000, format: "yen" },
           { label: "支出カテゴリ", value: 11, unit: "件" },
         ]}
       />,
     );
     expect(screen.getByText("当期収入")).toBeInTheDocument();
-    expect(screen.getByText("¥1000")).toBeInTheDocument();
+    expect(screen.getByText("¥1,000")).toBeInTheDocument();
     expect(screen.getByText("支出カテゴリ")).toBeInTheDocument();
     expect(screen.getByText("11")).toBeInTheDocument();
     expect(screen.getByText("件")).toBeInTheDocument();

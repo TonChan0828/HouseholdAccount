@@ -13,7 +13,6 @@ import {
   summarizeTrend,
   type TxLite,
 } from "@/lib/analytics";
-import { yen } from "@/lib/format";
 import {
   getActiveHouseholdId,
   getCurrentUser,
@@ -88,14 +87,11 @@ export default async function AnalyticsPage({
     ? Math.round((categories[0].amount / totalExpense) * 100)
     : 0;
 
-  // カウントアップ中の小数を避けるため丸めてから円整形する。
-  const yenRound = (n: number) => yen(Math.round(n));
-
   const kpis = [
-    { label: "当期収入", value: current.income, format: yenRound },
+    { label: "当期収入", value: current.income, format: "yen" as const },
     { label: "支出カテゴリ", value: categories.length, unit: "件" },
     { label: "最多占有", value: topShare, unit: "%" },
-    { label: "月平均支出", value: avgExpense, format: yenRound },
+    { label: "月平均支出", value: avgExpense, format: "yen" as const },
   ];
 
   const prevHref = `/analytics?ref=${toISODate(shiftPeriod(base, -1, startDay).start)}`;
