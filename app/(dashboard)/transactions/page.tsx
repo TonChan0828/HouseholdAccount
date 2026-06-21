@@ -14,8 +14,11 @@ import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { formatDayLabel, groupByDate, yen } from "@/lib/format";
+import { CardContent } from "@/components/ui/card";
+import { Amount } from "@/components/shared/amount";
+import { PageHeader } from "@/components/shared/page-header";
+import { Surface } from "@/components/shared/surface";
+import { formatDayLabel, groupByDate } from "@/lib/format";
 import {
   getActiveHouseholdId,
   getCurrentUser,
@@ -109,42 +112,39 @@ export default async function TransactionsPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
-      <div className={cn("flex flex-wrap items-end justify-between gap-3", reveal)}>
-        <div className="space-y-0.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            記録
-          </p>
-          <h1 className="text-2xl font-bold">収支</h1>
-          <p className="text-sm font-medium text-muted-foreground tabular-nums">
-            {transactions.length}件の記録
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Route Handler（CSV）へは素の <a> を使う。<Link> だと RSC を
-              プリフェッチしようとして "unexpected response" エラーになる。 */}
-          <a
-            href={`/transactions/export?ref=${toISODate(range.start)}`}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <Download className="size-4" aria-hidden />
-            <span className="max-sm:sr-only">CSV出力</span>
-          </a>
-          <Link
-            href="/transactions/import"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <Upload className="size-4" aria-hidden />
-            <span className="max-sm:sr-only">インポート</span>
-          </Link>
-          <Link
-            href="/transactions/new"
-            className={buttonVariants({ variant: "default", size: "sm" })}
-          >
-            <Plus className="size-4" aria-hidden />
-            収支を追加
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="記録"
+        title="収支"
+        meta={`${transactions.length}件の記録`}
+        className={reveal}
+        actions={
+          <>
+            {/* Route Handler（CSV）へは素の <a> を使う。<Link> だと RSC を
+                プリフェッチしようとして "unexpected response" エラーになる。 */}
+            <a
+              href={`/transactions/export?ref=${toISODate(range.start)}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Download className="size-4" aria-hidden />
+              <span className="max-sm:sr-only">CSV出力</span>
+            </a>
+            <Link
+              href="/transactions/import"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Upload className="size-4" aria-hidden />
+              <span className="max-sm:sr-only">インポート</span>
+            </Link>
+            <Link
+              href="/transactions/new"
+              className={buttonVariants({ variant: "default", size: "sm" })}
+            >
+              <Plus className="size-4" aria-hidden />
+              収支を追加
+            </Link>
+          </>
+        }
+      />
 
       <div
         className={cn("flex justify-center", reveal)}
@@ -162,8 +162,9 @@ export default async function TransactionsPage({
       </div>
 
       {groups.length === 0 ? (
-        <Card
-          className={cn("shadow-soft ring-0", reveal)}
+        <Surface
+          variant="raised"
+          className={cn("", reveal)}
           style={{ animationDelay: "180ms" }}
         >
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
@@ -180,7 +181,7 @@ export default async function TransactionsPage({
               収支を記録
             </Link>
           </CardContent>
-        </Card>
+        </Surface>
       ) : (
         <div
           className={cn("space-y-6", reveal)}
@@ -197,10 +198,18 @@ export default async function TransactionsPage({
                   </span>
                   <span className="flex items-center gap-2 text-[11px] font-medium tabular-nums">
                     {sums.income > 0 ? (
-                      <span className="text-income">+{yen(sums.income)}</span>
+                      <Amount
+                        value={sums.income}
+                        type="income"
+                        className="text-[11px] font-medium"
+                      />
                     ) : null}
                     {sums.expense > 0 ? (
-                      <span className="text-expense">-{yen(sums.expense)}</span>
+                      <Amount
+                        value={sums.expense}
+                        type="expense"
+                        className="text-[11px] font-medium"
+                      />
                     ) : null}
                   </span>
                 </div>
@@ -208,13 +217,12 @@ export default async function TransactionsPage({
                 <ul className="space-y-2">
                   {group.items.map((t) => {
                     const mine = t.created_by === user.id;
-                    const tone =
-                      t.type === "income" ? "text-income" : "text-expense";
                     return (
                       <li key={t.id}>
-                        <Card
+                        <Surface
+                          variant="raised"
                           data-testid="transaction-row"
-                          className="group/row overflow-hidden p-0 shadow-soft ring-0 transition-shadow hover:shadow-lifted"
+                          className="group/row overflow-hidden p-0 transition-shadow hover:shadow-lifted"
                         >
                           <CardContent className="flex items-stretch gap-0 p-0">
                             {/* タイプ色のレジャーエッジ */}
@@ -244,15 +252,7 @@ export default async function TransactionsPage({
                                 ) : null}
                               </div>
                               <div className="flex shrink-0 items-center gap-1">
-                                <span
-                                  className={cn(
-                                    "font-heading font-bold tabular-nums",
-                                    tone,
-                                  )}
-                                >
-                                  {t.type === "income" ? "+" : "-"}
-                                  {yen(t.amount)}
-                                </span>
+                                <Amount value={t.amount} type={t.type} />
                                 {mine ? (
                                   <div className="flex items-center transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100">
                                     <Link
@@ -289,7 +289,7 @@ export default async function TransactionsPage({
                               </div>
                             </div>
                           </CardContent>
-                        </Card>
+                        </Surface>
                       </li>
                     );
                   })}
