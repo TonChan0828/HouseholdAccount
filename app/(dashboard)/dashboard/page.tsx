@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, ReceiptText } from "lucide-react";
+import { ArrowRight, Plus, ReceiptText } from "lucide-react";
 
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.client";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
@@ -29,6 +29,7 @@ import {
   toISODate,
 } from "@/lib/period";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 type TransactionRow = {
   id: string;
@@ -126,26 +127,48 @@ export default async function DashboardPage({
   const recentGroups = groupByDate(scopedTransactions.slice(0, RECENT_LIMIT));
   const matrix = buildCategoryMemberMatrix(transactions, members);
 
+  const reveal =
+    "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
+
   return (
-    <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
+    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+      <div
+        className={cn("flex flex-wrap items-end justify-between gap-3", reveal)}
+      >
+        <div className="space-y-0.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            ホーム
+          </p>
           <h1 className="text-2xl font-bold">ダッシュボード</h1>
           <p className="text-sm font-medium text-muted-foreground tabular-nums">
             {formatPeriodLabel(range)}
           </p>
         </div>
-        <ScopeToggle scope={scope} />
+        <div className="flex items-center gap-2">
+          <ScopeToggle scope={scope} />
+          <Link
+            href="/transactions/new"
+            className={buttonVariants({ size: "sm" })}
+          >
+            <Plus className="size-4" aria-hidden />
+            記録する
+          </Link>
+        </div>
       </div>
 
-      <SummaryCards
-        income={income}
-        expense={expense}
-        prevIncome={sumBy(prevTransactions, "income")}
-        prevExpense={sumBy(prevTransactions, "expense")}
-      />
+      <div className={reveal} style={{ animationDelay: "60ms" }}>
+        <SummaryCards
+          income={income}
+          expense={expense}
+          prevIncome={sumBy(prevTransactions, "income")}
+          prevExpense={sumBy(prevTransactions, "expense")}
+        />
+      </div>
 
-      <Card className="shadow-soft ring-0">
+      <Card
+        className={cn("shadow-soft ring-0", reveal)}
+        style={{ animationDelay: "120ms" }}
+      >
         <CardHeader>
           <CardTitle className="text-base">当期の収支</CardTitle>
         </CardHeader>
@@ -154,80 +177,96 @@ export default async function DashboardPage({
         </CardContent>
       </Card>
 
-      <CategoryMemberMatrix matrix={matrix} />
-
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-base font-bold">最近の取引</h2>
-        <Link
-          href="/transactions"
-          className={buttonVariants({ variant: "link", size: "sm" })}
-        >
-          すべて見る
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
+      <div className={reveal} style={{ animationDelay: "180ms" }}>
+        <CategoryMemberMatrix matrix={matrix} />
       </div>
 
-      {recentGroups.length === 0 ? (
-        <Card className="shadow-soft ring-0">
-          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-              <ReceiptText className="size-6" aria-hidden />
-            </span>
-            <p className="text-sm text-muted-foreground">
-              この期間の収支はまだありません。
-              <br />
-              最初の一件を記録してみましょう。
-            </p>
-            <Link
-              href="/transactions/new"
-              className={buttonVariants({ size: "sm" })}
-            >
-              収支を記録
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {recentGroups.map((group) => (
-            <section key={group.date} className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
-                {formatDayLabel(group.date)}
-              </h3>
-              <ul className="space-y-2">
-                {group.items.map((t) => (
-                  <li key={t.id}>
-                    <Card
-                      data-testid="dashboard-transaction-row"
-                      className="shadow-soft ring-0 transition-shadow hover:shadow-lifted"
-                    >
-                      <CardContent className="flex items-center justify-between gap-3 py-3">
-                        <div className="min-w-0 space-y-0.5">
-                          <CategoryBadge category={t.category} />
-                          {t.memo ? (
-                            <p className="truncate text-xs text-muted-foreground">
-                              {t.memo}
-                            </p>
-                          ) : null}
-                        </div>
-                        <span
-                          className={
-                            t.type === "income"
-                              ? "shrink-0 font-heading font-bold text-income tabular-nums"
-                              : "shrink-0 font-heading font-bold text-expense tabular-nums"
-                          }
-                        >
-                          {t.type === "income" ? "+" : "-"}
-                          {yen(t.amount)}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
+      <div className={reveal} style={{ animationDelay: "240ms" }}>
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading text-base font-bold">最近の取引</h2>
+          <Link
+            href="/transactions"
+            className={buttonVariants({ variant: "link", size: "sm" })}
+          >
+            すべて見る
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
         </div>
-      )}
+
+        {recentGroups.length === 0 ? (
+          <Card className="mt-2 shadow-soft ring-0">
+            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+              <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                <ReceiptText className="size-6" aria-hidden />
+              </span>
+              <p className="text-sm text-muted-foreground">
+                この期間の収支はまだありません。
+                <br />
+                最初の一件を記録してみましょう。
+              </p>
+              <Link
+                href="/transactions/new"
+                className={buttonVariants({ size: "sm" })}
+              >
+                収支を記録
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="mt-2 space-y-4">
+            {recentGroups.map((group) => (
+              <section key={group.date} className="space-y-2">
+                <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
+                  {formatDayLabel(group.date)}
+                </h3>
+                <ul className="space-y-2">
+                  {group.items.map((t) => (
+                    <li key={t.id}>
+                      <Card
+                        data-testid="dashboard-transaction-row"
+                        className="shadow-soft ring-0 transition-shadow hover:shadow-lifted"
+                      >
+                        <CardContent className="flex items-center justify-between gap-3 py-3">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span
+                              aria-hidden
+                              className={cn(
+                                "h-9 w-1 shrink-0 rounded-full",
+                                t.type === "income"
+                                  ? "bg-income"
+                                  : "bg-expense",
+                              )}
+                            />
+                            <div className="min-w-0 space-y-0.5">
+                              <CategoryBadge category={t.category} />
+                              {t.memo ? (
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {t.memo}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                          <span
+                            className={cn(
+                              "shrink-0 font-heading font-bold tabular-nums",
+                              t.type === "income"
+                                ? "text-income"
+                                : "text-expense",
+                            )}
+                          >
+                            {t.type === "income" ? "+" : "-"}
+                            {yen(t.amount)}
+                          </span>
+                        </CardContent>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
