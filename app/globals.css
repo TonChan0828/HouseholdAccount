@@ -58,6 +58,14 @@
     0 2px 4px oklch(0.35 0.05 145 / 0.06),
     0 8px 20px oklch(0.35 0.05 145 / 0.1),
     0 24px 48px -12px oklch(0.35 0.05 145 / 0.14);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-warm-foreground: var(--accent-warm-foreground);
+  --shadow-pillow:
+    0 1px 1px oklch(0.35 0.05 145 / 0.04),
+    0 6px 16px -4px oklch(0.35 0.05 145 / 0.1),
+    0 20px 40px -12px oklch(0.35 0.05 145 / 0.14);
+  --shadow-inset: inset 0 1px 3px oklch(0.35 0.05 145 / 0.1);
 }
 
 /*
@@ -80,6 +88,9 @@
   --muted-foreground: oklch(0.52 0.03 135);
   --accent: oklch(0.93 0.045 120);
   --accent-foreground: oklch(0.38 0.06 150);
+  --surface-sunken: oklch(0.955 0.018 88);
+  --accent-warm: oklch(0.83 0.1 70);
+  --accent-warm-foreground: oklch(0.38 0.07 60);
   --destructive: oklch(0.55 0.2 28);
   --border: oklch(0.89 0.02 95);
   --input: oklch(0.89 0.02 95);
@@ -123,6 +134,9 @@
   --muted-foreground: oklch(0.72 0.02 135);
   --accent: oklch(0.34 0.04 130);
   --accent-foreground: oklch(0.9 0.03 140);
+  --surface-sunken: oklch(0.25 0.02 150);
+  --accent-warm: oklch(0.78 0.1 70);
+  --accent-warm-foreground: oklch(0.22 0.03 60);
   --destructive: oklch(0.66 0.19 28);
   --border: oklch(0.34 0.02 150);
   --input: oklch(0.34 0.02 150);
@@ -172,5 +186,18 @@
   h3,
   h4 {
     @apply font-heading;
+  }
+}
+
+/* アンビエント背景グローのゆっくりした呼吸。 */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.06);
   }
 }
