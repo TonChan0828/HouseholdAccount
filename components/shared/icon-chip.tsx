@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type Tone = "income" | "expense" | "neutral";
+import { TONE_CHIP, type Tone } from "./tone";
 
 type Props = {
   icon: LucideIcon;
@@ -11,19 +11,13 @@ type Props = {
   className?: string;
 };
 
-const TONES: Record<Tone, string> = {
-  income: "bg-income-soft text-income",
-  expense: "bg-expense-soft text-expense",
-  neutral: "bg-secondary text-secondary-foreground",
-};
-
 /** 丸い背景にアイコンを載せた小さなチップ。 */
 export function IconChip({ icon: Icon, label, tone = "neutral", className }: Props) {
   return (
     <span
       className={cn(
         "flex size-7 shrink-0 items-center justify-center rounded-full",
-        TONES[tone],
+        TONE_CHIP[tone],
         className,
       )}
       role={label ? "img" : undefined}
