@@ -24,4 +24,9 @@ describe("PageHeader", () => {
       screen.getByRole("button", { name: "記録する" }),
     ).toBeInTheDocument();
   });
+
+  it("meta をタイトル下に描画する", () => {
+    render(<PageHeader title="収支" meta="3件の記録" />);
+    expect(screen.getByText("3件の記録")).toBeInTheDocument();
+  });
 });
