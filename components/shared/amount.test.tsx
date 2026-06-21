@@ -20,4 +20,9 @@ describe("Amount", () => {
     render(<Amount value={500} type="expense" showSign={false} />);
     expect(screen.getByText("¥500")).toBeInTheDocument();
   });
+
+  it("負の value を渡しても符号は二重にならない", () => {
+    render(<Amount value={-500} type="expense" />);
+    expect(screen.getByText("-¥500")).toBeInTheDocument();
+  });
 });

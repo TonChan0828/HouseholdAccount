@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   value: number;
+  /** 金額の絶対値で表示する（符号は type で決まる）。 */
   type: "income" | "expense";
   /** 既定 true。先頭に +/- を付ける。 */
   showSign?: boolean;
@@ -21,7 +22,7 @@ export function Amount({ value, type, showSign = true, className }: Props) {
       )}
     >
       {sign}
-      {yen(value)}
+      {yen(Math.abs(value))}
     </span>
   );
 }
