@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, M_PLUS_Rounded_1c, Noto_Sans_JP, Zen_Maru_Gothic } from "next/font/google";
+import { Geist_Mono, Noto_Sans_JP, Zen_Maru_Gothic } from "next/font/google";
 
 import { AmbientBackground } from "@/components/shared/ambient-background";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -9,12 +9,6 @@ import "./globals.css";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans",
-  subsets: ["latin"],
-});
-
-const mPlusRounded = M_PLUS_Rounded_1c({
-  variable: "--font-mplus-rounded",
-  weight: ["500", "700", "800"],
   subsets: ["latin"],
 });
 
@@ -42,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${notoSansJP.variable} ${mPlusRounded.variable} ${zenMaruGothic.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${notoSansJP.variable} ${zenMaruGothic.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
