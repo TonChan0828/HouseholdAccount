@@ -1,4 +1,5 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { Surface } from "@/components/shared/surface";
 
 /** 収支一覧のデータ取得中に表示するスケルトン。 */
 export default function TransactionsLoading() {
@@ -15,12 +16,12 @@ export default function TransactionsLoading() {
       </div>
       <div className="space-y-2">
         {[0, 1, 2, 3].map((i) => (
-          <Card key={i} className="shadow-soft ring-0">
+          <Surface key={i} variant="raised">
             <CardContent className="flex items-center justify-between py-3">
               <div className="h-5 w-32 animate-pulse rounded-md bg-muted/60" />
               <div className="h-5 w-20 animate-pulse rounded-md bg-muted/60" />
             </CardContent>
-          </Card>
+          </Surface>
         ))}
       </div>
     </main>

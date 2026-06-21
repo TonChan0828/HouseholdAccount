@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CardContent, CardHeader } from "@/components/ui/card";
+import { Surface } from "@/components/shared/surface";
 
 /** 分析ページのデータ取得中に表示するスケルトン。 */
 export default function AnalyticsLoading() {
@@ -8,14 +9,14 @@ export default function AnalyticsLoading() {
       <div className="h-10 w-full animate-pulse rounded-md bg-muted/60" />
       <div className="grid gap-4 lg:grid-cols-2">
         {[0, 1].map((i) => (
-          <Card key={i} className="shadow-soft ring-0">
+          <Surface key={i} variant="raised">
             <CardHeader>
               <div className="h-5 w-36 animate-pulse rounded-md bg-muted/60" />
             </CardHeader>
             <CardContent>
               <div className="h-56 w-full animate-pulse rounded-md bg-muted/60" />
             </CardContent>
-          </Card>
+          </Surface>
         ))}
       </div>
     </main>
