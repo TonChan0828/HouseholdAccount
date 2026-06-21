@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
+import { Geist_Mono, M_PLUS_Rounded_1c, Noto_Sans_JP, Zen_Maru_Gothic } from "next/font/google";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -22,6 +22,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const zenMaruGothic = Zen_Maru_Gothic({
+  variable: "--font-zen-maru",
+  weight: ["500", "700"],
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "Shallet",
   description: "複数アカウントで家計簿グループを共有できる家計簿アプリ「Shallet」",
@@ -35,7 +41,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${notoSansJP.variable} ${mPlusRounded.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${notoSansJP.variable} ${mPlusRounded.variable} ${zenMaruGothic.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
