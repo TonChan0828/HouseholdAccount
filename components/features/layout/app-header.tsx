@@ -45,7 +45,7 @@ export function AppHeader({
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4">
         <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
-          <ShalletLogo className="size-9 shrink-0 rounded-[10px] shadow-soft" />
+          <ShalletLogo className="size-9 shrink-0 rounded-[10px] shadow-[var(--shadow-pillow)]" />
           <span className="hidden font-heading text-base font-bold tracking-wide sm:inline">
             Shallet
           </span>
@@ -85,7 +85,7 @@ export function AppHeader({
             href="/transactions/new"
             className={cn(
               buttonVariants({ size: "sm" }),
-              "hidden whitespace-nowrap rounded-full shadow-soft lg:inline-flex",
+              "hidden whitespace-nowrap rounded-full shadow-[var(--shadow-pillow)] lg:inline-flex",
             )}
           >
             <Plus className="size-4" aria-hidden />
@@ -94,7 +94,7 @@ export function AppHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex items-center gap-2 rounded-full border border-border/70 bg-card py-1 pl-1 pr-3 text-sm shadow-soft transition-colors hover:bg-accent/60"
+              className="flex items-center gap-2 rounded-full border border-border/70 bg-card py-1 pl-1 pr-3 text-sm shadow-[var(--shadow-pillow)] transition-colors hover:bg-accent/60"
               aria-label={`${displayName} のメニュー`}
             >
               <span className="flex size-7 items-center justify-center rounded-full bg-secondary font-heading text-xs font-bold text-secondary-foreground">
