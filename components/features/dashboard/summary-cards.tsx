@@ -1,4 +1,10 @@
-import { PiggyBank, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  PiggyBank,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { yen } from "@/lib/format";
@@ -19,79 +25,242 @@ function diffLabel(current: number, prev: number | undefined): string | null {
   return `前期比 ${diff >= 0 ? "+" : ""}${yen(diff)}`;
 }
 
-/** 収入計・支出計・収支差を 3 枚のカードで表示する（presentational）。 */
-export function SummaryCards({ income, expense, prevIncome, prevExpense }: Props) {
-  const balance = income - expense;
-  const cards = [
-    {
-      label: "収入",
-      value: yen(income),
-      icon: TrendingUp,
-      tone: "text-income",
-      iconBg: "bg-income-soft text-income",
-      diff: diffLabel(income, prevIncome),
-    },
-    {
-      label: "支出",
-      value: yen(expense),
-      icon: TrendingDown,
-      tone: "text-expense",
-      iconBg: "bg-expense-soft text-expense",
-      diff: diffLabel(expense, prevExpense),
-    },
-    {
-      label: "収支",
-      value: yen(balance),
-      icon: PiggyBank,
-      tone: balance >= 0 ? "text-income" : "text-expense",
-      iconBg:
-        balance >= 0
+/** 前期比のチップ。改善方向（収入↑/支出↓）を色で示す。 */
+function DiffChip({
+  label,
+  positive,
+}: {
+  label: string | null;
+  positive: boolean;
+}) {
+  if (!label) return null;
+  const Icon = positive ? ArrowUpRight : ArrowDownRight;
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
+        positive
           ? "bg-income-soft text-income"
           : "bg-expense-soft text-expense",
-      diff:
-        prevIncome !== undefined && prevExpense !== undefined
-          ? diffLabel(balance, prevIncome - prevExpense)
-          : null,
-    },
-  ];
+      )}
+    >
+      <Icon className="size-3" aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+/**
+ * 貯蓄率を表す軽量な SVG ドーナツリング。
+ * income > 0 のとき balance/income を 0〜100% にクランプして描画する。
+ */
+function SavingsRing({
+  income,
+  balance,
+}: {
+  income: number;
+  balance: number;
+}) {
+  const rate = income > 0 ? Math.max(0, Math.min(1, balance / income)) : 0;
+  const pct = Math.round(rate * 100);
+  const positive = balance >= 0;
+  const r = 38;
+  const circ = 2 * Math.PI * r;
+  const stroke = positive ? "var(--income)" : "var(--expense)";
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:gap-4" data-testid="summary-cards">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        return (
-          <Card key={card.label} className="shadow-soft ring-0">
-            <CardContent className="flex flex-col gap-1 max-sm:px-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-full max-sm:hidden",
-                    card.iconBg,
-                  )}
-                >
-                  <Icon className="size-4" aria-hidden />
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {card.label}
-                </span>
-              </div>
-              <p
+    <div className="relative flex size-24 shrink-0 items-center justify-center">
+      <svg viewBox="0 0 96 96" className="size-24 -rotate-90">
+        <circle
+          cx="48"
+          cy="48"
+          r={r}
+          fill="none"
+          strokeWidth="9"
+          className="stroke-secondary"
+        />
+        <circle
+          cx="48"
+          cy="48"
+          r={r}
+          fill="none"
+          strokeWidth="9"
+          strokeLinecap="round"
+          style={{
+            stroke,
+            strokeDasharray: circ,
+            strokeDashoffset: circ * (1 - rate),
+            transition: "stroke-dashoffset 700ms cubic-bezier(0.22,1,0.36,1)",
+          }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span
+          className={cn(
+            "font-heading text-xl font-bold tabular-nums leading-none",
+            positive ? "text-income" : "text-expense",
+          )}
+        >
+          {pct}%
+        </span>
+        <span className="mt-0.5 text-[10px] font-medium text-muted-foreground">
+          貯蓄率
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** 収入・支出を一本のトラックで占有比として並べた帯。 */
+function ProportionBar({
+  income,
+  expense,
+}: {
+  income: number;
+  expense: number;
+}) {
+  const total = income + expense;
+  const incomePct = total > 0 ? (income / total) * 100 : 0;
+  const expensePct = total > 0 ? 100 - incomePct : 0;
+
+  return (
+    <div className="flex h-2 w-full overflow-hidden rounded-full bg-secondary">
+      <div
+        className="h-full bg-income transition-[width] duration-700 ease-out"
+        style={{ width: `${incomePct}%` }}
+        aria-hidden
+      />
+      <div
+        className="h-full bg-expense transition-[width] duration-700 ease-out"
+        style={{ width: `${expensePct}%` }}
+        aria-hidden
+      />
+    </div>
+  );
+}
+
+/** 収入・支出の補助タイル。 */
+function StatTile({
+  label,
+  value,
+  diff,
+  positive,
+  icon: Icon,
+  tone,
+  iconBg,
+}: {
+  label: string;
+  value: string;
+  diff: string | null;
+  positive: boolean;
+  icon: typeof TrendingUp;
+  tone: string;
+  iconBg: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 rounded-2xl bg-secondary/40 p-3 sm:p-4">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full",
+            iconBg,
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <p
+        className={cn(
+          "font-heading text-lg font-bold tabular-nums sm:text-xl",
+          tone,
+        )}
+      >
+        {value}
+      </p>
+      <DiffChip label={diff} positive={positive} />
+    </div>
+  );
+}
+
+/**
+ * 当期の収支を 1 枚のヒーローにまとめて表示する（presentational）。
+ * 中央に収支差と貯蓄率リング、その下に収入/支出の比率帯とタイルを並べる。
+ */
+export function SummaryCards({ income, expense, prevIncome, prevExpense }: Props) {
+  const balance = income - expense;
+  const balancePositive = balance >= 0;
+  const balanceDiff =
+    prevIncome !== undefined && prevExpense !== undefined
+      ? diffLabel(balance, prevIncome - prevExpense)
+      : null;
+
+  return (
+    <Card
+      data-testid="summary-cards"
+      className="relative isolate overflow-hidden shadow-soft ring-0"
+    >
+      {/* テーマ色の淡い光彩で平板さをなくす装飾 */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-16 -top-20 -z-10 size-56 rounded-full bg-accent/50 blur-3xl"
+      />
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span
                 className={cn(
-                  "font-heading text-lg font-bold tabular-nums sm:text-2xl",
-                  card.tone,
+                  "flex size-7 shrink-0 items-center justify-center rounded-full",
+                  balancePositive
+                    ? "bg-income-soft text-income"
+                    : "bg-expense-soft text-expense",
                 )}
               >
-                {card.value}
-              </p>
-              {card.diff ? (
-                <p className="text-[11px] text-muted-foreground tabular-nums">
-                  {card.diff}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+                <PiggyBank className="size-4" aria-hidden />
+              </span>
+              <span className="text-xs font-medium text-muted-foreground">
+                収支
+              </span>
+            </div>
+            <p
+              className={cn(
+                "font-heading text-3xl font-bold tabular-nums sm:text-4xl",
+                balancePositive ? "text-income" : "text-expense",
+              )}
+            >
+              {yen(balance)}
+            </p>
+            <DiffChip label={balanceDiff} positive={balancePositive} />
+          </div>
+          <SavingsRing income={income} balance={balance} />
+        </div>
+
+        <ProportionBar income={income} expense={expense} />
+
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <StatTile
+            label="収入"
+            value={yen(income)}
+            diff={diffLabel(income, prevIncome)}
+            positive={income - (prevIncome ?? income) >= 0}
+            icon={TrendingUp}
+            tone="text-income"
+            iconBg="bg-income-soft text-income"
+          />
+          <StatTile
+            label="支出"
+            value={yen(expense)}
+            diff={diffLabel(expense, prevExpense)}
+            positive={expense - (prevExpense ?? expense) <= 0}
+            icon={TrendingDown}
+            tone="text-expense"
+            iconBg="bg-expense-soft text-expense"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }

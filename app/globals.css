@@ -174,3 +174,28 @@
     @apply font-heading;
   }
 }
+
+/* データビジュアライズのグロー演出（分析ページのバー等）。 */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rise-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-viz-bar] {
+    animation: none !important;
+  }
+}

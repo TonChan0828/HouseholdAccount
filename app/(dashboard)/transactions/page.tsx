@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Download, Plus, ReceiptText, Upload } from "lucide-react";
+import {
+  Download,
+  Pencil,
+  Plus,
+  ReceiptText,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
@@ -21,6 +28,7 @@ import {
   toISODate,
 } from "@/lib/period";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 type TransactionRow = {
   id: string;
@@ -37,6 +45,17 @@ function refFromParam(ref: string | undefined): Date {
     return new Date(`${ref}T00:00:00Z`);
   }
   return new Date();
+}
+
+/** 1 日分の収入・支出小計を求める。 */
+function daySums(items: TransactionRow[]) {
+  let income = 0;
+  let expense = 0;
+  for (const t of items) {
+    if (t.type === "income") income += t.amount;
+    else expense += t.amount;
+  }
+  return { income, expense };
 }
 
 export default async function TransactionsPage({
@@ -85,10 +104,21 @@ export default async function TransactionsPage({
   const prevHref = `/transactions?ref=${toISODate(shiftPeriod(range, -1, startDay).start)}`;
   const nextHref = `/transactions?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}`;
 
+  const reveal =
+    "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
+
   return (
-    <main className="mx-auto w-full max-w-4xl animate-in space-y-5 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">収支</h1>
+    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+      <div className={cn("flex flex-wrap items-end justify-between gap-3", reveal)}>
+        <div className="space-y-0.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            記録
+          </p>
+          <h1 className="text-2xl font-bold">収支</h1>
+          <p className="text-sm font-medium text-muted-foreground tabular-nums">
+            {transactions.length}件の記録
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {/* Route Handler（CSV）へは素の <a> を使う。<Link> だと RSC を
               プリフェッチしようとして "unexpected response" エラーになる。 */}
@@ -97,14 +127,14 @@ export default async function TransactionsPage({
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <Download className="size-4" aria-hidden />
-            CSV出力
+            <span className="max-sm:sr-only">CSV出力</span>
           </a>
           <Link
             href="/transactions/import"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <Upload className="size-4" aria-hidden />
-            インポート
+            <span className="max-sm:sr-only">インポート</span>
           </Link>
           <Link
             href="/transactions/new"
@@ -116,16 +146,26 @@ export default async function TransactionsPage({
         </div>
       </div>
 
-      <MonthNav
-        label={formatPeriodLabel(range)}
-        prevHref={prevHref}
-        nextHref={nextHref}
-      />
+      <div
+        className={cn("flex justify-center", reveal)}
+        style={{ animationDelay: "60ms" }}
+      >
+        <MonthNav
+          label={formatPeriodLabel(range)}
+          prevHref={prevHref}
+          nextHref={nextHref}
+        />
+      </div>
 
-      <SummaryCards income={income} expense={expense} />
+      <div className={reveal} style={{ animationDelay: "120ms" }}>
+        <SummaryCards income={income} expense={expense} />
+      </div>
 
       {groups.length === 0 ? (
-        <Card className="shadow-soft ring-0">
+        <Card
+          className={cn("shadow-soft ring-0", reveal)}
+          style={{ animationDelay: "180ms" }}
+        >
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
               <ReceiptText className="size-6" aria-hidden />
@@ -142,82 +182,121 @@ export default async function TransactionsPage({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {groups.map((group) => (
-            <section key={group.date} className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
-                {formatDayLabel(group.date)}
-              </h3>
-              <ul className="space-y-2">
-                {group.items.map((t) => {
-                  const mine = t.created_by === user.id;
-                  return (
-                    <li key={t.id}>
-                      <Card
-                        data-testid="transaction-row"
-                        className="shadow-soft ring-0 transition-shadow hover:shadow-lifted"
-                      >
-                        <CardContent className="flex items-center justify-between gap-3 py-3">
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <CategoryBadge category={t.category} />
-                              {!mine ? (
-                                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                                  他のメンバー
-                                </span>
-                              ) : null}
-                            </div>
-                            {t.memo ? (
-                              <p className="truncate text-xs text-muted-foreground">
-                                {t.memo}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
+        <div
+          className={cn("space-y-6", reveal)}
+          style={{ animationDelay: "180ms" }}
+        >
+          {groups.map((group) => {
+            const sums = daySums(group.items);
+            return (
+              <section key={group.date} className="space-y-2">
+                {/* 台帳の日付見出し。スクロール時はヘッダー直下に貼り付く。 */}
+                <div className="sticky top-16 z-20 flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border bg-card/85 px-3 py-1 font-heading text-xs font-semibold tabular-nums shadow-soft ring-1 ring-foreground/5 backdrop-blur-md">
+                    {formatDayLabel(group.date)}
+                  </span>
+                  <span className="flex items-center gap-2 text-[11px] font-medium tabular-nums">
+                    {sums.income > 0 ? (
+                      <span className="text-income">+{yen(sums.income)}</span>
+                    ) : null}
+                    {sums.expense > 0 ? (
+                      <span className="text-expense">-{yen(sums.expense)}</span>
+                    ) : null}
+                  </span>
+                </div>
+
+                <ul className="space-y-2">
+                  {group.items.map((t) => {
+                    const mine = t.created_by === user.id;
+                    const tone =
+                      t.type === "income" ? "text-income" : "text-expense";
+                    return (
+                      <li key={t.id}>
+                        <Card
+                          data-testid="transaction-row"
+                          className="group/row overflow-hidden p-0 shadow-soft ring-0 transition-shadow hover:shadow-lifted"
+                        >
+                          <CardContent className="flex items-stretch gap-0 p-0">
+                            {/* タイプ色のレジャーエッジ */}
                             <span
-                              className={
+                              aria-hidden
+                              className={cn(
+                                "w-1.5 shrink-0",
                                 t.type === "income"
-                                  ? "font-heading font-bold text-income tabular-nums"
-                                  : "font-heading font-bold text-expense tabular-nums"
-                              }
-                            >
-                              {t.type === "income" ? "+" : "-"}
-                              {yen(t.amount)}
-                            </span>
-                            {mine ? (
-                              <>
-                                <Link
-                                  href={`/transactions/${t.id}/edit`}
-                                  className={buttonVariants({
-                                    variant: "ghost",
-                                    size: "sm",
-                                  })}
+                                  ? "bg-income"
+                                  : "bg-expense",
+                              )}
+                            />
+                            <div className="flex flex-1 items-center justify-between gap-3 px-4 py-3">
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <CategoryBadge category={t.category} />
+                                  {!mine ? (
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                      他のメンバー
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {t.memo ? (
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {t.memo}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1">
+                                <span
+                                  className={cn(
+                                    "font-heading font-bold tabular-nums",
+                                    tone,
+                                  )}
                                 >
-                                  編集
-                                </Link>
-                                <form action={deleteTransaction}>
-                                  <input type="hidden" name="id" value={t.id} />
-                                  <Button
-                                    type="submit"
-                                    variant="ghost"
-                                    size="sm"
-                                    aria-label="削除"
-                                    className="text-destructive hover:text-destructive"
-                                  >
-                                    削除
-                                  </Button>
-                                </form>
-                              </>
-                            ) : null}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                                  {t.type === "income" ? "+" : "-"}
+                                  {yen(t.amount)}
+                                </span>
+                                {mine ? (
+                                  <div className="flex items-center transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100">
+                                    <Link
+                                      href={`/transactions/${t.id}/edit`}
+                                      aria-label="編集"
+                                      className={cn(
+                                        buttonVariants({
+                                          variant: "ghost",
+                                          size: "icon",
+                                        }),
+                                        "size-8 text-muted-foreground hover:text-foreground",
+                                      )}
+                                    >
+                                      <Pencil className="size-4" aria-hidden />
+                                    </Link>
+                                    <form action={deleteTransaction}>
+                                      <input
+                                        type="hidden"
+                                        name="id"
+                                        value={t.id}
+                                      />
+                                      <Button
+                                        type="submit"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label="削除"
+                                        className="size-8 text-muted-foreground hover:text-destructive"
+                                      >
+                                        <Trash2 className="size-4" aria-hidden />
+                                      </Button>
+                                    </form>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
         </div>
       )}
     </main>
