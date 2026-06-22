@@ -29,6 +29,7 @@ const baseProps = {
   removeAction: noop,
   leaveAction: noopState,
   transferAction: noop,
+  updateNameAction: noop,
 };
 
 describe("MemberList", () => {
@@ -103,5 +104,47 @@ describe("MemberList", () => {
     expect(
       screen.getByRole("button", { name: "委譲する" }),
     ).toBeInTheDocument();
+  });
+
+  it("自分の行にニックネーム編集が出て、編集フォームを開ける", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemberList
+        {...baseProps}
+        members={[
+          { ...ownerSelf, groupDisplayName: "パパ" },
+          memberOther,
+        ]}
+      />,
+    );
+    // 自分の行は1つなので編集ボタンも1つ
+    const editButtons = screen.getAllByRole("button", {
+      name: "ニックネーム編集",
+    });
+    expect(editButtons).toHaveLength(1);
+
+    await user.click(editButtons[0]);
+    const input = screen.getByLabelText("このグループでの表示名");
+    expect(input).toHaveValue("パパ");
+    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
+
+    // キャンセルで閉じる
+    await user.click(screen.getByRole("button", { name: "キャンセル" }));
+    expect(
+      screen.queryByLabelText("このグループでの表示名"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("他メンバーの行にはニックネーム編集を出さない", () => {
+    render(
+      <MemberList
+        {...baseProps}
+        viewerIsOwner={false}
+        members={[{ ...memberOther, isSelf: false }]}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "ニックネーム編集" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -14,6 +14,7 @@ import {
   setActiveHousehold,
   setPeriodStartDay,
   transferOwnership,
+  updateGroupDisplayName,
   updateInvitation,
 } from "@/app/households/actions";
 import { CreateHouseholdForm } from "@/components/features/household/create-household-form";
@@ -74,13 +75,14 @@ export default async function HouseholdsPage() {
   const { data: memberRows } = groupIds.length
     ? await supabase
         .from("household_members")
-        .select("household_id, user_id, role, joined_at")
+        .select("household_id, user_id, role, joined_at, display_name")
         .in("household_id", groupIds)
         .order("joined_at", { ascending: true })
     : { data: [] };
   const allMembers = memberRows ?? [];
 
-  // 表示名は profiles から引く（/members ページと同じ手法）。
+  // 表示名はグループ毎の名前（household_members.display_name）を優先し、
+  // 未設定ならグローバル名（profiles.display_name）にフォールバックする。
   const memberUserIds = [...new Set(allMembers.map((m) => m.user_id))];
   const { data: profileRows } = memberUserIds.length
     ? await supabase
@@ -97,7 +99,9 @@ export default async function HouseholdsPage() {
       .filter((m) => m.household_id === householdId)
       .map((m) => ({
         user_id: m.user_id,
-        display_name: nameById.get(m.user_id) ?? "不明なユーザー",
+        display_name:
+          m.display_name ?? nameById.get(m.user_id) ?? "不明なユーザー",
+        groupDisplayName: m.display_name,
         role: m.role,
         joined_at: m.joined_at,
         isSelf: m.user_id === user.id,
@@ -203,6 +207,7 @@ export default async function HouseholdsPage() {
                         removeAction={removeMember}
                         leaveAction={leaveHousehold}
                         transferAction={transferOwnership}
+                        updateNameAction={updateGroupDisplayName}
                       />
                     </div>
                     {role === "owner" ? (
