@@ -7,12 +7,9 @@ import {
 } from "@/app/(dashboard)/transactions/actions";
 import { TransactionForm } from "@/components/features/transactions/transaction-form";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared/page-header";
+import { Surface } from "@/components/shared/surface";
 import { getActiveHouseholdId, getCurrentUser } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
@@ -54,13 +51,18 @@ export default async function EditTransactionPage({
     .order("name", { ascending: true });
   const categories = (data ?? []) as Category[];
 
+  const reveal =
+    "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
+
   return (
-    <main className="mx-auto w-full max-w-md space-y-4 p-4 sm:py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>収支を編集</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <main className="mx-auto w-full max-w-md space-y-5 p-4 sm:py-8">
+      <PageHeader eyebrow="記録" title="収支を編集" className={reveal} />
+      <Surface
+        variant="raised"
+        className={reveal}
+        style={{ animationDelay: "60ms" }}
+      >
+        <CardContent className="space-y-4 pt-6">
           <TransactionForm
             action={updateTransaction}
             categories={categories}
@@ -76,16 +78,12 @@ export default async function EditTransactionPage({
           />
           <form action={deleteTransaction} className="border-t pt-4">
             <input type="hidden" name="id" value={transaction.id} />
-            <Button
-              type="submit"
-              variant="destructive"
-              className="w-full"
-            >
+            <Button type="submit" variant="destructive" className="w-full">
               この収支を削除
             </Button>
           </form>
         </CardContent>
-      </Card>
+      </Surface>
       <div className="text-center">
         <Link
           href="/transactions"
