@@ -36,21 +36,28 @@ npm run test:e2e:ui   # Playwright UI モード
 app/
   (auth)/               # ログイン・登録（認証不要ルート）
   (dashboard)/          # 認証済みルート（household_id コンテキスト必須）
-    page.tsx            # ダッシュボード
-    transactions/       # 収支一覧・追加・編集
+    dashboard/          # ダッシュボード（/dashboard）
+    transactions/       # 収支一覧・追加・編集・CSV出力・インポート
     categories/         # カテゴリ管理
     analytics/          # 月次グラフ・カテゴリ別内訳（メンバー別切り替えあり）
     members/            # メンバー別アクティビティ
-    household/          # グループ設定・メンバー管理
-  households/           # 家計簿グループ選択画面（ログイン直後）
+    help/               # ヘルプ（各画面の操作ガイド）
+    settings/           # アカウント設定（表示名・パスワード変更・退会）
+  households/           # 家計簿グループ選択・管理（作成/招待/メンバー/削除）
+  demo/                 # デモモード（ログイン不要・インメモリ）
+  invite/[token]/       # 招待リンク参加画面
+  page.tsx              # ランディングページ（公開トップ）
 components/
   ui/                   # shadcn/ui（直接編集しない）
-  features/             # transactions/ categories/ charts/ household/
+  shared/               # 共通プリミティブ（Surface, PageHeader など）
+  features/             # auth/ transactions/ categories/ charts/ dashboard/
+                        #   household/ members/ profile/ landing/ layout/ help/ demo/
 lib/
-  supabase/             # client.ts（ブラウザ用）/ server.ts（Server Component用）
+  supabase/             # client.ts（ブラウザ用）/ server.ts（Server Component用）/ middleware.ts（updateSession）
   household.ts          # active_household_id 取得ヘルパー
   utils.ts
 types/
+  database.ts           # Supabase スキーマ対応型
   index.ts              # Transaction, Category, Household, Member など
 e2e/                    # Playwright E2E テスト
 docs/
@@ -157,7 +164,7 @@ docs: 収支記録の機能仕様書を作成
 
 - **household スコープ（重要）**: `transactions`・`categories` の取得・更新は必ず `household_id` でスコープする。`user_id` 単体でのデータ取得は禁止。現在の `household_id` は `lib/household.ts` 経由で取得する
 - Supabase クライアント: ブラウザ → `lib/supabase/client.ts`、Server Component → `lib/supabase/server.ts`
-- 認証チェックは `middleware.ts` で一括管理し、`(auth)` グループは除外する
+- 認証チェックは `proxy.ts`（ルート直下。セッション更新は `lib/supabase/middleware.ts#updateSession`）で一括管理し、`(auth)` グループは除外する
 - Server Actions 優先。`/api` Route Handler は外部連携が必要な場合のみ使う
 - shadcn/ui は `npx shadcn@latest add` で追加し、`components/ui/` を直接編集しない
 - DB スキーマ変更は `supabase/migrations/` でマイグレーション管理する
@@ -166,10 +173,12 @@ docs: 収支記録の機能仕様書を作成
 
 主要テーブル:
 
-- `households` — id, name, created_by, created_at
-- `household_members` — id, household_id, user_id, role(`owner`/`member`), joined_at
+- `households` — id, name, created_by, created_at, period_start_day(1〜28・締め日)
+- `household_members` — id, household_id, user_id, role(`owner`/`member`), joined_at, display_name(グループ毎ニックネーム・NULL でグローバル名にフォールバック)
 - `transactions` — id, household_id, created_by, amount, type(`income`/`expense`), category_id, date, memo, created_at
 - `categories` — id, household_id, name, color, icon, type(`income`/`expense`/`both`), is_default
+- `household_invitations` — id, household_id, token, max_uses(1〜50), uses_count, expires_at（オープンリンク招待）
+- `profiles` — id(= auth.uid()), display_name（グローバル表示名）
 
 RLS ポリシー:
 
