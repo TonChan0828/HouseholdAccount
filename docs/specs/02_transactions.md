@@ -29,7 +29,7 @@
 - `/transactions`: 月（期間）ナビ「◀ 2026/06/01〜06/30 ▶」＋ その期間の収支を `date desc, created_at desc` で一覧。
   各行に 日付・カテゴリ（色付き）・メモ・金額（収入=緑/支出=赤）・登録者（自分/他メンバー）。
   期間の 収入計・支出計・収支差 を表示。各行に編集/削除（本人の行のみ）。
-- `/transactions/new`: 追加フォーム
+- `/transactions/new`: 追加フォーム。`?date=YYYY-MM-DD` を受け取ると日付の初期値に採用する（不正値・未指定なら今日）。ダッシュボードで当期以外を表示中に「記録する」を押すと、その期間の開始日が引き継がれる
 - `/transactions/[id]/edit`: 編集フォーム（本人のみ。他人の行はアクセス時に一覧へ戻す）
 - 共通フォーム: `components/features/transactions/transaction-form.tsx`
 - 期間ナビ: `components/features/transactions/month-nav.tsx`（クエリ `?ref=YYYY-MM-DD` で対象期間を保持）

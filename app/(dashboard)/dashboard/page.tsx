@@ -7,6 +7,7 @@ import { CategoryMemberMatrix } from "@/components/features/dashboard/category-m
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
+import { MonthNav } from "@/components/features/transactions/month-nav";
 import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Amount } from "@/components/shared/amount";
@@ -47,12 +48,19 @@ function scopeFromParam(scope: string | undefined): DashboardScope {
   return scope === "mine" ? "mine" : "all";
 }
 
+function refFromParam(ref: string | undefined): Date {
+  if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {
+    return new Date(`${ref}T00:00:00Z`);
+  }
+  return new Date();
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string }>;
+  searchParams: Promise<{ scope?: string; ref?: string }>;
 }) {
-  const { scope: scopeParam } = await searchParams;
+  const { scope: scopeParam, ref } = await searchParams;
   const scope = scopeFromParam(scopeParam);
 
   const supabase = await createClient();
@@ -68,7 +76,7 @@ export default async function DashboardPage({
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
-  const range = getPeriodRange(new Date(), startDay);
+  const range = getPeriodRange(refFromParam(ref), startDay);
   const prevRange = shiftPeriod(range, -1, startDay);
 
   // マトリクスが全メンバー分を必要とするため scope によらず無条件で取得し、
@@ -129,6 +137,25 @@ export default async function DashboardPage({
   const recentGroups = groupByDate(scopedTransactions.slice(0, RECENT_LIMIT));
   const matrix = buildCategoryMemberMatrix(transactions, members);
 
+  // 月送りリンク。scope を引き継ぎつつ ref で期間を移動する。
+  const buildHref = (refDate: Date) =>
+    `/dashboard?ref=${toISODate(refDate)}${scope === "mine" ? "&scope=mine" : ""}`;
+  const prevHref = buildHref(shiftPeriod(range, -1, startDay).start);
+  const nextHref = buildHref(shiftPeriod(range, 1, startDay).start);
+
+  // 「記録する」は表示中の期間を引き継ぐ。当期を見ているときは日付を渡さず、
+  // フォーム側の既定（今日）に委ねて従来どおりの挙動にする。
+  const currentRange = getPeriodRange(new Date(), startDay);
+  const viewingCurrent =
+    toISODate(range.start) === toISODate(currentRange.start);
+  const newTransactionHref = viewingCurrent
+    ? "/transactions/new"
+    : `/transactions/new?date=${toISODate(range.start)}`;
+  // 「すべて見る」も表示中の期間を引き継ぐ（/transactions は ?ref= で期間を保持）。
+  const allTransactionsHref = viewingCurrent
+    ? "/transactions"
+    : `/transactions?ref=${toISODate(range.start)}`;
+
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
@@ -137,13 +164,17 @@ export default async function DashboardPage({
       <PageHeader
         eyebrow="ホーム"
         title="ダッシュボード"
-        meta={formatPeriodLabel(range)}
         className={reveal}
         actions={
           <>
-            <ScopeToggle scope={scope} />
+            <MonthNav
+              label={formatPeriodLabel(range)}
+              prevHref={prevHref}
+              nextHref={nextHref}
+            />
+            <ScopeToggle scope={scope} currentRef={ref} />
             <Link
-              href="/transactions/new"
+              href={newTransactionHref}
               className={buttonVariants({ size: "sm" })}
             >
               <Plus className="size-4" aria-hidden />
@@ -179,7 +210,7 @@ export default async function DashboardPage({
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-base font-bold">最近の取引</h2>
           <Link
-            href="/transactions"
+            href={allTransactionsHref}
             className={buttonVariants({ variant: "link", size: "sm" })}
           >
             すべて見る
@@ -199,7 +230,7 @@ export default async function DashboardPage({
                 最初の一件を記録してみましょう。
               </p>
               <Link
-                href="/transactions/new"
+                href={newTransactionHref}
                 className={buttonVariants({ size: "sm" })}
               >
                 収支を記録
