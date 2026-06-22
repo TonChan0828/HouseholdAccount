@@ -9,7 +9,10 @@ import type { MemberRole } from "@/types";
 /** メンバー一覧の表示・操作に必要な1メンバー分のデータ。 */
 export type MemberListItem = {
   user_id: string;
+  /** 表示用に解決済みの名前（グループ毎の名前 → グローバル名 の順でフォールバック済み）。 */
   display_name: string;
+  /** このグループでのニックネームの生値（編集フォームのプレフィル用。未設定なら null）。 */
+  groupDisplayName?: string | null;
   role: MemberRole;
   joined_at: string;
   /** 閲覧者自身の行か。 */
@@ -30,6 +33,8 @@ type Props = {
   removeAction: SimpleAction;
   leaveAction: LeaveAction;
   transferAction: SimpleAction;
+  /** 自分のグループ毎の表示名（ニックネーム）を更新する。 */
+  updateNameAction: SimpleAction;
 };
 
 function formatJoinedAt(iso: string): string {
@@ -44,6 +49,7 @@ export function MemberList({
   removeAction,
   leaveAction,
   transferAction,
+  updateNameAction,
 }: Props) {
   return (
     <ul className="space-y-2" data-testid="member-list">
@@ -69,6 +75,15 @@ export function MemberList({
           </span>
 
           <div className="ml-auto flex items-center gap-1">
+            {/* 自分の行: このグループでのニックネームを編集 */}
+            {m.isSelf ? (
+              <NicknameEditor
+                householdId={householdId}
+                currentName={m.groupDisplayName ?? ""}
+                updateNameAction={updateNameAction}
+              />
+            ) : null}
+
             {/* owner が他メンバーを委譲・除外 */}
             {viewerIsOwner && !m.isSelf ? (
               <>
@@ -106,6 +121,65 @@ export function MemberList({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * 自分のグループ毎の表示名（ニックネーム）を編集する。
+ * 「ニックネーム編集」→インライン入力フォームの2段階。空で保存するとニックネーム解除。
+ */
+function NicknameEditor({
+  householdId,
+  currentName,
+  updateNameAction,
+}: {
+  householdId: string;
+  currentName: string;
+  updateNameAction: SimpleAction;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (!editing) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => setEditing(true)}
+      >
+        ニックネーム編集
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      action={updateNameAction}
+      className="flex items-center gap-1"
+      onSubmit={() => setEditing(false)}
+    >
+      <input type="hidden" name="household_id" value={householdId} />
+      <input
+        type="text"
+        name="display_name"
+        defaultValue={currentName}
+        maxLength={20}
+        placeholder="このグループでの表示名"
+        aria-label="このグループでの表示名"
+        className="h-8 w-44 rounded-lg border border-border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      />
+      <Button type="submit" variant="outline" size="sm">
+        保存
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => setEditing(false)}
+      >
+        キャンセル
+      </Button>
+    </form>
   );
 }
 

@@ -27,14 +27,28 @@ export default async function DashboardLayout({
     redirect("/households");
   }
 
-  const [{ data: profile }, households] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .maybeSingle(),
-    getUserHouseholds(),
-  ]);
+  const [{ data: profile }, { data: membership }, households] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("household_members")
+        .select("display_name")
+        .eq("household_id", householdId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      getUserHouseholds(),
+    ]);
+
+  // 利用中グループのニックネームを優先し、未設定ならグローバル名にフォールバックする。
+  const displayName =
+    membership?.display_name ??
+    profile?.display_name ??
+    user.email ??
+    "ユーザー";
 
   return (
     <div className="flex flex-1 flex-col">
@@ -42,7 +56,7 @@ export default async function DashboardLayout({
         households={households}
         activeHouseholdId={householdId}
         switchAction={setActiveHousehold}
-        displayName={profile?.display_name ?? user.email ?? "ユーザー"}
+        displayName={displayName}
         signOutAction={signOut}
       />
       <div className="flex flex-1 flex-col pb-24 lg:pb-0">{children}</div>

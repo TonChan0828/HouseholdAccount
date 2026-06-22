@@ -15,6 +15,7 @@ import {
   invitationLimitSchema,
   periodStartDaySchema,
 } from "@/lib/validations/household";
+import { groupDisplayNameSchema } from "@/lib/validations/profile";
 import { cookies } from "next/headers";
 
 /** 招待リンクの有効期限（発行から7日）。 */
@@ -232,6 +233,37 @@ export async function removeMember(formData: FormData): Promise<void> {
     .eq("user_id", targetUserId);
 
   revalidatePath("/households");
+}
+
+/**
+ * 自分のグループ毎の表示名（ニックネーム）を更新する。
+ * 空文字を保存するとニックネームを解除し、グローバル表示名にフォールバックする。
+ * RLS の members_update_owner は owner のみ UPDATE 可のため、自分の行の display_name
+ * だけ更新する SECURITY DEFINER RPC set_member_display_name を使う（呼び出し元判定は関数内）。
+ */
+export async function updateGroupDisplayName(
+  formData: FormData,
+): Promise<void> {
+  const householdId = String(formData.get("household_id") ?? "");
+  if (!householdId) {
+    return;
+  }
+
+  const parsed = groupDisplayNameSchema.safeParse({
+    displayName: formData.get("display_name"),
+  });
+  if (!parsed.success) {
+    return;
+  }
+
+  const supabase = await createClient();
+  await supabase.rpc("set_member_display_name", {
+    _household_id: householdId,
+    _display_name: parsed.data.displayName,
+  });
+
+  // ヘッダー・メンバー一覧・メンバー別表示など表示名を出す全画面を再検証する。
+  revalidatePath("/", "layout");
 }
 
 /** メンバーが自分でグループを脱退する。owner は委譲してからでないと脱退できない。 */

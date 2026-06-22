@@ -61,16 +61,26 @@ export async function GET(request: NextRequest) {
   const transactions = data ?? [];
 
   // created_by → display_name のマップを作る（dashboard と同じ2段 join パターン）。
+  // グループ毎の名前（household_members.display_name）優先・未設定はグローバル名へ。
   const { data: memberRows } = await supabase
     .from("household_members")
-    .select("user_id")
+    .select("user_id, display_name")
     .eq("household_id", householdId);
-  const userIds = (memberRows ?? []).map((m) => m.user_id);
+  const members = memberRows ?? [];
+  const userIds = members.map((m) => m.user_id);
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, display_name")
     .in("id", userIds);
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
+  const profileNameById = new Map(
+    (profiles ?? []).map((p) => [p.id, p.display_name]),
+  );
+  const nameById = new Map(
+    members.map((m) => [
+      m.user_id,
+      m.display_name ?? profileNameById.get(m.user_id) ?? null,
+    ]),
+  );
 
   const rows: ExportRow[] = transactions.map((t) => ({
     date: t.date,

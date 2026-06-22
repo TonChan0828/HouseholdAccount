@@ -104,6 +104,7 @@ export type Database = {
       }
       household_members: {
         Row: {
+          display_name: string | null
           household_id: string
           id: string
           joined_at: string
@@ -111,6 +112,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          display_name?: string | null
           household_id: string
           id?: string
           joined_at?: string
@@ -118,6 +120,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          display_name?: string | null
           household_id?: string
           id?: string
           joined_at?: string
@@ -240,6 +243,10 @@ export type Database = {
       }
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
       is_household_owner: { Args: { _household_id: string }; Returns: boolean }
+      set_member_display_name: {
+        Args: { _display_name: string; _household_id: string }
+        Returns: undefined
+      }
       shares_household_with: { Args: { _user_id: string }; Returns: boolean }
       transfer_ownership: {
         Args: { _household_id: string; _new_owner: string }
