@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function FinalCta() {
   return (
     <section className="mx-auto w-full max-w-5xl px-4 py-16">
-      <div className="rounded-3xl bg-primary px-6 py-14 text-center shadow-lifted">
+      <div className="rounded-3xl bg-primary px-6 py-14 text-center shadow-[var(--shadow-pillow)]">
         <h2 className="font-heading text-3xl font-bold text-primary-foreground">
           今日から家計を見える化
         </h2>

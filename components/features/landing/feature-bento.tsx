@@ -61,7 +61,7 @@ export function FeatureBento() {
         {FEATURES.map(({ title, description, icon: Icon }) => (
           <div
             key={title}
-            className="rounded-2xl border border-border/70 bg-card p-5 shadow-soft"
+            className="rounded-2xl border border-border/70 bg-card p-5 shadow-[var(--shadow-pillow)] transition-shadow hover:shadow-lifted"
           >
             <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
               <Icon className="size-5" aria-hidden />
