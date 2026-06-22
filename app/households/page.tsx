@@ -26,12 +26,13 @@ import {
 import { ThemeToggleButton } from "@/components/features/layout/theme-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared/page-header";
+import { Surface } from "@/components/shared/surface";
 import { getActiveHouseholdId } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { HouseholdInvitation, MemberRole } from "@/types";
@@ -131,19 +132,18 @@ export default async function HouseholdsPage() {
         </div>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold">家計簿グループ</h1>
-        <p className="text-sm text-muted-foreground">
-          ログイン中: {user?.email}
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="グループ"
+        title="家計簿グループ"
+        meta={`ログイン中: ${user?.email ?? ""}`}
+      />
 
       {groups.length === 0 ? (
-        <Card>
+        <Surface variant="raised">
           <CardContent className="py-6 text-sm text-muted-foreground">
             まだ参加しているグループがありません。下のフォームから新しいグループを作成しましょう。
           </CardContent>
-        </Card>
+        </Surface>
       ) : (
         <ul className="space-y-4">
           {groups.map(({ role, household }) => {
@@ -154,12 +154,11 @@ export default async function HouseholdsPage() {
             );
             return (
               <li key={group.id}>
-                <Card
+                <Surface
+                  variant="raised"
                   data-testid="household-card"
                   className={
-                    isActive
-                      ? "shadow-soft ring-0 outline-2 outline-primary"
-                      : "shadow-soft ring-0"
+                    isActive ? "outline-2 outline-offset-2 outline-primary" : ""
                   }
                 >
                   <CardHeader>
@@ -270,14 +269,14 @@ export default async function HouseholdsPage() {
                       </>
                     ) : null}
                   </CardContent>
-                </Card>
+                </Surface>
               </li>
             );
           })}
         </ul>
       )}
 
-      <Card>
+      <Surface variant="raised">
         <CardHeader>
           <CardTitle>新しいグループを作成</CardTitle>
           <CardDescription>
@@ -287,7 +286,7 @@ export default async function HouseholdsPage() {
         <CardContent>
           <CreateHouseholdForm action={createHousehold} />
         </CardContent>
-      </Card>
+      </Surface>
 
       <div className="text-center">
         <Link href="/dashboard" className={buttonVariants({ variant: "link" })}>
