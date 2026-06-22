@@ -55,27 +55,37 @@ export function Hero() {
         </p>
       </div>
 
-      {/* アプリプレビュー（CSS のみのモック） */}
-      <div className="rounded-3xl border border-border/70 bg-card p-5 shadow-lifted">
-        <p className="text-xs text-muted-foreground">今月の収支</p>
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-income-soft p-3">
-            <p className="text-xs text-income">収入</p>
-            <p className="font-heading text-lg font-bold text-income">¥320,000</p>
+      {/* アプリプレビュー（CSS のみのモック）。背後にやわらかい光を敷く。 */}
+      <div className="relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-6 -z-10 rounded-[2.5rem] bg-accent-warm/20 blur-3xl"
+        />
+        <div className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-[var(--shadow-pillow)] ring-1 ring-foreground/5">
+          <p className="text-xs text-muted-foreground">今月の収支</p>
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-income-soft p-3">
+              <p className="text-xs text-income">収入</p>
+              <p className="font-heading text-lg font-bold text-income">
+                ¥320,000
+              </p>
+            </div>
+            <div className="rounded-xl bg-expense-soft p-3">
+              <p className="text-xs text-expense">支出</p>
+              <p className="font-heading text-lg font-bold text-expense">
+                ¥198,400
+              </p>
+            </div>
           </div>
-          <div className="rounded-xl bg-expense-soft p-3">
-            <p className="text-xs text-expense">支出</p>
-            <p className="font-heading text-lg font-bold text-expense">¥198,400</p>
+          <div className="mt-4 flex h-24 items-end gap-2" aria-hidden>
+            {[50, 80, 60, 95, 65, 82].map((h, i) => (
+              <div
+                key={i}
+                className="flex-1 rounded-t bg-primary/80"
+                style={{ height: `${h}%` }}
+              />
+            ))}
           </div>
-        </div>
-        <div className="mt-4 flex h-24 items-end gap-2" aria-hidden>
-          {[50, 80, 60, 95, 65, 82].map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-primary/80"
-              style={{ height: `${h}%` }}
-            />
-          ))}
         </div>
       </div>
     </section>
