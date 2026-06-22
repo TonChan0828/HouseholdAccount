@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { MemberActivity, type MemberTxRow } from "@/components/features/members/member-activity";
 import { MonthNav } from "@/components/features/transactions/month-nav";
+import { PageHeader } from "@/components/shared/page-header";
 import {
   getActiveHouseholdId,
   getCurrentUser,
@@ -81,17 +82,27 @@ export default async function MembersPage({
   const prevHref = `/members?ref=${toISODate(shiftPeriod(range, -1, startDay).start)}`;
   const nextHref = `/members?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}`;
 
-  return (
-    <main className="mx-auto w-full max-w-4xl animate-in space-y-4 p-4 duration-500 fade-in slide-in-from-bottom-2 sm:py-8">
-      <h1 className="text-2xl font-bold">メンバー別アクティビティ</h1>
+  const reveal =
+    "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
-      <MonthNav
-        label={formatPeriodLabel(range)}
-        prevHref={prevHref}
-        nextHref={nextHref}
+  return (
+    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+      <PageHeader
+        eyebrow="メンバー"
+        title="メンバー別アクティビティ"
+        className={reveal}
+        actions={
+          <MonthNav
+            label={formatPeriodLabel(range)}
+            prevHref={prevHref}
+            nextHref={nextHref}
+          />
+        }
       />
 
-      <MemberActivity summaries={summaries} txs={txs} />
+      <div className={reveal} style={{ animationDelay: "60ms" }}>
+        <MemberActivity summaries={summaries} txs={txs} />
+      </div>
     </main>
   );
 }
