@@ -38,4 +38,17 @@ describe("ScopeToggle", () => {
       "true",
     );
   });
+
+  it("currentRef 指定時は href に scope と ref の両方を含む", () => {
+    render(<ScopeToggle scope="all" currentRef="2026-05-01" />);
+
+    expect(screen.getByRole("link", { name: "全体" })).toHaveAttribute(
+      "href",
+      "/dashboard?scope=all&ref=2026-05-01",
+    );
+    expect(screen.getByRole("link", { name: "自分" })).toHaveAttribute(
+      "href",
+      "/dashboard?scope=mine&ref=2026-05-01",
+    );
+  });
 });

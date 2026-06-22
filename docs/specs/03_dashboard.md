@@ -5,7 +5,7 @@
 ログイン後の起点画面（`/`）。アクティブな household の「当期間」の収支を一目で把握する。
 月次サマリー（収入計・支出計・収支差）、当期収支グラフ、メンバー別カテゴリマトリクス、最近の取引を表示し、
 サマリー・当期収支グラフ・最近の取引は「全体/自分」で絞り込める。
-期間の移動や全件閲覧・追加は収支記録（`/transactions`）に委譲する。
+期間ナビ（前後の月送り）で過去・未来の期間も閲覧できる。全件閲覧・追加は収支記録（`/transactions`）に委譲する。
 
 ## 対象ユーザー・前提条件
 
@@ -16,17 +16,19 @@
 ## 月の区切り（期間）
 
 - 収支記録と同じ締め日モデルを流用する（`households.period_start_day`、`lib/period.ts`）
-- ダッシュボードは**当期間固定**（`getPeriodRange(今日, period_start_day)`）。期間ナビは置かない
+- 表示期間は `?ref=YYYY-MM-DD`（その期間に属する基準日）で決まる。未指定・不正値なら今日にフォールバック（`getPeriodRange(refFromParam(ref), period_start_day)`）
+- 期間ナビ（`MonthNav`）の前後矢印で1期ずつ移動する（`shiftPeriod`）。「今月へ戻る」ボタンは置かず、分析・収支一覧・メンバーと同じ前後矢印のみで統一
+- 月送りリンクは現在の `scope` を引き継ぐ。逆にスコープトグルは表示中の `ref` を引き継ぎ、月とスコープを相互に保持する
+- 「記録する」は表示中の期間を引き継ぐ。当期以外を見ているときは `/transactions/new?date=<期間開始日>` で日付を初期化し、当期表示中は `date` を付けずフォーム既定（今日）に委ねる
+- 最近の取引の「すべて見る」も表示中の期間を引き継ぐ。当期以外なら `/transactions?ref=<期間開始日>`、当期表示中は `?ref=` を付けない
 
 ## 画面・UI
 
 ### レイアウト
 
 ```text
-ダッシュボード        [収支を記録] [グループ選択]
-2026/06/01 〜 06/30
-
-[ 全体 | 自分 ]            ← スコープトグル
+ダッシュボード   [‹ 2026/06/01 〜 06/30 ›] [ 全体 | 自分 ] [収支を記録]
+                  ↑ 期間ナビ（前後矢印）   ↑ スコープトグル
 
 ┌─収入───┐ ┌─支出───┐ ┌─収支───┐
 │¥320,000│ │¥185,400│ │+¥134,600│
@@ -57,8 +59,8 @@
 
 ### 表示内容
 
-- 期間ラベル（`formatPeriodLabel`）
-- スコープトグル `全体 | 自分`（`?scope=all|mine`、既定 `all`）。現在のスコープを強調
+- 期間ナビ `MonthNav`（前後矢印＋中央に期間ラベル `formatPeriodLabel`）。`?ref=` で期間を移動
+- スコープトグル `全体 | 自分`（`?scope=all|mine`、既定 `all`）。現在のスコープを強調し、表示中の `ref` を引き継ぐ
 - サマリーカード: 収入計（緑）・支出計（赤）・収支差
 - 当期収支グラフ: 当期の収入・支出を2本の棒で並べた棒グラフ（収入=緑 `--income` / 支出=赤 `--expense`）。Y軸は円表記（1万以上は「○万」）、ツールチップは `¥` 表記。**scope トグルに連動**し、サマリーカードと同じ絞り込み後の値を表示する
 - メンバー別カテゴリマトリクス: 行=カテゴリ / 列=メンバー＋合計列。【支出】→【収入】の2セクション構成で、各セクションに合計行（メンバーごと）を持つ
@@ -73,7 +75,7 @@
 ### インタラクション・バリデーション
 
 - スコープ `mine` のとき `created_by = auth.uid()` で絞る。サマリー・当期収支グラフ・最近の取引に適用（マトリクスには適用しない）。当期収支グラフはサマリーと同じ `income`/`expense` を共有する。絞り込みは DB クエリではなく JS 側で行う（マトリクスが全メンバー分を必要とするため、取引は無条件で1回取得して使い分ける）
-- トグルはリンク（`/` ?scope=...）。Server Component が `searchParams.scope` を読む
+- トグル・期間ナビはリンク（`?scope=...&ref=...`）。Server Component が `searchParams.scope` と `searchParams.ref` を読む
 - 入力フォームは無し（閲覧専用画面）
 
 ## データモデル
@@ -115,7 +117,7 @@ buildBalanceBars(income: number, expense: number): BalanceBar[]
 // => [{ label: "収入", amount: income, key: "income" }, { label: "支出", amount: expense, key: "expense" }]
 
 // lib/period.ts（既存・流用）
-getPeriodRange(refDate, startDay) / formatPeriodLabel(range) / toISODate(d)
+getPeriodRange(refDate, startDay) / shiftPeriod(range, delta, startDay) / formatPeriodLabel(range) / toISODate(d)
 ```
 
 ## Supabase
@@ -151,7 +153,8 @@ Server Action は不要（閲覧専用）。
 ## コンポーネント
 
 - `components/features/dashboard/summary-cards.tsx` — 収入/支出/収支の表示（presentational）
-- `components/features/dashboard/scope-toggle.tsx` — 全体/自分のリンク（presentational、現在値を強調）
+- `components/features/dashboard/scope-toggle.tsx` — 全体/自分のリンク（presentational、現在値を強調。`currentRef` で表示中の期間を引き継ぐ）
+- `components/features/transactions/month-nav.tsx` — 期間の前後送りピル（presentational、`prevHref`/`nextHref` を受ける。分析・収支一覧と共用）
 - `components/features/dashboard/category-member-matrix.tsx` — メンバー別カテゴリマトリクス（presentational、`lib/category-matrix.ts` の集計結果を表示）
 - `components/features/charts/balance-bar-chart.tsx` — 当期収支の棒グラフ（presentational・client、`income`/`expense` を props で受け取り `buildBalanceBars` で整形。Recharts）
 - 最近の取引はページ内でレンダリング（`/transactions` の行表示と整合）
@@ -161,8 +164,9 @@ Server Action は不要（閲覧専用）。
 
 - Unit: `lib/category-matrix.ts#buildCategoryMemberMatrix`（セクション振り分け・合計行/列・列順維持・未分類集約・脱退者除外・0件時）
 - Unit: `lib/analytics.ts#buildBalanceBars`（収入→支出の順・ラベル・key・金額、0円時も2本返す）
-- Component: `SummaryCards`（収入/支出/収支の金額表示）、`ScopeToggle`（全体/自分のリンク・現在値の強調）、`CategoryMemberMatrix`（セクション見出し・カテゴリ行・合計・ゼロセル `-`・空時非描画）
+- Component: `SummaryCards`（収入/支出/収支の金額表示）、`ScopeToggle`（全体/自分のリンク・現在値の強調・`currentRef` 指定時に ref を引き継ぐ）、`CategoryMemberMatrix`（セクション見出し・カテゴリ行・合計・ゼロセル `-`・空時非描画）
 - E2E: グループ作成 → 収支追加 → ダッシュボードでサマリーに金額反映 → 全体/自分トグルの遷移 → マトリクスにカテゴリ行と金額が表示・scope=mine でも全メンバー表示のまま
+- E2E: 期間ナビで前後の月へ移動（`?ref=` 付与・取引なし期間はプレースホルダ）→ 月を保ったままスコープ切替（ref とscope の相互保持）
 
 ## 未解決の課題
 

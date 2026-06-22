@@ -11,7 +11,15 @@ import { getActiveHouseholdId } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
 
-export default async function NewTransactionPage() {
+export default async function NewTransactionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date } = await searchParams;
+  // ダッシュボード等から表示中の期間を引き継ぐ。不正値は無視してフォーム側の既定（今日）に委ねる。
+  const defaultDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
+
   const supabase = await createClient();
   const householdId = await getActiveHouseholdId();
   if (!householdId) {
@@ -42,6 +50,7 @@ export default async function NewTransactionPage() {
             action={createTransaction}
             categories={categories}
             submitLabel="登録する"
+            defaultValues={defaultDate ? { date: defaultDate } : undefined}
           />
         </CardContent>
       </Surface>
