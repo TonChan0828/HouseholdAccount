@@ -5,7 +5,6 @@ import { useActionState } from "react";
 import type { AuthState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardFooter,
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Surface } from "@/components/shared/surface";
 import { PASSWORD_POLICY_HINT } from "@/lib/validations/auth";
 
 type Action = (state: AuthState, formData: FormData) => Promise<AuthState>;
@@ -29,7 +29,7 @@ export function ResetPasswordForm({ action }: Props) {
   );
 
   return (
-    <Card className="w-full shadow-lifted ring-0">
+    <Surface variant="raised" className="w-full">
       <CardHeader>
         <CardTitle>新しいパスワードの設定</CardTitle>
         <CardDescription>新しいパスワードを入力してください</CardDescription>
@@ -74,6 +74,6 @@ export function ResetPasswordForm({ action }: Props) {
           </Button>
         </CardFooter>
       </form>
-    </Card>
+    </Surface>
   );
 }

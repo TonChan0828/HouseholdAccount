@@ -6,7 +6,6 @@ import { useActionState } from "react";
 import type { PasswordResetRequestState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardFooter,
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Surface } from "@/components/shared/surface";
 
 type Action = (
   state: PasswordResetRequestState,
@@ -32,7 +32,7 @@ export function ForgotPasswordForm({ action }: Props) {
   >(action, undefined);
 
   return (
-    <Card className="w-full shadow-lifted ring-0">
+    <Surface variant="raised" className="w-full">
       <CardHeader>
         <CardTitle>パスワードの再設定</CardTitle>
         <CardDescription>
@@ -77,6 +77,6 @@ export function ForgotPasswordForm({ action }: Props) {
           </p>
         </CardFooter>
       </form>
-    </Card>
+    </Surface>
   );
 }
