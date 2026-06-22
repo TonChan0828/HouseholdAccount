@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { updateCategory } from "@/app/(dashboard)/categories/actions";
 import { CategoryForm } from "@/components/features/categories/category-form";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/shared/page-header";
+import { Surface } from "@/components/shared/surface";
 import { getActiveHouseholdId } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
@@ -36,13 +38,18 @@ export default async function EditCategoryPage({
     redirect("/categories");
   }
 
+  const reveal =
+    "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
+
   return (
-    <main className="mx-auto w-full max-w-md space-y-4 p-4 sm:py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>カテゴリを編集</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <main className="mx-auto w-full max-w-md space-y-5 p-4 sm:py-8">
+      <PageHeader eyebrow="設定" title="カテゴリを編集" className={reveal} />
+      <Surface
+        variant="raised"
+        className={reveal}
+        style={{ animationDelay: "60ms" }}
+      >
+        <CardContent className="pt-6">
           <CategoryForm
             action={updateCategory}
             submitLabel="更新する"
@@ -54,7 +61,7 @@ export default async function EditCategoryPage({
             }}
           />
         </CardContent>
-      </Card>
+      </Surface>
       <div className="text-center">
         <Link href="/categories" className={buttonVariants({ variant: "link" })}>
           カテゴリ一覧へ戻る
