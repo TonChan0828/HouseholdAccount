@@ -33,7 +33,7 @@ export function Steps() {
         {STEPS.map(({ no, title, description }) => (
           <li
             key={no}
-            className="rounded-2xl border border-border/70 bg-card p-6 shadow-soft"
+            className="rounded-2xl border border-border/70 bg-card p-6 shadow-[var(--shadow-pillow)]"
           >
             <span className="flex size-10 items-center justify-center rounded-full bg-primary font-heading text-lg font-bold text-primary-foreground">
               {no}
