@@ -26,7 +26,7 @@
   アクティブなグループには `Check` を表示し再選択は無効。フッターに `/households`（グループ管理・追加）
   へのリンクを置く。`components/features/layout/household-switcher.tsx`。
 - `/invite/[token]`: 招待リンクの参加画面。グループ名を表示し「参加する」で加入。
-  期限切れ・上限到達・無効トークンはエラー表示。未ログインは middleware で `/login` へ。
+  期限切れ・上限到達・無効トークンはエラー表示。未ログインは `proxy.ts` で `/login` へ。
 
 ### インタラクション・バリデーション
 

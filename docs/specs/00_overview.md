@@ -22,13 +22,15 @@
                   │ グループ選択
                   ▼
           (dashboard) 認証必須ルート群
-            /                … ダッシュボード（月次サマリー＋最近の取引）
-            /transactions    … 収支一覧・追加・編集
+            /dashboard       … ダッシュボード（月次サマリー＋最近の取引）
+            /transactions    … 収支一覧・追加・編集・CSV出力・インポート
             /categories      … カテゴリ管理
             /analytics       … 月次グラフ・カテゴリ別内訳
             /members         … メンバー別アクティビティ
-            /household       … グループ設定・メンバー管理
+            /settings        … アカウント設定（表示名・パスワード変更・退会）
             /help            … ヘルプ（各画面の操作ガイド）
+          /households        … グループ選択・管理（作成/招待/メンバー/削除）
+          /                  … ランディングページ（公開トップ）
 ```
 
 ### ルートグループ
@@ -47,8 +49,8 @@
 詳細は各機能仕様書を参照。主要エンティティ:
 
 - `Household` / `HouseholdMember` … 06_household.md
-- `Transaction` … 02_transactions.md（予定）
-- `Category` … 04_categories.md（予定）
+- `Transaction` … 02_transactions.md
+- `Category` … 04_categories.md
 
 型は `types/database.ts`（スキーマ対応）と `types/index.ts`（ドメイン型）に定義。
 
@@ -70,6 +72,5 @@
 
 ## 未解決の課題
 
-- グループ作成・招待・切り替えの UI（次フェーズ）
-- 収支・カテゴリ・分析・メンバー別アクティビティの各機能（次フェーズ）
 - メール確認フロー（Supabase の email confirmation 設定に依存）
+- 本番デプロイ（Vercel）
