@@ -172,10 +172,17 @@ export default async function DashboardPage({
               prevHref={prevHref}
               nextHref={nextHref}
             />
-            <ScopeToggle scope={scope} currentRef={ref} />
+            <ScopeToggle
+              scope={scope}
+              currentRef={ref}
+              className="w-full justify-center sm:w-auto"
+            />
             <Link
               href={newTransactionHref}
-              className={buttonVariants({ size: "sm" })}
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "hidden sm:inline-flex",
+              )}
             >
               <Plus className="size-4" aria-hidden />
               記録する

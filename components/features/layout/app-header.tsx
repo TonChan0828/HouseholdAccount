@@ -94,13 +94,15 @@ export function AppHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex items-center gap-2 rounded-full border border-border/70 bg-card py-1 pl-1 pr-3 text-sm shadow-[var(--shadow-pillow)] transition-colors hover:bg-accent/60"
+              className="flex items-center gap-2 rounded-full border border-border/70 bg-card py-1 pl-1 pr-1 text-sm shadow-[var(--shadow-pillow)] transition-colors hover:bg-accent/60 sm:pr-3"
               aria-label={`${displayName} のメニュー`}
             >
-              <span className="flex size-7 items-center justify-center rounded-full bg-secondary font-heading text-xs font-bold text-secondary-foreground">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary font-heading text-xs font-bold text-secondary-foreground">
                 {displayName.charAt(0).toUpperCase()}
               </span>
-              <span className="max-w-24 truncate">{displayName}</span>
+              <span className="hidden max-w-24 truncate sm:inline">
+                {displayName}
+              </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem render={<Link href="/categories" />}>
