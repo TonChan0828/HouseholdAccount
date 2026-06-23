@@ -8,6 +8,8 @@ type Props = {
   scope: DashboardScope;
   /** 表示中の期間（ref クエリ）。指定時はリンクに引き継いで月を維持する。 */
   currentRef?: string;
+  /** 追加クラス（レイアウト調整用）。 */
+  className?: string;
 };
 
 const items: { value: DashboardScope; label: string }[] = [
@@ -16,9 +18,9 @@ const items: { value: DashboardScope; label: string }[] = [
 ];
 
 /** 全体/自分の絞り込みリンク。現在値を強調する（presentational）。 */
-export function ScopeToggle({ scope, currentRef }: Props) {
+export function ScopeToggle({ scope, currentRef, className }: Props) {
   return (
-    <div className="inline-flex rounded-md border p-0.5">
+    <div className={cn("inline-flex rounded-md border p-0.5", className)}>
       {items.map((item) => {
         const active = item.value === scope;
         return (
