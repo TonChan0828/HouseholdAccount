@@ -111,30 +111,74 @@ function SavingsRing({
   );
 }
 
-/** 収入・支出を一本のトラックで占有比として並べた帯。 */
-function ProportionBar({
+/** 凡例ドット。 */
+function LegendDot({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={cn("size-2 rounded-full", className)} aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+/**
+ * 支出が収入に占める割合（支出 ÷ 収入）を示す消費バー。
+ * 収入を 100% のトラックとし、左から赤＝支出、残り緑＝貯蓄余力（= 貯蓄率）として描く。
+ * 支出が収入を超過した場合は全面赤＋超過額、どちらも 0 のときは空トラックを表示する。
+ */
+function ConsumptionBar({
   income,
   expense,
 }: {
   income: number;
   expense: number;
 }) {
-  const total = income + expense;
-  const incomePct = total > 0 ? (income / total) * 100 : 0;
-  const expensePct = total > 0 ? 100 - incomePct : 0;
+  const empty = income === 0 && expense === 0;
+  const overspent = expense > income;
+  // 収入が 0 で支出があるときも超過扱い。
+  const spentPct =
+    income > 0 ? Math.min(100, Math.round((expense / income) * 100)) : 0;
+  const redWidth = overspent ? 100 : spentPct;
+  const greenWidth = overspent ? 0 : 100 - redWidth;
+
+  const label = empty
+    ? "収入・支出の記録なし"
+    : overspent
+      ? `支出が収入を超過（+${yen(expense - income)}）`
+      : `支出は収入の${spentPct}%`;
+
+  const ariaLabel =
+    empty || overspent
+      ? label
+      : `支出は収入の${spentPct}%。残り${100 - spentPct}%が貯蓄。`;
 
   return (
-    <div className="flex h-2 w-full overflow-hidden rounded-full bg-secondary">
+    <div className="space-y-1.5">
       <div
-        className="h-full bg-income transition-[width] duration-700 ease-out"
-        style={{ width: `${incomePct}%` }}
-        aria-hidden
-      />
-      <div
-        className="h-full bg-expense transition-[width] duration-700 ease-out"
-        style={{ width: `${expensePct}%` }}
-        aria-hidden
-      />
+        role="img"
+        aria-label={ariaLabel}
+        className="flex h-2 w-full overflow-hidden rounded-full bg-secondary"
+      >
+        <div
+          className="h-full bg-income transition-[width] duration-700 ease-out"
+          style={{ width: `${greenWidth}%` }}
+          aria-hidden
+        />
+        <div
+          className="h-full bg-expense transition-[width] duration-700 ease-out"
+          style={{ width: `${redWidth}%` }}
+          aria-hidden
+        />
+      </div>
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span className="tabular-nums">{label}</span>
+        {!empty && (
+          <span className="flex items-center gap-3">
+            <LegendDot className="bg-income" label="貯蓄" />
+            <LegendDot className="bg-expense" label="支出" />
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -238,7 +282,7 @@ export function SummaryCards({ income, expense, prevIncome, prevExpense }: Props
           <SavingsRing income={income} balance={balance} />
         </div>
 
-        <ProportionBar income={income} expense={expense} />
+        <ConsumptionBar income={income} expense={expense} />
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <StatTile

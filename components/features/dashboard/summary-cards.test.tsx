@@ -46,4 +46,32 @@ describe("SummaryCards", () => {
 
     expect(screen.queryByText(/前期比/)).not.toBeInTheDocument();
   });
+
+  it("消費バーは支出が収入に占める割合を表示する", () => {
+    // 185400 / 320000 ≒ 0.579 → 58%
+    render(<SummaryCards income={320000} expense={185400} />);
+
+    expect(screen.getByText("支出は収入の58%")).toBeInTheDocument();
+  });
+
+  it("支出が収入を超過したときは超過額を表示する", () => {
+    render(<SummaryCards income={1000} expense={3000} />);
+
+    expect(screen.getByText(/支出が収入を超過/)).toBeInTheDocument();
+    expect(screen.getByText(/\+¥2,000/)).toBeInTheDocument();
+  });
+
+  it("収入・支出がどちらも0のときは記録なしと表示する", () => {
+    render(<SummaryCards income={0} expense={0} />);
+
+    expect(screen.getByText("収入・支出の記録なし")).toBeInTheDocument();
+  });
+
+  it("消費バーにアクセシブルなラベルを付与する", () => {
+    render(<SummaryCards income={320000} expense={185400} />);
+
+    expect(
+      screen.getByRole("img", { name: /支出は収入の/ }),
+    ).toBeInTheDocument();
+  });
 });
