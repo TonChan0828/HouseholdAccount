@@ -48,6 +48,19 @@ test.describe("認証ルーティング", () => {
     await expect(page.getByLabel("新しいパスワード", { exact: true })).toBeVisible();
   });
 
+  test("未認証でも /verify-email にアクセスでき、再送信ボタンが表示される", async ({
+    page,
+  }) => {
+    await page.goto("/verify-email?email=new%40example.com");
+    await expect(page).toHaveURL(/\/verify-email/);
+    await expect(
+      page.getByText("確認メールを送信しました", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "確認メールを再送信" }),
+    ).toBeVisible();
+  });
+
   test("未認証で / にアクセスするとランディングが表示される", async ({
     page,
   }) => {

@@ -26,7 +26,8 @@ Supabase Auth（メール/パスワード）による認証。登録・ログイ
   登録はパスワードポリシー（8文字以上＋英大・英小・数字・記号）を適用し、入力欄に要件を補足表示
   （[`13_password_reset.md`](./13_password_reset.md) 参照）
 - 送信は Server Action（`useActionState`）。エラーはフォーム内に `role="alert"` で表示
-- ログイン/登録成功 → `/households` へリダイレクト
+- ログイン成功 → `/households` へリダイレクト
+- 登録成功 → 確認メールを送信し `/verify-email` へ（[`23_email_verification.md`](./23_email_verification.md) 参照）
 - ログアウト → `/login` へリダイレクト
 - ログイン済みで `/login` `/register` にアクセス → `/households` へ
 
@@ -77,9 +78,8 @@ signOut: supabase.auth.signOut()
 
 ## 未解決の課題
 
-- メール確認（email confirmation）有効時、登録直後はセッション未確立になるため
-  `/households` ではなく確認案内画面へ遷移する分岐が必要
 - ソーシャルログインは未対応
 - E2E のログイン/登録シナリオは実 Supabase 接続が必要（現状は未認証リダイレクトのみ）
 
 > パスワード再設定・パスワード変更は [`13_password_reset.md`](./13_password_reset.md) を参照。
+> 登録後のメール確認フローは [`23_email_verification.md`](./23_email_verification.md) を参照。

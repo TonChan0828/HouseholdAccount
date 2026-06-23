@@ -4,8 +4,8 @@ import { safeNextPath } from "@/lib/route-access";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * パスワード再設定メールのリンク着地点。
- * `code` をリカバリーセッションに交換し、`next`（既定 /reset-password）へ送る。
+ * 認証メール（パスワード再設定／登録時のメール確認）リンクの着地点。
+ * `code` をセッションに交換し、`next`（既定 /reset-password、メール確認は /households）へ送る。
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
