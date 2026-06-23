@@ -18,6 +18,10 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/reset-password")).toBe(true);
   });
 
+  it("メール確認の案内ページ（/verify-email）は公開", () => {
+    expect(isPublicPath("/verify-email")).toBe(true);
+  });
+
   it("デモモード（/demo 配下）は公開", () => {
     expect(isPublicPath("/demo")).toBe(true);
     expect(isPublicPath("/demo/dashboard")).toBe(true);
