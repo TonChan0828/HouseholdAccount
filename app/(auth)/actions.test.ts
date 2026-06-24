@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resendConfirmation, signUp } from "./actions";
+import { resendConfirmation, signOut, signUp } from "./actions";
 
 const state = vi.hoisted(() => ({
   signUpError: null as { message: string } | null,
@@ -32,6 +32,7 @@ vi.mock("@/lib/supabase/server", () => ({
         state.resendArgs = args;
         return { error: null };
       },
+      signOut: async () => ({ error: null }),
     },
   }),
 }));
@@ -111,5 +112,11 @@ describe("resendConfirmation", () => {
 
     expect(result).toEqual({ error: expect.any(String) });
     expect(state.resendArgs).toBeNull();
+  });
+});
+
+describe("signOut", () => {
+  it("サインアウト後に LP（/?loggedout=1）へリダイレクトする", async () => {
+    await expect(signOut()).rejects.toThrow("NEXT_REDIRECT:/?loggedout=1");
   });
 });
