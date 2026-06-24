@@ -28,6 +28,18 @@ export type MemberSummary = {
 };
 
 /**
+ * メンバーのインデックスから distinct なアクセント色を返す（人数無制限）。
+ *
+ * 黄金角（137.5度）に近いステップで色相を回すことで、隣接インデックスはもちろん
+ * 何人いても色が被りにくい。明度はアバターの白文字が WCAG AA（4.5:1）を満たす
+ * よう L=0.52 に抑える（oklch は色相に依らず明度が均一なので全色で AA を満たす）。
+ */
+export function memberColor(index: number): string {
+  const hue = ((index * 137.5) % 360).toFixed(1);
+  return `oklch(0.52 0.12 ${hue})`;
+}
+
+/**
  * 取引をメンバーごとに集計する。members の並び順を維持し、
  * members にいないユーザー（脱退者など）の取引は無視する。
  */

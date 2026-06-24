@@ -95,4 +95,26 @@ describe("MemberActivity", () => {
       screen.getByText("この期間の取引はありません。"),
     ).toBeInTheDocument();
   });
+
+  it("6人いてもアバター色が全員異なる（色の使い回しをしない）", () => {
+    const many: MemberSummary[] = Array.from({ length: 6 }, (_, i) => ({
+      userId: `user-${i}`,
+      displayName: `メンバー${i}`,
+      income: 0,
+      expense: 0,
+      count: 0,
+    }));
+
+    const { container } = render(<MemberActivity summaries={many} txs={[]} />);
+
+    const cards = screen.getAllByTestId("member-card");
+    expect(cards).toHaveLength(6);
+
+    const avatars = container.querySelectorAll<HTMLElement>(
+      "[style*='background-color']",
+    );
+    const colors = [...avatars].map((el) => el.style.backgroundColor);
+    expect(colors).toHaveLength(6);
+    expect(new Set(colors).size).toBe(6);
+  });
 });

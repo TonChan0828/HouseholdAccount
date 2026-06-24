@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { summarizeByMember, type MemberInfo, type MemberTx } from "./members";
+import {
+  memberColor,
+  summarizeByMember,
+  type MemberInfo,
+  type MemberTx,
+} from "./members";
 
 const tx = (over: Partial<MemberTx>): MemberTx => ({
   amount: 0,
@@ -73,5 +78,20 @@ describe("summarizeByMember", () => {
 
     expect(result[0]).toMatchObject({ expense: 100, count: 1 });
     expect(result[1]).toMatchObject({ expense: 0, count: 0 });
+  });
+});
+
+describe("memberColor", () => {
+  it("人数ぶん（8人）すべて異なる色を返す（5色固定の使い回しをしない）", () => {
+    const colors = Array.from({ length: 8 }, (_, i) => memberColor(i));
+    expect(new Set(colors).size).toBe(8);
+  });
+
+  it("同じ index には安定して同じ色を返す", () => {
+    expect(memberColor(3)).toBe(memberColor(3));
+  });
+
+  it("CSS の色文字列（oklch）を返す", () => {
+    expect(memberColor(0)).toMatch(/^oklch\(/);
   });
 });
