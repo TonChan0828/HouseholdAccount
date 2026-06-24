@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { CategoryMemberMatrix as Matrix } from "@/lib/category-matrix";
@@ -116,5 +116,69 @@ describe("CategoryMemberMatrix", () => {
       screen.queryByTestId("category-member-matrix"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("メンバー別カテゴリ")).not.toBeInTheDocument();
+  });
+
+  it("メンバー名は省略表示用の内側要素（truncate）で包む", () => {
+    render(<CategoryMemberMatrix matrix={matrix} />);
+
+    const expense = screen.getByTestId("matrix-expense");
+    const nameEl = within(expense).getByText("太郎");
+    // auto レイアウトでも省略が効くよう、th 直下ではなく block 要素で包む
+    expect(nameEl.tagName).toBe("SPAN");
+    expect(nameEl.className).toContain("truncate");
+    expect(nameEl.className).toContain("block");
+    expect(nameEl.parentElement?.tagName).toBe("TH");
+  });
+
+  it("表は横スクロール可能なコンテナに入っている", () => {
+    const { container } = render(<CategoryMemberMatrix matrix={matrix} />);
+
+    expect(container.querySelector(".overflow-x-auto")).not.toBeNull();
+  });
+
+  const mockScroll = (
+    el: HTMLElement,
+    dims: { scrollWidth: number; clientWidth: number; scrollLeft: number },
+  ) => {
+    for (const [k, value] of Object.entries(dims)) {
+      Object.defineProperty(el, k, { value, configurable: true });
+    }
+    fireEvent.scroll(el);
+  };
+
+  it("右にスクロール余地があるときヒントを表示する", () => {
+    const { container } = render(<CategoryMemberMatrix matrix={matrix} />);
+
+    // 初期状態（jsdom はレイアウト計算しないため scrollWidth=0）では出さない
+    expect(screen.queryByText(/横にスクロール/)).not.toBeInTheDocument();
+
+    const scroller = container.querySelector(".overflow-x-auto") as HTMLElement;
+    mockScroll(scroller, { scrollWidth: 600, clientWidth: 300, scrollLeft: 0 });
+
+    expect(screen.getByText(/横にスクロール/)).toHaveClass("opacity-100");
+  });
+
+  it("末尾までスクロールしてもヒント行は残し、テキストだけ消す（表のガタつき防止）", () => {
+    const { container } = render(<CategoryMemberMatrix matrix={matrix} />);
+    const scroller = container.querySelector(".overflow-x-auto") as HTMLElement;
+
+    // 右端まで到達（scrollLeft が余地と一致）
+    mockScroll(scroller, {
+      scrollWidth: 600,
+      clientWidth: 300,
+      scrollLeft: 300,
+    });
+
+    // 行は DOM に残る（高さを確保）が、テキストは不透明度0で見えない
+    const hint = screen.getByText(/横にスクロール/);
+    expect(hint).toBeInTheDocument();
+    expect(hint).toHaveClass("opacity-0");
+  });
+
+  it("スクロール不要（収まっている）のときはヒントもフェードも表示しない", () => {
+    render(<CategoryMemberMatrix matrix={matrix} />);
+
+    // scrollWidth=clientWidth=0 のまま → 余地なし
+    expect(screen.queryByText(/横にスクロール/)).not.toBeInTheDocument();
   });
 });
