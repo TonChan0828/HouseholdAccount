@@ -36,6 +36,7 @@
 - レスポンシブ: PC（`md` 以上）は Hero を「左テキスト＋右プレビュー」の非対称、FeatureBento はベント型グリッド。スマホは Hero 中央寄せ・縦積み、FeatureBento は 1 カラム。同一 HTML を Tailwind ブレークポイントで切り替える
 - 既存デザイントークン（`--primary` グリーン、クリーム背景、`font-heading`、`shadow-soft` 等）を流用し、ダークモードは既存変数で自動追従
 - フォーム入力はなく、バリデーション対象はない（遷移リンクのみ）
+- **ログアウト後の着地**: ログアウト（`signOut`、`app/(auth)/actions.ts`）は `/?loggedout=1` へ遷移し、LP 上で「ログアウトしました」トースト（sonner）を表示する。表示後はクエリを除去（`router.replace("/")`）してリロード時の再表示を防ぐ。`components/features/landing/logged-out-toast.tsx`（Client Component）が `useSearchParams` で検知し、`app/page.tsx` で `<Suspense>` 配下にマウントする。なお、アカウント削除（`/login?deleted=1`）・パスワード再設定後（`/login?reset=success`）は引き続きログイン画面へ戻す（spec 01_auth / 14 と整合）
 
 ## データモデル
 

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { FeatureBento } from "@/components/features/landing/feature-bento";
 import { FinalCta } from "@/components/features/landing/final-cta";
 import { Hero } from "@/components/features/landing/hero";
 import { LandingFooter } from "@/components/features/landing/landing-footer";
 import { LandingHeader } from "@/components/features/landing/landing-header";
+import { LoggedOutToast } from "@/components/features/landing/logged-out-toast";
 import { Steps } from "@/components/features/landing/steps";
 
 export const metadata: Metadata = {
@@ -16,6 +18,9 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div className="flex min-h-full flex-col">
+      <Suspense fallback={null}>
+        <LoggedOutToast />
+      </Suspense>
       <LandingHeader />
       <main className="flex-1">
         <Hero />
