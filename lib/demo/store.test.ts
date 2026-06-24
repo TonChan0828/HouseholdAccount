@@ -12,9 +12,9 @@ import {
 } from "./store";
 
 describe("createDemoState", () => {
-  it("サンプルデータ（メンバー2名・カテゴリ・収支）を持つ", () => {
+  it("サンプルデータ（メンバー4名・カテゴリ・収支）を持つ", () => {
     const s = createDemoState();
-    expect(s.members).toHaveLength(2);
+    expect(s.members).toHaveLength(4);
     expect(s.categories.length).toBeGreaterThan(0);
     expect(s.transactions.length).toBeGreaterThan(0);
     expect(s.household.period_start_day).toBe(1);

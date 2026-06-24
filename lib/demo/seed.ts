@@ -12,6 +12,18 @@ import type { DemoState } from "./store";
 export const DEMO_HOUSEHOLD_ID = "demo-household";
 export const DEMO_USER_ID = "demo-user-you";
 export const DEMO_PARTNER_ID = "demo-user-partner";
+export const DEMO_FAMILY_ID = "demo-user-family";
+export const DEMO_CHILD_ID = "demo-user-child";
+
+/** seed の取引が誰名義かを表す。4人での表示確認を兼ねる。 */
+type SeedMember = "you" | "partner" | "family" | "child";
+
+const MEMBER_ID_BY_SEED: Record<SeedMember, string> = {
+  you: DEMO_USER_ID,
+  partner: DEMO_PARTNER_ID,
+  family: DEMO_FAMILY_ID,
+  child: DEMO_CHILD_ID,
+};
 
 // seed の ID は決定論的にする（SSR とクライアントで同じ値になり、ハイドレーション不一致を防ぐ）。
 // カテゴリIDは収支フォームの Zod 検証で uuid 形式を要求されるため、v4 形式の固定 uuid を採番する。
@@ -46,22 +58,29 @@ type SeedTx = {
   amount: number;
   categoryName: string | null;
   memo: string | null;
-  byPartner?: boolean;
+  /** 登録者。省略時は "you"。 */
+  by?: SeedMember;
 };
 
 const SEED_TRANSACTIONS: SeedTx[] = [
-  { day: 1, type: "income", amount: 280000, categoryName: "給与", memo: "今月のお給料", byPartner: false },
-  { day: 1, type: "income", amount: 220000, categoryName: "給与", memo: null, byPartner: true },
-  { day: 2, type: "expense", amount: 85000, categoryName: "住居費", memo: "家賃", byPartner: false },
-  { day: 3, type: "expense", amount: 4200, categoryName: "食費", memo: "スーパー", byPartner: true },
-  { day: 5, type: "expense", amount: 1800, categoryName: "日用品", memo: "ドラッグストア", byPartner: false },
-  { day: 7, type: "expense", amount: 3600, categoryName: "娯楽", memo: "映画", byPartner: true },
-  { day: 9, type: "expense", amount: 2400, categoryName: "交通費", memo: null, byPartner: false },
-  { day: 12, type: "expense", amount: 5200, categoryName: "食費", memo: "外食", byPartner: true },
-  { day: 14, type: "income", amount: 15000, categoryName: "副業", memo: "ハンドメイド販売", byPartner: false },
-  { day: 16, type: "expense", amount: 3000, categoryName: "ペット", memo: "ペットフード", byPartner: false },
-  { day: 18, type: "expense", amount: 6800, categoryName: "食費", memo: "まとめ買い", byPartner: true },
-  { day: 20, type: "expense", amount: 1200, categoryName: null, memo: "コンビニ", byPartner: false },
+  { day: 1, type: "income", amount: 280000, categoryName: "給与", memo: "今月のお給料", by: "you" },
+  { day: 1, type: "income", amount: 220000, categoryName: "給与", memo: null, by: "partner" },
+  { day: 2, type: "expense", amount: 85000, categoryName: "住居費", memo: "家賃", by: "you" },
+  { day: 3, type: "expense", amount: 4200, categoryName: "食費", memo: "スーパー", by: "partner" },
+  { day: 4, type: "income", amount: 30000, categoryName: "副業", memo: "アルバイト", by: "family" },
+  { day: 5, type: "expense", amount: 1800, categoryName: "日用品", memo: "ドラッグストア", by: "you" },
+  { day: 6, type: "expense", amount: 2600, categoryName: "食費", memo: "コンビニ", by: "family" },
+  { day: 7, type: "expense", amount: 3600, categoryName: "娯楽", memo: "映画", by: "partner" },
+  { day: 9, type: "expense", amount: 2400, categoryName: "交通費", memo: null, by: "you" },
+  { day: 10, type: "expense", amount: 1500, categoryName: "交通費", memo: "定期券", by: "family" },
+  { day: 12, type: "expense", amount: 5200, categoryName: "食費", memo: "外食", by: "partner" },
+  { day: 14, type: "income", amount: 15000, categoryName: "副業", memo: "ハンドメイド販売", by: "you" },
+  { day: 15, type: "expense", amount: 800, categoryName: "娯楽", memo: "おやつ", by: "child" },
+  { day: 16, type: "expense", amount: 3000, categoryName: "ペット", memo: "ペットフード", by: "you" },
+  { day: 17, type: "expense", amount: 1300, categoryName: "日用品", memo: "文房具", by: "child" },
+  { day: 18, type: "expense", amount: 6800, categoryName: "食費", memo: "まとめ買い", by: "partner" },
+  { day: 19, type: "expense", amount: 4400, categoryName: "娯楽", memo: "ゲーム", by: "family" },
+  { day: 20, type: "expense", amount: 1200, categoryName: null, memo: "コンビニ", by: "you" },
 ];
 
 /** seed から初期状態を組み立てる。 */
@@ -88,7 +107,7 @@ export function createSeedState(): DemoState {
     return {
       id: demoUuid("01d00000", i + 1),
       household_id: DEMO_HOUSEHOLD_ID,
-      created_by: t.byPartner ? DEMO_PARTNER_ID : DEMO_USER_ID,
+      created_by: MEMBER_ID_BY_SEED[t.by ?? "you"],
       // 表示には使わないが、決定論的に保つため日付から導出する。
       created_at: `${date}T00:00:00.000Z`,
       type: t.type,
@@ -111,6 +130,8 @@ export function createSeedState(): DemoState {
     members: [
       { user_id: DEMO_USER_ID, display_name: "あなた" },
       { user_id: DEMO_PARTNER_ID, display_name: "パートナー" },
+      { user_id: DEMO_FAMILY_ID, display_name: "家族" },
+      { user_id: DEMO_CHILD_ID, display_name: "子ども" },
     ],
     categories,
     transactions,
