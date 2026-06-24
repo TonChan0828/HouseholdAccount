@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { yen } from "@/lib/format";
-import type { MemberSummary, MemberTx } from "@/lib/members";
+import { memberColor, type MemberSummary, type MemberTx } from "@/lib/members";
 import { cn } from "@/lib/utils";
 
 export type MemberTxRow = MemberTx & { id: string };
@@ -14,15 +14,6 @@ type Props = {
   summaries: MemberSummary[];
   txs: MemberTxRow[];
 };
-
-/** メンバーごとのアクセントカラー（テーマのチャートパレットを順番に割り当てる）。 */
-const MEMBER_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--chart-3)",
-] as const;
 
 /**
  * メンバーごとのサマリーカードと、選択中メンバーの取引一覧。
@@ -36,13 +27,9 @@ export function MemberActivity({ summaries, txs }: Props) {
     ? txs.filter((t) => t.created_by === selected.userId)
     : [];
 
+  // メンバーの並び順インデックスから色を生成する（人数無制限で distinct）。
   const colorOf = (userId: string) =>
-    MEMBER_COLORS[
-      Math.max(
-        summaries.findIndex((m) => m.userId === userId),
-        0,
-      ) % MEMBER_COLORS.length
-    ];
+    memberColor(Math.max(summaries.findIndex((m) => m.userId === userId), 0));
 
   return (
     <div className="space-y-4">
