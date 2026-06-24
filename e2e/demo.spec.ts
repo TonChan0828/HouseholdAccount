@@ -54,6 +54,31 @@ test.describe("デモモード", () => {
     await expect(page.getByTestId("transaction-row")).toHaveCount(before);
   });
 
+  test("メンバー4人でも375px幅でマトリクスが横はみ出ししない", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/demo/dashboard");
+
+    // メンバー別カテゴリに4人目（子ども）まで列として現れる
+    const matrix = page.getByTestId("matrix-expense");
+    await expect(matrix).toBeVisible();
+    const headers = matrix.getByRole("columnheader");
+    // カテゴリ + メンバー4人 + 合計 = 6列
+    await expect(headers).toHaveCount(6);
+    await expect(
+      matrix.getByRole("columnheader", { name: "子ども" }),
+    ).toBeVisible();
+
+    // 表は内部スクロールするため、ページ自体は横方向に溢れない
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBe(false);
+  });
+
   test("デフォルトカテゴリは編集・削除できず、カスタムは追加できる", async ({
     page,
   }) => {
