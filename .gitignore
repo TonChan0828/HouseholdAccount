@@ -54,3 +54,6 @@ e2e/.auth/
 
 # 個人データ（インポート元の家計簿など。コミットしない）
 docs/inputs/
+
+# Supabase CLI のリンク情報（認証情報を含むためコミットしない）
+supabase/.temp/
