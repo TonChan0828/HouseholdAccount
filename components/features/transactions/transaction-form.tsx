@@ -9,8 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { evaluateExpression } from "@/lib/amount-expression";
 import { yen } from "@/lib/format";
+import type { ParsedReceipt } from "@/lib/receipt/parse-receipt";
 import { cn } from "@/lib/utils";
 import type { Category, TransactionType } from "@/types";
+
+import { ReceiptScanButton } from "./receipt-scan-button.client";
 
 /** 入力が演算子を含む式かどうか（プレーン数値はプレビュー不要）。 */
 function hasOperator(value: string): boolean {
@@ -67,6 +70,7 @@ export function TransactionForm({
   const [amountPreview, setAmountPreview] = useState<string | null>(null);
 
   const amountRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
   const memoRef = useRef<HTMLTextAreaElement>(null);
   const lastOkKey = useRef<string | null>(null);
 
@@ -98,6 +102,17 @@ export function TransactionForm({
     );
   };
 
+  // レシートOCRの抽出結果をフォームへ反映する（抽出できた項目のみ・uncontrolled な入力に直接設定）。
+  const applyScanResult = (result: ParsedReceipt) => {
+    if (result.amount !== null && amountRef.current) {
+      amountRef.current.value = String(result.amount);
+      updateAmountPreview(amountRef.current.value);
+    }
+    if (result.date !== null && dateRef.current) {
+      dateRef.current.value = result.date;
+    }
+  };
+
   const options = categories.filter(
     (c) => c.type === type || c.type === "both",
   );
@@ -118,6 +133,13 @@ export function TransactionForm({
       {defaultValues?.id ? (
         <input type="hidden" name="id" value={defaultValues.id} />
       ) : null}
+
+      <div className="space-y-1.5">
+        <ReceiptScanButton onResult={applyScanResult} />
+        <p className="text-center text-xs text-muted-foreground">
+          レシート画像から金額・日付を自動入力します（内容をご確認ください）
+        </p>
+      </div>
 
       <fieldset className="grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1.5">
         {(["expense", "income"] as const).map((t) => {
@@ -196,6 +218,7 @@ export function TransactionForm({
       <div className="space-y-2">
         <Label htmlFor="date">日付</Label>
         <Input
+          ref={dateRef}
           id="date"
           name="date"
           type="date"
