@@ -30,3 +30,23 @@ export const transactionSchema = z.object({
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
+
+/**
+ * 定期収支（recurring）の入力スキーマ。
+ * 収支スキーマから日付を除き、有効/無効フラグ（is_active）を加えたもの。
+ * 登録日は household の period_start_day に従うため date は持たない。
+ */
+export const recurringTransactionSchema = transactionSchema
+  .omit({ date: true })
+  .extend({
+    // チェックボックス/hidden から "true"/"false"/"on" などで送られるため真偽値へ正規化する。
+    // 未指定は既定で有効にする。
+    is_active: z.preprocess((v) => {
+      if (v === true || v === "true" || v === "on" || v === "1") return true;
+      if (v === false || v === "false" || v === "off" || v === "0") return false;
+      if (v == null || v === "") return true;
+      return v;
+    }, z.boolean()),
+  });
+
+export type RecurringTransactionInput = z.infer<typeof recurringTransactionSchema>;

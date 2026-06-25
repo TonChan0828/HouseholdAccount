@@ -59,6 +59,7 @@ export function addTransaction(
     date: input.date,
     category_id: input.category_id ?? null,
     memo: input.memo || null,
+    recurring_id: null,
   };
   return { ...state, transactions: [tx, ...state.transactions] };
 }

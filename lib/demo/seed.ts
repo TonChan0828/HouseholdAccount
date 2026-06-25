@@ -117,6 +117,7 @@ export function createSeedState(): DemoState {
         ? (categoryIdByName.get(t.categoryName) ?? null)
         : null,
       memo: t.memo,
+      recurring_id: null,
     };
   });
 
