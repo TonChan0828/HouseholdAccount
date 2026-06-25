@@ -41,9 +41,36 @@ describe("transactionSchema", () => {
     ).toBe(false);
   });
 
-  it("小数を拒否する", () => {
+  it("小数は四捨五入して整数に変換する", () => {
+    const result = transactionSchema.safeParse({ ...valid, amount: "10.5" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.amount).toBe(11);
+    }
+  });
+
+  it("四則演算式を評価して金額に変換する", () => {
+    const result = transactionSchema.safeParse({ ...valid, amount: "1280+980+550" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.amount).toBe(2810);
+    }
+  });
+
+  it("割り算の結果を四捨五入して受け付ける", () => {
+    const result = transactionSchema.safeParse({ ...valid, amount: "1000÷3" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.amount).toBe(333);
+    }
+  });
+
+  it("評価できない式を拒否する", () => {
     expect(
-      transactionSchema.safeParse({ ...valid, amount: "10.5" }).success,
+      transactionSchema.safeParse({ ...valid, amount: "1000+" }).success,
+    ).toBe(false);
+    expect(
+      transactionSchema.safeParse({ ...valid, amount: "abc" }).success,
     ).toBe(false);
   });
 

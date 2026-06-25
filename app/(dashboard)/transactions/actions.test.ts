@@ -126,6 +126,15 @@ describe("createTransaction", () => {
     });
   });
 
+  it("金額の四則演算式を評価して登録する", async () => {
+    await expect(
+      createTransaction(undefined, createFormData({ amount: "1280+980+550" })),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    const insert = state.calls.find((c) => c.method === "insert");
+    expect(insert?.values).toMatchObject({ amount: 2810 });
+  });
+
   it("_continue=1 の場合は redirect せず成功状態を返す", async () => {
     const result = await createTransaction(
       undefined,
