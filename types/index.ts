@@ -13,6 +13,7 @@ export type HouseholdInvitation = Tables["household_invitations"]["Row"];
 export type Category = Tables["categories"]["Row"];
 export type Profile = Tables["profiles"]["Row"];
 export type Transaction = Tables["transactions"]["Row"];
+export type RecurringTransaction = Tables["recurring_transactions"]["Row"];
 
 export type { CategoryType, MemberRole, TransactionType };
 

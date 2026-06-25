@@ -5,6 +5,7 @@ import {
   Pencil,
   Plus,
   ReceiptText,
+  Repeat,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
+import { ensureRecurringGenerated } from "@/lib/recurring";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +80,9 @@ export default async function TransactionsPage({
   if (!householdId) {
     redirect("/households");
   }
+
+  // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
+  await ensureRecurringGenerated(householdId);
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
@@ -134,6 +139,13 @@ export default async function TransactionsPage({
             >
               <Upload className="size-4" aria-hidden />
               <span className="max-sm:sr-only">インポート</span>
+            </Link>
+            <Link
+              href="/transactions/recurring"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Repeat className="size-4" aria-hidden />
+              <span className="max-sm:sr-only">定期項目</span>
             </Link>
             <Link
               href="/transactions/new"

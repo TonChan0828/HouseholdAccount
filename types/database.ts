@@ -179,6 +179,57 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_transactions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          is_active: boolean
+          memo: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          created_by: string
+          household_id: string
+          id?: string
+          is_active?: boolean
+          memo?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          memo?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -189,6 +240,7 @@ export type Database = {
           household_id: string
           id: string
           memo: string | null
+          recurring_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Insert: {
@@ -200,6 +252,7 @@ export type Database = {
           household_id: string
           id?: string
           memo?: string | null
+          recurring_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Update: {
@@ -211,6 +264,7 @@ export type Database = {
           household_id?: string
           id?: string
           memo?: string | null
+          recurring_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
         }
         Relationships: [
@@ -228,6 +282,13 @@ export type Database = {
             referencedRelation: "households"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_recurring_id_fkey"
+            columns: ["recurring_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transactions"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -237,6 +298,7 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
       delete_own_account: { Args: never; Returns: undefined }
+      generate_due_recurring: { Args: { _household_id: string }; Returns: number }
       invitation_preview: {
         Args: { _token: string }
         Returns: { household_name: string; status: string }[]

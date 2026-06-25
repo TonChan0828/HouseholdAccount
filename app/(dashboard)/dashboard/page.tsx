@@ -28,6 +28,7 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
+import { ensureRecurringGenerated } from "@/lib/recurring";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +74,9 @@ export default async function DashboardPage({
   if (!householdId) {
     redirect("/households");
   }
+
+  // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
+  await ensureRecurringGenerated(householdId);
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 

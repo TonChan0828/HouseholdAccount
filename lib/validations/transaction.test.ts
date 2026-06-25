@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { transactionSchema } from "./transaction";
+import { recurringTransactionSchema, transactionSchema } from "./transaction";
 
 const valid = {
   type: "expense",
@@ -91,6 +91,71 @@ describe("transactionSchema", () => {
   it("200字を超えるメモを拒否する", () => {
     expect(
       transactionSchema.safeParse({ ...valid, memo: "あ".repeat(201) }).success,
+    ).toBe(false);
+  });
+});
+
+const validRecurring = {
+  type: "expense",
+  amount: "9800",
+  category_id: "",
+  memo: "サブスク",
+  is_active: "true",
+};
+
+describe("recurringTransactionSchema", () => {
+  it("日付なしの定期項目を受け付け、amount を数値に変換する", () => {
+    const result = recurringTransactionSchema.safeParse(validRecurring);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.amount).toBe(9800);
+      expect(result.data.is_active).toBe(true);
+      expect("date" in result.data).toBe(false);
+    }
+  });
+
+  it("四則演算式を評価する（収支スキーマと同じ挙動）", () => {
+    const result = recurringTransactionSchema.safeParse({
+      ...validRecurring,
+      amount: "5000+480",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.amount).toBe(5480);
+    }
+  });
+
+  it("is_active を真偽値へ正規化する", () => {
+    const off = recurringTransactionSchema.safeParse({
+      ...validRecurring,
+      is_active: "false",
+    });
+    expect(off.success && off.data.is_active).toBe(false);
+
+    const on = recurringTransactionSchema.safeParse({
+      ...validRecurring,
+      is_active: "on",
+    });
+    expect(on.success && on.data.is_active).toBe(true);
+  });
+
+  it("is_active 未指定は既定で有効にする", () => {
+    const result = recurringTransactionSchema.safeParse({
+      type: "expense",
+      amount: "9800",
+      category_id: "",
+      memo: "",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.is_active).toBe(true);
+    }
+  });
+
+  it("0円・マイナスを拒否する", () => {
+    expect(
+      recurringTransactionSchema.safeParse({ ...validRecurring, amount: "0" })
+        .success,
     ).toBe(false);
   });
 });

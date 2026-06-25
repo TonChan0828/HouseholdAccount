@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleHelp, LogOut, Plus, Tags, UserCog } from "lucide-react";
+import { CircleHelp, LogOut, Plus, Repeat, Tags, UserCog } from "lucide-react";
 
 import { HouseholdSwitcher } from "@/components/features/layout/household-switcher";
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
@@ -105,6 +105,10 @@ export function AppHeader({
               </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem render={<Link href="/transactions/recurring" />}>
+                <Repeat aria-hidden />
+                定期項目
+              </DropdownMenuItem>
               <DropdownMenuItem render={<Link href="/categories" />}>
                 <Tags aria-hidden />
                 カテゴリ管理
