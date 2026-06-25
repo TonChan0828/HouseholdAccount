@@ -27,6 +27,14 @@
   へのリンクを置く。`components/features/layout/household-switcher.tsx`。
 - `/invite/[token]`: 招待リンクの参加画面。グループ名を表示し「参加する」で加入。
   期限切れ・上限到達・無効トークンはエラー表示。未ログインは `proxy.ts` で `/login` へ。
+- **招待リンクの共有**（新規発行リンク・既存招待の両方の `CopyableLink`）: リンクを外部へ渡す
+  手段として以下を提供する。すべて無料の手段（共有 Intent URL / ブラウザ標準 API）で外部キー不要。
+  - **コピー**: `navigator.clipboard.writeText`。成功時に「コピー済」を 1.5 秒表示。
+  - **LINE**: `https://social-plugins.line.me/lineit/share?url=<encoded>` を別タブで開く。
+  - **ネイティブ共有**: `navigator.share` 対応端末でのみボタンを表示し、OS の共有シートを開く
+    （X・各種メッセージアプリ等へはここから到達）。`useSyncExternalStore` でクライアント判定し、
+    SSR では非表示（hydration 不一致を避ける）。
+  - 共有文言は固定の定型文（グループ名は含めない）。
 
 ### インタラクション・バリデーション
 

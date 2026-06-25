@@ -1,12 +1,33 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useSyncExternalStore } from "react";
 
 import type { InvitationActionState } from "@/app/households/actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import type { HouseholdInvitation } from "@/types";
+
+const SHARE_TITLE = "Shallet 家計簿グループへの招待";
+const SHARE_TEXT =
+  "Shallet の家計簿グループに招待します。下のリンクから参加してください。";
+
+function lineShareUrl(url: string): string {
+  return `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}`;
+}
+
+// Web Share API は対応端末でのみ表示する（SSR では false、クライアントで判定）
+const subscribeNoop = () => () => {};
+function useCanNativeShare(): boolean {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () =>
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function",
+    () => false,
+  );
+}
 
 type CreateAction = (
   state: InvitationActionState,
@@ -131,14 +152,16 @@ export function InvitationManager({
 
 function CopyableLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
+  const canNativeShare = useCanNativeShare();
 
   return (
-    <div className="mt-2 flex items-center gap-2">
-      <Input readOnly value={url} className="text-xs" />
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <Input readOnly value={url} className="min-w-0 flex-1 text-xs" />
       <Button
         type="button"
         variant="outline"
         size="sm"
+        aria-label="コピー"
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(url);
@@ -151,6 +174,36 @@ function CopyableLink({ url }: { url: string }) {
       >
         {copied ? "コピー済" : "コピー"}
       </Button>
+      <a
+        href={lineShareUrl(url)}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="LINEで共有"
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+      >
+        LINE
+      </a>
+      {canNativeShare ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="共有"
+          onClick={async () => {
+            try {
+              await navigator.share({
+                title: SHARE_TITLE,
+                text: SHARE_TEXT,
+                url,
+              });
+            } catch {
+              // ユーザーがキャンセル / 非対応環境では何もしない
+            }
+          }}
+        >
+          共有
+        </Button>
+      ) : null}
     </div>
   );
 }
