@@ -50,6 +50,7 @@ export default async function NewTransactionPage({
             action={createTransaction}
             categories={categories}
             submitLabel="登録する"
+            enableContinue
             defaultValues={defaultDate ? { date: defaultDate } : undefined}
           />
         </CardContent>

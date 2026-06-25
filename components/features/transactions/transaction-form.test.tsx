@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
+import type { TransactionActionState } from "@/app/(dashboard)/transactions/actions";
 import type { Category } from "@/types";
 
 import { TransactionForm } from "./transaction-form";
@@ -29,12 +30,19 @@ const categories: Category[] = [
   },
 ];
 
-function renderForm() {
+function renderForm(props?: {
+  action?: (
+    state: TransactionActionState,
+    formData: FormData,
+  ) => Promise<TransactionActionState>;
+  enableContinue?: boolean;
+}) {
   return render(
     <TransactionForm
-      action={noop}
+      action={props?.action ?? noop}
       categories={categories}
       submitLabel="登録する"
+      enableContinue={props?.enableContinue}
     />,
   );
 }
@@ -75,5 +83,51 @@ describe("TransactionForm", () => {
 
     expect(screen.getByRole("radio", { name: "給与" })).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "食費" })).not.toBeInTheDocument();
+  });
+
+  it("enableContinue 未指定では「登録して続ける」ボタンを出さない", () => {
+    renderForm();
+
+    expect(
+      screen.queryByRole("button", { name: "登録して続ける" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("enableContinue 指定時は「登録して続ける」ボタンを出す", () => {
+    renderForm({ enableContinue: true });
+
+    expect(
+      screen.getByRole("button", { name: "登録して続ける" }),
+    ).toBeInTheDocument();
+  });
+
+  it("「登録して続ける」成功後は金額・メモ・カテゴリをクリアし日付は維持する", async () => {
+    const user = userEvent.setup();
+    const action = async (): Promise<TransactionActionState> => ({
+      ok: true,
+      key: Math.random().toString(),
+    });
+    renderForm({ action, enableContinue: true });
+
+    const amount = screen.getByLabelText("金額") as HTMLInputElement;
+    const memo = screen.getByLabelText("メモ") as HTMLTextAreaElement;
+    const date = screen.getByLabelText("日付") as HTMLInputElement;
+    const dateValue = date.value;
+
+    await user.type(amount, "1500");
+    await user.type(memo, "ランチ");
+    await user.click(screen.getByRole("radio", { name: "食費" }));
+
+    await user.click(screen.getByRole("button", { name: "登録して続ける" }));
+
+    await waitFor(() => {
+      expect(amount.value).toBe("");
+    });
+    expect(memo.value).toBe("");
+    expect(date.value).toBe(dateValue);
+    expect(
+      (screen.getByRole("radio", { name: "未選択" }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
   });
 });

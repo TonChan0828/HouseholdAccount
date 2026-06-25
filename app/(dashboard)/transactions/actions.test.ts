@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { deleteTransaction, updateTransaction } from "./actions";
+import { createTransaction, deleteTransaction, updateTransaction } from "./actions";
 
 type QueryCall = {
   table: string;
@@ -47,6 +47,11 @@ vi.mock("@/lib/supabase/server", () => ({
       const resolve = () =>
         Promise.resolve({ data: state.matchedRows, error: null });
       const query = {
+        insert(values: unknown) {
+          call.method = "insert";
+          call.values = values;
+          return resolve();
+        },
         update(values: unknown) {
           call.method = "update";
           call.values = values;
@@ -75,6 +80,19 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
+function createFormData(overrides: Record<string, string> = {}) {
+  const formData = new FormData();
+  formData.set("type", "expense");
+  formData.set("amount", "1500");
+  formData.set("date", "2026-06-13");
+  formData.set("category_id", "");
+  formData.set("memo", "ランチ");
+  for (const [key, value] of Object.entries(overrides)) {
+    formData.set(key, value);
+  }
+  return formData;
+}
+
 function updateFormData() {
   const formData = new FormData();
   formData.set("id", "t-1");
@@ -91,6 +109,38 @@ beforeEach(() => {
   state.householdId = "h-1";
   state.matchedRows = [{ id: "t-1" }];
   state.calls = [];
+});
+
+describe("createTransaction", () => {
+  it("household_id と created_by を付与して登録する", async () => {
+    await expect(
+      createTransaction(undefined, createFormData()),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    const insert = state.calls.find((c) => c.method === "insert");
+    expect(insert?.table).toBe("transactions");
+    expect(insert?.values).toMatchObject({
+      household_id: "h-1",
+      created_by: "user-1",
+      amount: 1500,
+    });
+  });
+
+  it("_continue=1 の場合は redirect せず成功状態を返す", async () => {
+    const result = await createTransaction(
+      undefined,
+      createFormData({ _continue: "1" }),
+    );
+
+    expect(result).toEqual({ ok: true, key: expect.any(String) });
+    expect(state.calls.find((c) => c.method === "insert")).toBeDefined();
+  });
+
+  it("_continue が無い場合は /transactions にリダイレクトする", async () => {
+    await expect(
+      createTransaction(undefined, createFormData()),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+  });
 });
 
 describe("updateTransaction", () => {
