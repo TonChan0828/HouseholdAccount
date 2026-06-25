@@ -124,6 +124,7 @@ docs/specs/
   24_auth_email_templates.md # 認証メールテンプレート（登録確認・パスワード再設定・メール変更のShalletブランド化）
   25_amount_expression.md # 金額の四則演算入力（金額欄に式を入力し計算結果を四捨五入して登録）
   26_recurring_transactions.md # 定期収支（固定費・固定収入をスタート日に自動登録・閲覧時に冪等生成）
+  27_receipt_ocr.md      # レシートOCR入力補助（Tesseract.jsでブラウザ内OCR・金額/日付をプリフィル）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
