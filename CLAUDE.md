@@ -121,6 +121,7 @@ docs/specs/
   21_data_import.md      # データインポート（Excel月次家計簿テンプレートの取り込み）
   22_group_display_name.md # グループ毎の表示名（ニックネーム・未設定ならグローバル名にフォールバック）
   23_email_verification.md # メール認証（登録後の確認案内ページ・確認メール再送信）
+  24_auth_email_templates.md # 認証メールテンプレート（登録確認・パスワード再設定・メール変更のShalletブランド化）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）

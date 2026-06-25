@@ -1,0 +1,26 @@
+# Supabase CLI 設定。
+# 目的は「認証メールテンプレートのリポジトリ管理（内容と件名の単一情報源）」のみ。
+#
+# ⚠️ `supabase config push` は使わないこと。理由は2つ:
+#   1. 本プロジェクトはフリープラン＋標準メールプロバイダのため、API 経由のテンプレート
+#      変更が 400 で拒否される（"Email template modification is not available for free tier"）。
+#   2. config push は [auth] 設定全体をリモートへ上書きし、ここに書いていない項目は CLI
+#      デフォルトに戻る。実際に push 差分で MFA TOTP の無効化・メールレート(1m→1s)など
+#      意図しない巻き込みが確認された（2026-06-25）。確認プロンプトも無く即適用される。
+#
+# 反映は Supabase ダッシュボード（Authentication → Emails）に下記テンプレートを
+# 貼り付け、件名を設定して行う。詳細は docs/specs/24_auth_email_templates.md を参照。
+project_id = "bkljkdkldaiemwpnjuks"
+
+# 以下はダッシュボードに貼る内容と件名の対応表（リポジトリ管理用の控え）。
+[auth.email.template.confirmation]
+subject = "【Shallet】メールアドレスの確認をお願いします"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "【Shallet】パスワード再設定のご案内"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "【Shallet】メールアドレス変更の確認"
+content_path = "./supabase/templates/email_change.html"
