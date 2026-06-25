@@ -44,6 +44,14 @@
 - 送信は Server Action（`useActionState`）。エラーは `role="alert"` 表示
 - 成功後 `revalidatePath` + `/transactions` へ `redirect`
 
+#### 連続登録（新規登録フォームのみ）
+
+- `/transactions/new` では送信ボタンを2つ表示する（`enableContinue` prop で切り替え。編集フォームは1つのまま）
+  - 「登録する」: 従来通り。登録後 `/transactions` へ `redirect`
+  - 「登録して続ける」: submit ボタンの `name="_continue" value="1"` で連続登録を伝える。`createTransaction` は redirect せず `{ ok: true, key }` を返す（`key` は `crypto.randomUUID()`。連続成功のたびに変わりクライアントのリセットを毎回トリガー）
+- 「登録して続ける」成功後はフォームに留まり、**金額・カテゴリ・メモをクリア**し、**日付・種別は維持**、金額欄へフォーカスする（次のレシートを続けて入力しやすくする）
+- 成功フィードバックは `role="status"` の領域に「N件登録しました（続けて入力できます）」を表示（件数はフォーム内でカウント）
+
 ## データモデル
 
 ### 入力

@@ -7,7 +7,10 @@ import { getActiveHouseholdId } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import { transactionSchema } from "@/lib/validations/transaction";
 
-export type TransactionActionState = { error: string } | undefined;
+export type TransactionActionState =
+  | { error: string }
+  | { ok: true; key: string }
+  | undefined;
 
 function parse(formData: FormData) {
   return transactionSchema.safeParse({
@@ -58,6 +61,13 @@ export async function createTransaction(
   }
 
   revalidatePath("/transactions");
+
+  // 「登録して続ける」場合はフォームに留まれるよう成功状態を返す。
+  // key は連続成功のたびに変わり、クライアント側のフォームリセットを毎回トリガーする。
+  if (formData.get("_continue") === "1") {
+    return { ok: true, key: crypto.randomUUID() };
+  }
+
   redirect("/transactions");
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
 import type { TransactionActionState } from "@/app/(dashboard)/transactions/actions";
@@ -19,6 +19,8 @@ type Props = {
   action: TransactionAction;
   categories: Category[];
   submitLabel: string;
+  /** 「登録して続ける」ボタンを表示し、登録後もフォームに留まれるようにする（新規登録のみ） */
+  enableContinue?: boolean;
   defaultValues?: {
     id?: string;
     type?: TransactionType;
@@ -39,6 +41,7 @@ export function TransactionForm({
   action,
   categories,
   submitLabel,
+  enableContinue,
   defaultValues,
 }: Props) {
   const [state, formAction, pending] = useActionState<
@@ -52,6 +55,25 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState<string>(
     defaultValues?.category_id ?? "",
   );
+  const [savedCount, setSavedCount] = useState(0);
+
+  const amountRef = useRef<HTMLInputElement>(null);
+  const memoRef = useRef<HTMLTextAreaElement>(null);
+  const lastOkKey = useRef<string | null>(null);
+
+  // 「登録して続ける」成功のたびに、金額・メモ・カテゴリをクリアし金額欄へフォーカスする。
+  // 日付・種別は維持（日付/メモ/金額は uncontrolled のため DOM から直接クリアする）。
+  useEffect(() => {
+    if (!state || !("ok" in state)) return;
+    if (lastOkKey.current === state.key) return;
+    lastOkKey.current = state.key;
+
+    if (amountRef.current) amountRef.current.value = "";
+    if (memoRef.current) memoRef.current.value = "";
+    setCategoryId("");
+    setSavedCount((n) => n + 1);
+    amountRef.current?.focus();
+  }, [state]);
 
   const options = categories.filter(
     (c) => c.type === type || c.type === "both",
@@ -115,6 +137,7 @@ export function TransactionForm({
             ¥
           </span>
           <Input
+            ref={amountRef}
             id="amount"
             name="amount"
             type="number"
@@ -197,6 +220,7 @@ export function TransactionForm({
       <div className="space-y-2">
         <Label htmlFor="memo">メモ</Label>
         <textarea
+          ref={memoRef}
           id="memo"
           name="memo"
           rows={2}
@@ -206,15 +230,39 @@ export function TransactionForm({
         />
       </div>
 
-      {state?.error ? (
+      {state && "error" in state ? (
         <p className="text-sm text-destructive" role="alert">
           {state.error}
         </p>
       ) : null}
 
-      <Button type="submit" className="h-11 w-full text-base shadow-soft" disabled={pending}>
-        {pending ? "処理中..." : submitLabel}
-      </Button>
+      {savedCount > 0 ? (
+        <p className="text-sm text-income" role="status" aria-live="polite">
+          {savedCount}件登録しました（続けて入力できます）
+        </p>
+      ) : null}
+
+      <div className="space-y-2">
+        <Button
+          type="submit"
+          className="h-11 w-full text-base shadow-soft"
+          disabled={pending}
+        >
+          {pending ? "処理中..." : submitLabel}
+        </Button>
+        {enableContinue ? (
+          <Button
+            type="submit"
+            name="_continue"
+            value="1"
+            variant="outline"
+            className="h-11 w-full text-base"
+            disabled={pending}
+          >
+            登録して続ける
+          </Button>
+        ) : null}
+      </div>
     </form>
   );
 }
