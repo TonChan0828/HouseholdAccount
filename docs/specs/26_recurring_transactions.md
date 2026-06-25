@@ -1,4 +1,4 @@
-# 25. 定期収支（Recurring Transactions）
+# 26. 定期収支（Recurring Transactions）
 
 ## 機能概要・目的
 
