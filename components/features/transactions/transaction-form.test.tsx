@@ -101,6 +101,46 @@ describe("TransactionForm", () => {
     ).toBeInTheDocument();
   });
 
+  it("金額欄に四則演算が使えるヒントを表示する", () => {
+    renderForm();
+
+    expect(screen.getByText("+ − × ÷ で計算できます")).toBeInTheDocument();
+    expect(
+      (screen.getByLabelText("金額") as HTMLInputElement).placeholder,
+    ).toBe("1000");
+  });
+
+  it("金額欄に四則演算式を入力すると計算結果のプレビューを表示する", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const amount = screen.getByLabelText("金額");
+    await user.type(amount, "1000+500");
+
+    expect(screen.getByText("= ¥1,500")).toBeInTheDocument();
+  });
+
+  it("評価できない式では「計算できません」を表示する", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const amount = screen.getByLabelText("金額");
+    await user.type(amount, "1000+");
+
+    expect(screen.getByText("計算できません")).toBeInTheDocument();
+  });
+
+  it("演算子を含まないプレーン数値ではプレビューを出さない", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const amount = screen.getByLabelText("金額");
+    await user.type(amount, "1500");
+
+    expect(screen.queryByText(/= ¥/)).not.toBeInTheDocument();
+    expect(screen.queryByText("計算できません")).not.toBeInTheDocument();
+  });
+
   it("「登録して続ける」成功後は金額・メモ・カテゴリをクリアし日付は維持する", async () => {
     const user = userEvent.setup();
     const action = async (): Promise<TransactionActionState> => ({

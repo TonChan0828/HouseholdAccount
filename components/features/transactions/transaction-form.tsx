@@ -7,8 +7,15 @@ import type { TransactionActionState } from "@/app/(dashboard)/transactions/acti
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { evaluateExpression } from "@/lib/amount-expression";
+import { yen } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Category, TransactionType } from "@/types";
+
+/** 入力が演算子を含む式かどうか（プレーン数値はプレビュー不要）。 */
+function hasOperator(value: string): boolean {
+  return /[+\-*/×÷]/.test(value.replace(/^\s*[-－]/, ""));
+}
 
 type TransactionAction = (
   state: TransactionActionState,
@@ -56,6 +63,8 @@ export function TransactionForm({
     defaultValues?.category_id ?? "",
   );
   const [savedCount, setSavedCount] = useState(0);
+  // 金額欄に入力された式のプレビュー。null=非表示。
+  const [amountPreview, setAmountPreview] = useState<string | null>(null);
 
   const amountRef = useRef<HTMLInputElement>(null);
   const memoRef = useRef<HTMLTextAreaElement>(null);
@@ -71,9 +80,23 @@ export function TransactionForm({
     if (amountRef.current) amountRef.current.value = "";
     if (memoRef.current) memoRef.current.value = "";
     setCategoryId("");
+    setAmountPreview(null);
     setSavedCount((n) => n + 1);
     amountRef.current?.focus();
   }, [state]);
+
+  // 金額欄の入力からプレビュー文字列を算出する。
+  // 演算子を含まないプレーン数値は非表示、評価不能なら「計算できません」。
+  const updateAmountPreview = (value: string) => {
+    if (!hasOperator(value)) {
+      setAmountPreview(null);
+      return;
+    }
+    const result = evaluateExpression(value);
+    setAmountPreview(
+      result === null ? "計算できません" : `= ${yen(Math.round(result))}`,
+    );
+  };
 
   const options = categories.filter(
     (c) => c.type === type || c.type === "both",
@@ -128,7 +151,12 @@ export function TransactionForm({
       </fieldset>
 
       <div className="space-y-2">
-        <Label htmlFor="amount">金額</Label>
+        <div className="flex items-baseline justify-between gap-2">
+          <Label htmlFor="amount">金額</Label>
+          <span className="text-xs text-muted-foreground">
+            + − × ÷ で計算できます
+          </span>
+        </div>
         <div className="relative">
           <span
             aria-hidden
@@ -140,15 +168,29 @@ export function TransactionForm({
             ref={amountRef}
             id="amount"
             name="amount"
-            type="number"
-            min={1}
-            inputMode="numeric"
+            type="text"
+            inputMode="text"
             placeholder="1000"
             defaultValue={defaultValues?.amount ?? ""}
             required
+            onChange={(e) => updateAmountPreview(e.target.value)}
             className="h-14 pl-10 font-heading text-2xl font-bold tabular-nums md:text-2xl"
           />
         </div>
+        {amountPreview ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "font-heading text-lg font-bold tabular-nums",
+              amountPreview === "計算できません"
+                ? "text-muted-foreground"
+                : "text-foreground",
+            )}
+          >
+            {amountPreview}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
