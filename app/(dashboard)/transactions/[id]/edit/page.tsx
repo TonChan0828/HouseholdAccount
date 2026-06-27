@@ -5,12 +5,17 @@ import {
   deleteTransaction,
   updateTransaction,
 } from "@/app/(dashboard)/transactions/actions";
+import { ReflectToGroups } from "@/components/features/transactions/reflect-to-groups.client";
 import { TransactionForm } from "@/components/features/transactions/transaction-form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
-import { getActiveHouseholdId, getCurrentUser } from "@/lib/household";
+import {
+  getActiveHouseholdId,
+  getCurrentUser,
+  getUserHouseholds,
+} from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
 
@@ -51,6 +56,11 @@ export default async function EditTransactionPage({
     .order("name", { ascending: true });
   const categories = (data ?? []) as Category[];
 
+  // 反映元（アクティブグループ）を除く自分の所属グループを反映先候補にする。
+  const otherHouseholds = (await getUserHouseholds()).filter(
+    (h) => h.id !== householdId,
+  );
+
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
@@ -76,6 +86,12 @@ export default async function EditTransactionPage({
               memo: transaction.memo,
             }}
           />
+          {otherHouseholds.length > 0 ? (
+            <ReflectToGroups
+              transactionId={transaction.id}
+              otherHouseholds={otherHouseholds}
+            />
+          ) : null}
           <form action={deleteTransaction} className="border-t pt-4">
             <input type="hidden" name="id" value={transaction.id} />
             <Button type="submit" variant="destructive" className="w-full">

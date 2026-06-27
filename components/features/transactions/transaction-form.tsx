@@ -31,6 +31,8 @@ type Props = {
   submitLabel: string;
   /** 「登録して続ける」ボタンを表示し、登録後もフォームに留まれるようにする（新規登録のみ） */
   enableContinue?: boolean;
+  /** 反映先候補（反映元を除く自分の所属グループ）。渡すと「他のグループにも反映」UI を表示 */
+  otherHouseholds?: { id: string; name: string }[];
   defaultValues?: {
     id?: string;
     type?: TransactionType;
@@ -52,6 +54,7 @@ export function TransactionForm({
   categories,
   submitLabel,
   enableContinue,
+  otherHouseholds,
   defaultValues,
 }: Props) {
   const [state, formAction, pending] = useActionState<
@@ -65,6 +68,8 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState<string>(
     defaultValues?.category_id ?? "",
   );
+  // 反映先グループの選択（チェックされた household_id 群）。
+  const [reflectIds, setReflectIds] = useState<string[]>([]);
   const [savedCount, setSavedCount] = useState(0);
   // 金額欄に入力された式のプレビュー。null=非表示。
   const [amountPreview, setAmountPreview] = useState<string | null>(null);
@@ -84,10 +89,17 @@ export function TransactionForm({
     if (amountRef.current) amountRef.current.value = "";
     if (memoRef.current) memoRef.current.value = "";
     setCategoryId("");
+    setReflectIds([]);
     setAmountPreview(null);
     setSavedCount((n) => n + 1);
     amountRef.current?.focus();
   }, [state]);
+
+  const toggleReflect = (id: string) => {
+    setReflectIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   // 金額欄の入力からプレビュー文字列を算出する。
   // 演算子を含まないプレーン数値は非表示、評価不能なら「計算できません」。
@@ -294,6 +306,40 @@ export function TransactionForm({
           className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </div>
+
+      {otherHouseholds && otherHouseholds.length > 0 ? (
+        <details className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium select-none">
+            他のグループにも反映する
+            {reflectIds.length > 0 ? `（${reflectIds.length}件選択中）` : ""}
+          </summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            選択したグループにも同じ収支をコピーします。カテゴリは同名のものに紐付け、無ければ未分類になります。
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            {otherHouseholds.map((h) => {
+              const checked = reflectIds.includes(h.id);
+              return (
+                <label
+                  key={h.id}
+                  className="flex cursor-pointer items-center gap-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleReflect(h.id)}
+                    className="size-4 rounded border-border accent-primary"
+                  />
+                  {h.name}
+                </label>
+              );
+            })}
+          </div>
+        </details>
+      ) : null}
+      {reflectIds.map((id) => (
+        <input key={id} type="hidden" name="reflect_household_ids" value={id} />
+      ))}
 
       {state && "error" in state ? (
         <p className="text-sm text-destructive" role="alert">

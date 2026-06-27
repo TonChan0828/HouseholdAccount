@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
-import { getActiveHouseholdId } from "@/lib/household";
+import { getActiveHouseholdId, getUserHouseholds } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
 
@@ -34,6 +34,11 @@ export default async function NewTransactionPage({
     .order("name", { ascending: true });
   const categories = (data ?? []) as Category[];
 
+  // 反映元（アクティブグループ）を除く自分の所属グループを反映先候補にする。
+  const otherHouseholds = (await getUserHouseholds()).filter(
+    (h) => h.id !== householdId,
+  );
+
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
@@ -51,6 +56,7 @@ export default async function NewTransactionPage({
             categories={categories}
             submitLabel="登録する"
             enableContinue
+            otherHouseholds={otherHouseholds}
             defaultValues={defaultDate ? { date: defaultDate } : undefined}
           />
         </CardContent>
