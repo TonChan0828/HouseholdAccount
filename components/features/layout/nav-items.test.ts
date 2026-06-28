@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, isNavActive } from "./nav-items";
 
 describe("NAV_ITEMS", () => {
-  it("主要5ページへのリンクを定義する", () => {
+  it("主要6ページへのリンクを定義する", () => {
     expect(NAV_ITEMS.map((i) => i.href)).toEqual([
       "/dashboard",
       "/transactions",
+      "/calendar",
       "/analytics",
       "/members",
       "/categories",

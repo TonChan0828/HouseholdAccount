@@ -13,6 +13,14 @@ export function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** `?ref=YYYY-MM-DD` を UTC 真夜中の Date に解釈する。不正・未指定は今日。 */
+export function refFromParam(ref: string | undefined): Date {
+  if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {
+    return new Date(`${ref}T00:00:00Z`);
+  }
+  return new Date();
+}
+
 /** ref を含む期間を返す。startDay は 1〜28 を想定。 */
 export function getPeriodRange(ref: Date, startDay: number): PeriodRange {
   const year = ref.getUTCFullYear();

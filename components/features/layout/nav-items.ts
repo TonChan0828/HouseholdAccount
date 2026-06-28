@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   ChartPie,
   House,
   ReceiptJapaneseYen,
@@ -17,6 +18,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "ホーム", icon: House },
   { href: "/transactions", label: "収支", icon: ReceiptJapaneseYen },
+  { href: "/calendar", label: "カレンダー", icon: CalendarDays },
   { href: "/analytics", label: "分析", icon: ChartPie },
   { href: "/members", label: "メンバー", icon: Users },
   { href: "/categories", label: "カテゴリ", icon: Tags },

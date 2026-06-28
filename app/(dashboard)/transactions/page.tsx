@@ -28,6 +28,7 @@ import {
 import {
   formatPeriodLabel,
   getPeriodRange,
+  refFromParam,
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
@@ -44,13 +45,6 @@ type TransactionRow = {
   created_by: string;
   category: { name: string; color: string | null } | null;
 };
-
-function refFromParam(ref: string | undefined): Date {
-  if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {
-    return new Date(`${ref}T00:00:00Z`);
-  }
-  return new Date();
-}
 
 /** 1 日分の収入・支出小計を求める。 */
 function daySums(items: TransactionRow[]) {
