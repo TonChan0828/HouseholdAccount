@@ -8,7 +8,7 @@ import { Surface } from "@/components/shared/surface";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { CardContent } from "@/components/ui/card";
 import type { CalendarDay } from "@/lib/calendar";
-import { formatDayLabel } from "@/lib/format";
+import { compactAmount, formatDayLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type CalendarTx = {
@@ -76,7 +76,7 @@ export function CalendarBoard({
                   aria-pressed={isSelected}
                   onClick={() => setSelected(d.date)}
                   className={cn(
-                    "flex min-h-16 flex-col gap-0.5 rounded-md p-1 text-left transition-colors sm:min-h-20",
+                    "flex min-h-14 min-w-0 flex-col gap-0.5 overflow-hidden rounded-md p-0.5 text-left transition-colors sm:min-h-20 sm:p-1",
                     "hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     d.inMonth ? "bg-card" : "bg-transparent text-muted-foreground/50",
                     isSelected && "bg-secondary ring-2 ring-primary",
@@ -90,20 +90,16 @@ export function CalendarBoard({
                   >
                     {dayNum}
                   </span>
-                  <span className="flex flex-col items-end gap-0 leading-tight">
+                  <span className="flex w-full min-w-0 flex-col items-end gap-0 leading-tight">
                     {d.income > 0 ? (
-                      <Amount
-                        value={d.income}
-                        type="income"
-                        className="text-[10px] font-medium sm:text-[11px]"
-                      />
+                      <span className="w-full truncate text-right text-[9px] font-medium tabular-nums text-income sm:text-[11px]">
+                        +{compactAmount(d.income)}
+                      </span>
                     ) : null}
                     {d.expense > 0 ? (
-                      <Amount
-                        value={d.expense}
-                        type="expense"
-                        className="text-[10px] font-medium sm:text-[11px]"
-                      />
+                      <span className="w-full truncate text-right text-[9px] font-medium tabular-nums text-expense sm:text-[11px]">
+                        -{compactAmount(d.expense)}
+                      </span>
                     ) : null}
                   </span>
                 </button>

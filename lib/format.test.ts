@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDayLabel, groupByDate, yen } from "./format";
+import { compactAmount, formatDayLabel, groupByDate, yen } from "./format";
 
 describe("yen", () => {
   it("正の金額を ¥ 付き桁区切りで整形する", () => {
@@ -10,6 +10,23 @@ describe("yen", () => {
 
   it("負の金額はマイナスを ¥ の前に置く", () => {
     expect(yen(-134600)).toBe("-¥134,600");
+  });
+});
+
+describe("compactAmount", () => {
+  it("1万未満は桁区切りでそのまま表示する", () => {
+    expect(compactAmount(1200)).toBe("1,200");
+    expect(compactAmount(0)).toBe("0");
+  });
+
+  it("1万以上は「万」単位に丸める", () => {
+    expect(compactAmount(10000)).toBe("1万");
+    expect(compactAmount(12000)).toBe("1.2万");
+    expect(compactAmount(1234567)).toBe("123.5万");
+  });
+
+  it("符号は無視して絶対値で整形する", () => {
+    expect(compactAmount(-12000)).toBe("1.2万");
   });
 });
 
