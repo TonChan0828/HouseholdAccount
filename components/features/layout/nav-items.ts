@@ -5,6 +5,7 @@ import {
   ReceiptJapaneseYen,
   Tags,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/transactions", label: "収支", icon: ReceiptJapaneseYen },
   { href: "/calendar", label: "カレンダー", icon: CalendarDays },
   { href: "/analytics", label: "分析", icon: ChartPie },
+  { href: "/budgets", label: "予算", icon: Wallet },
   { href: "/members", label: "メンバー", icon: Users },
   { href: "/categories", label: "カテゴリ", icon: Tags },
 ];
@@ -27,9 +29,9 @@ export const NAV_ITEMS: NavItem[] = [
 /**
  * モバイル下部タブバーに表示するナビ（中央は記録FAB）。
  * 中央 FAB を挟んで左右対称（2:2）に保つため 4 件に絞る。
- * カテゴリは設定系、カレンダーは収支の別ビュー（収支ページのトグルから遷移）のため除外する。
+ * カテゴリ・予算は管理/設定系、カレンダーは収支の別ビュー（収支ページのトグルから遷移）のため除外する。
  */
-const TAB_EXCLUDED = new Set(["/categories", "/calendar"]);
+const TAB_EXCLUDED = new Set(["/categories", "/calendar", "/budgets"]);
 export const TAB_ITEMS: NavItem[] = NAV_ITEMS.filter(
   (item) => !TAB_EXCLUDED.has(item.href),
 );

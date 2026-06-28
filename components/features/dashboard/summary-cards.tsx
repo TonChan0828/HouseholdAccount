@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { BudgetProgressBar } from "@/components/features/budgets/budget-progress-bar";
 import { yen } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,10 @@ type Props = {
   prevIncome?: number;
   /** 前期の支出計。渡すと前期比を表示する。 */
   prevExpense?: number;
+  /** 予算設定済みカテゴリの予算合計。>0 のとき予算進捗バーを表示する。 */
+  budgetTotal?: number;
+  /** 予算設定済みカテゴリの当期実績合計（世帯全体）。 */
+  budgetSpent?: number;
 };
 
 function diffLabel(current: number, prev: number | undefined): string | null {
@@ -233,7 +238,14 @@ function StatTile({
  * 当期の収支を 1 枚のヒーローにまとめて表示する（presentational）。
  * 中央に収支差と貯蓄率リング、その下に収入/支出の比率帯とタイルを並べる。
  */
-export function SummaryCards({ income, expense, prevIncome, prevExpense }: Props) {
+export function SummaryCards({
+  income,
+  expense,
+  prevIncome,
+  prevExpense,
+  budgetTotal,
+  budgetSpent,
+}: Props) {
   const balance = income - expense;
   const balancePositive = balance >= 0;
   const balanceDiff =
@@ -283,6 +295,18 @@ export function SummaryCards({ income, expense, prevIncome, prevExpense }: Props
         </div>
 
         <ConsumptionBar income={income} expense={expense} />
+
+        {budgetTotal !== undefined && budgetTotal > 0 && (
+          <div className="space-y-1.5 border-t border-border/60 pt-3">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              予算（世帯全体）
+            </span>
+            <BudgetProgressBar
+              spent={budgetSpent ?? 0}
+              budget={budgetTotal}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <StatTile

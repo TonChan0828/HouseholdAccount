@@ -122,10 +122,19 @@ export default async function DashboardPage({
     }));
   };
 
-  const [{ data }, { data: prevData }, members] = await Promise.all([
+  const fetchBudgets = async () => {
+    const { data: budgetRows } = await supabase
+      .from("budgets")
+      .select("category_id, amount")
+      .eq("household_id", householdId);
+    return budgetRows ?? [];
+  };
+
+  const [{ data }, { data: prevData }, members, budgets] = await Promise.all([
     buildQuery(range.start, range.end).overrideTypes<TransactionRow[]>(),
     buildQuery(prevRange.start, prevRange.end).overrideTypes<TransactionRow[]>(),
     fetchMembers(),
+    fetchBudgets(),
   ]);
 
   const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
@@ -140,6 +149,22 @@ export default async function DashboardPage({
   const expense = sumBy(scopedTransactions, "expense");
   const recentGroups = groupByDate(scopedTransactions.slice(0, RECENT_LIMIT));
   const matrix = buildCategoryMemberMatrix(transactions, members);
+
+  // 予算進捗（世帯全体）。scope に関わらず全メンバーの当期支出と対比する。
+  // 実績は予算設定済みカテゴリ分のみを合算する。
+  const spentByCategory = new Map<string, number>();
+  for (const t of transactions) {
+    if (t.type !== "expense" || !t.category_id) continue;
+    spentByCategory.set(
+      t.category_id,
+      (spentByCategory.get(t.category_id) ?? 0) + t.amount,
+    );
+  }
+  const budgetTotal = budgets.reduce((s, b) => s + b.amount, 0);
+  const budgetSpent = budgets.reduce(
+    (s, b) => s + (spentByCategory.get(b.category_id) ?? 0),
+    0,
+  );
 
   // 月送りリンク。scope を引き継ぎつつ ref で期間を移動する。
   const buildHref = (refDate: Date) =>
@@ -201,6 +226,8 @@ export default async function DashboardPage({
           expense={expense}
           prevIncome={sumBy(prevTransactions, "income")}
           prevExpense={sumBy(prevTransactions, "expense")}
+          budgetTotal={budgetTotal}
+          budgetSpent={budgetSpent}
         />
       </div>
 
