@@ -24,26 +24,28 @@
 ### レイアウト
 
 ```text
-分析                                   [グループ選択]
-◀   2026/06/01 〜 06/30   ▶              ← 期間ナビ（MonthNav 再利用）
+分析                          [◀ 2026/06/01 〜 06/30 ▶]   ← 期間ナビ（MonthNav 再利用）
+
+[当期収入 ¥320,000] [支出カテゴリ 5件] [最多占有 38%] [月平均支出 ¥120,000]  ← KPI リボン
+
+カテゴリ別支出（当期）              ← showpiece（先頭に配置）
+┌──────────┐   ● 食費    ¥32,000
+│ ドーナツ  │   ● 日用品  ¥12,500
+└──────────┘   ● 未分類  ¥3,000
+              …（カテゴリの color を使用 / 当期の支出が0件ならプレースホルダ）
 
 月別推移（直近6期）
 ┌───────────────────────────────────┐
-│ 収入(緑) / 支出(赤) の棒グラフ × 6期   │   ← BarChart
+│ 収入(緑) / 支出(赤) のペア棒 × 6期    │   ← CSS チャート（TrendBars）
 └───────────────────────────────────┘
-
-カテゴリ別支出（当期）
-┌──────────┐   ● 食費    ¥32,000
-│  円グラフ  │   ● 日用品  ¥12,500
-└──────────┘   ● 未分類  ¥3,000
-              …（カテゴリの color を使用 / 当期の支出が0件ならプレースホルダ）
 ```
 
 ### 表示内容
 
 - 期間ラベル（`formatPeriodLabel`）と前後ナビ（`MonthNav`、`?ref=` 移動）
-- 月別推移: 直近6期それぞれの収入計（緑）・支出計（赤）を並べた棒グラフ。X軸ラベルは各期の表示（例 `06/01〜`）
-- カテゴリ別支出: 当期の支出をカテゴリごとに集計した円グラフ＋凡例（色ドット・カテゴリ名・金額）。カテゴリ未設定は「未分類」（灰）に集約
+- KPI リボン（`KpiRibbon`）: 当期収入・支出カテゴリ数・最多占有率（最大カテゴリの構成比）・月平均支出（直近6期平均）
+- カテゴリ別支出（先頭・showpiece）: 当期の支出をカテゴリごとに集計したドーナツ＋ランキング型リーグテーブル（色ドット・カテゴリ名・金額）。カテゴリ未設定は「未分類」（灰）に集約
+- 月別推移: 直近6期それぞれの収入計（緑）・支出計（赤）を並べたペア棒チャート。X軸ラベルは各期の表示（例 `06/01〜`）
 
 ### インタラクション・バリデーション
 
@@ -130,15 +132,19 @@ Server Action は不要（閲覧専用）。集計は DB ではなく `lib/analy
 ## コンポーネント
 
 - `lib/analytics.ts` — 集計の純関数（`summarizeTrend` / `summarizeCategoryExpense`）。TDD 対象
-- `components/features/charts/trend-bar-chart.tsx` — 収入/支出の棒グラフ（`"use client"`、presentational）
-- `components/features/charts/category-pie-chart.tsx` — カテゴリ別円グラフ＋凡例（`"use client"`、presentational、空データでプレースホルダ）
+- `components/features/charts/trend-bars.tsx` — 直近各期の収入/支出をペア棒で並べた CSS チャート（presentational・server component 可。Recharts は使わず最大値スケールで描画）
+- `components/features/charts/category-breakdown.tsx` — カテゴリ別支出の「ドーナツ＋ランキング型リーグテーブル」（presentational、CSS/SVG のみ、空データでプレースホルダ）
+- `components/shared/kpi-ribbon.tsx` — 当期収入・支出カテゴリ数・最多占有率・月平均支出の KPI リボン（`KpiRibbon`）
 - 期間ナビは既存 `components/features/transactions/month-nav.tsx` を再利用
 - `/transactions`・ダッシュボードの既存コードは変更しない
+
+> 注: Recharts ベースの `trend-bar-chart.client.tsx` / `category-pie-chart.client.tsx` も存在するが、
+> 分析ページは描画コスト・E2E 安定性のため CSS ベースの `TrendBars` / `CategoryBreakdown` を採用している。
 
 ## テスト
 
 - Unit（`lib/analytics.test.ts`）: `summarizeTrend`（6期バケット集計・期境界・空データ）、`summarizeCategoryExpense`（カテゴリ集計・未分類集約・降順・空データ）
-- Component: `CategoryPieChart` の空データ時プレースホルダ表示（Recharts 描画自体は検証しない軽い表示確認）
+- Component: `CategoryBreakdown` の空データ時プレースホルダ表示（チャート描画自体は検証しない軽い表示確認）
 - E2E（`e2e/analytics.spec.ts`）: グループ作成 → 収支追加 → `/analytics` で推移・カテゴリ内訳に反映 → 期間ナビ遷移
 
 ## 未解決の課題

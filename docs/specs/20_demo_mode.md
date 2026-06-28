@@ -46,7 +46,7 @@
 type DemoState = {
   household: { id: string; name: string; period_start_day: number };
   currentUserId: string;          // スコープ（全体/自分）判定の基準ユーザー
-  members: MemberInfo[];          // 2名（「あなた」「パートナー」）
+  members: MemberInfo[];          // 4名（「あなた」「パートナー」「家族」「子ども」。3人以上の表示確認を兼ねる）
   categories: Category[];         // デフォルト＋カスタム混在（is_default で区別）
   transactions: Transaction[];    // 当期内のサンプル数件
 };
