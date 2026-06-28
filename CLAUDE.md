@@ -127,6 +127,7 @@ docs/specs/
   27_receipt_ocr.md      # レシートOCR入力補助（Tesseract.jsでブラウザ内OCR・金額/日付をプリフィル）
   28_cross_group_reflection.md # 収支のグループ間反映（記帳した収支を他の所属グループにも一回限りコピー）
   29_calendar_view.md    # カレンダービュー（暦月カレンダーで収支を俯瞰・日タップで明細表示）
+  30_budget_management.md # 予算管理（予実）（支出カテゴリ別の毎月固定予算を当期実績と対比・進捗/超過を可視化）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
