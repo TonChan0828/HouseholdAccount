@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, ReceiptText } from "lucide-react";
+import { ArrowRight, ReceiptText, User, Users } from "lucide-react";
 
 import { useDemo } from "@/components/features/demo/demo-provider";
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart";
@@ -71,9 +71,10 @@ export default function DemoDashboardPage() {
             {formatPeriodLabel(range)}
           </p>
         </div>
-        <div className="inline-flex rounded-md border p-0.5">
+        <div className="inline-flex items-center gap-1 rounded-full border bg-card/70 p-1 shadow-soft ring-1 ring-foreground/5 backdrop-blur">
           {(["all", "mine"] as const).map((value) => {
             const active = value === scope;
+            const Icon = value === "all" ? Users : User;
             return (
               <button
                 key={value}
@@ -81,12 +82,13 @@ export default function DemoDashboardPage() {
                 onClick={() => setScope(value)}
                 aria-current={active ? "true" : undefined}
                 className={cn(
-                  "rounded px-3 py-1 text-sm transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors",
                   active
-                    ? "bg-primary font-medium text-primary-foreground"
+                    ? "bg-secondary text-secondary-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
+                <Icon className="size-4" aria-hidden />
                 {value === "all" ? "全体" : "自分"}
               </button>
             );
