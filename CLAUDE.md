@@ -126,6 +126,7 @@ docs/specs/
   26_recurring_transactions.md # 定期収支（固定費・固定収入をスタート日に自動登録・閲覧時に冪等生成）
   27_receipt_ocr.md      # レシートOCR入力補助（Tesseract.jsでブラウザ内OCR・金額/日付をプリフィル）
   28_cross_group_reflection.md # 収支のグループ間反映（記帳した収支を他の所属グループにも一回限りコピー）
+  29_calendar_view.md    # カレンダービュー（暦月カレンダーで収支を俯瞰・日タップで明細表示）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
