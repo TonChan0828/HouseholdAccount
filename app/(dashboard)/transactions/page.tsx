@@ -14,6 +14,7 @@ import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { MonthNav } from "@/components/features/transactions/month-nav";
+import { ViewToggle } from "@/components/features/transactions/view-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Amount } from "@/components/shared/amount";
@@ -153,9 +154,10 @@ export default async function TransactionsPage({
       />
 
       <div
-        className={cn("flex justify-center", reveal)}
+        className={cn("flex flex-col items-center gap-3", reveal)}
         style={{ animationDelay: "60ms" }}
       >
+        <ViewToggle active="list" />
         <MonthNav
           label={formatPeriodLabel(range)}
           prevHref={prevHref}

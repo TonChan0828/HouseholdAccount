@@ -24,9 +24,14 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/categories", label: "カテゴリ", icon: Tags },
 ];
 
-/** モバイル下部タブバーに表示するナビ（中央は記録FAB）。 */
+/**
+ * モバイル下部タブバーに表示するナビ（中央は記録FAB）。
+ * 中央 FAB を挟んで左右対称（2:2）に保つため 4 件に絞る。
+ * カテゴリは設定系、カレンダーは収支の別ビュー（収支ページのトグルから遷移）のため除外する。
+ */
+const TAB_EXCLUDED = new Set(["/categories", "/calendar"]);
 export const TAB_ITEMS: NavItem[] = NAV_ITEMS.filter(
-  (item) => item.href !== "/categories",
+  (item) => !TAB_EXCLUDED.has(item.href),
 );
 
 /** ホームは完全一致、それ以外はセグメント単位の前方一致でアクティブ判定する。 */
