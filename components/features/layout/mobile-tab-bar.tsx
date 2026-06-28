@@ -10,8 +10,7 @@ import { cn } from "@/lib/utils";
 /** モバイル専用の下部固定タブバー。中央に「記録」FAB を置く。 */
 export function MobileTabBar() {
   const pathname = usePathname();
-  const mid = Math.ceil(TAB_ITEMS.length / 2);
-  const [left, right] = [TAB_ITEMS.slice(0, mid), TAB_ITEMS.slice(mid)];
+  const [left, right] = [TAB_ITEMS.slice(0, 2), TAB_ITEMS.slice(2)];
 
   const renderTab = (item: (typeof TAB_ITEMS)[number]) => {
     const active = isNavActive(pathname, item.href);

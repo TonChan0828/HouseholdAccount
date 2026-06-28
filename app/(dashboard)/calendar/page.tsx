@@ -8,6 +8,7 @@ import {
 } from "@/components/features/calendar/calendar-board";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { MonthNav } from "@/components/features/transactions/month-nav";
+import { ViewToggle } from "@/components/features/transactions/view-toggle";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -122,9 +123,10 @@ export default async function CalendarPage({
       />
 
       <div
-        className={cn("flex justify-center", reveal)}
+        className={cn("flex flex-col items-center gap-3", reveal)}
         style={{ animationDelay: "60ms" }}
       >
+        <ViewToggle active="calendar" />
         <MonthNav
           label={formatMonthLabel(refDate)}
           prevHref={prevHref}
