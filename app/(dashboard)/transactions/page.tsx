@@ -243,7 +243,7 @@ export default async function TransactionsPage({
                                   : "bg-expense",
                               )}
                             />
-                            <div className="flex flex-1 items-center justify-between gap-3 px-4 py-3">
+                            <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3">
                               <div className="min-w-0 space-y-0.5">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <CategoryBadge category={t.category} />
