@@ -6,6 +6,19 @@ export function yen(n: number): string {
   return n < 0 ? `-¥${abs}` : `¥${abs}`;
 }
 
+/**
+ * 狭い領域（カレンダーの日セル等）向けに金額を短く整形する。符号・¥ は付けない。
+ * 1万未満は桁区切り、1万以上は「万」単位（小数第1位まで）に丸める。
+ */
+export function compactAmount(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 10000) {
+    const rounded = Math.round((abs / 10000) * 10) / 10;
+    return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}万`;
+  }
+  return abs.toLocaleString("ja-JP");
+}
+
 /** ISO 日付（YYYY-MM-DD）を「M月D日（曜）」に整形する。 */
 export function formatDayLabel(isoDate: string): string {
   const d = new Date(`${isoDate}T00:00:00Z`);

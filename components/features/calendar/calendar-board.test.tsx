@@ -55,7 +55,7 @@ describe("CalendarBoard", () => {
   it("各日セルを7個描画し、収入合計を表示する", () => {
     renderBoard();
     expect(screen.getAllByTestId("calendar-day")).toHaveLength(7);
-    expect(screen.getByText("+¥1,000")).toBeInTheDocument();
+    expect(screen.getByText("+1,000")).toBeInTheDocument();
   });
 
   it("当月外のセルは data-in-month=false を持つ", () => {
