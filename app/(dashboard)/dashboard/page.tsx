@@ -5,6 +5,7 @@ import { ArrowRight, Plus, ReceiptText } from "lucide-react";
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.client";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
+import { SavingsGoalCard } from "@/components/features/dashboard/savings-goal-card";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { MonthNav } from "@/components/features/transactions/month-nav";
@@ -28,6 +29,7 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
+import { buildSavingsProgress, type SavingsProgress } from "@/lib/savings-goal";
 import { ensureRecurringGenerated } from "@/lib/recurring";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -130,12 +132,52 @@ export default async function DashboardPage({
     return budgetRows ?? [];
   };
 
-  const [{ data }, { data: prevData }, members, budgets] = await Promise.all([
-    buildQuery(range.start, range.end).overrideTypes<TransactionRow[]>(),
-    buildQuery(prevRange.start, prevRange.end).overrideTypes<TransactionRow[]>(),
-    fetchMembers(),
-    fetchBudgets(),
-  ]);
+  // 貯金目標（グループに1件）と、開始日以降・今日までの世帯全体の収支差額を取得する。
+  const fetchSavingsGoal = async (): Promise<{
+    progress: SavingsProgress | null;
+    goal: { start_date: string; target_date: string | null } | null;
+  }> => {
+    const { data: goal } = await supabase
+      .from("savings_goals")
+      .select("name, target_amount, start_date, target_date")
+      .eq("household_id", householdId)
+      .maybeSingle();
+    if (!goal) return { progress: null, goal: null };
+
+    const { data: savedRows } = await supabase
+      .from("transactions")
+      .select("amount, type")
+      .eq("household_id", householdId)
+      .gte("date", goal.start_date)
+      .lte("date", toISODate(new Date()));
+    const saved = (savedRows ?? []).reduce(
+      (s, t) => s + (t.type === "income" ? t.amount : -t.amount),
+      0,
+    );
+
+    return {
+      progress: buildSavingsProgress(
+        {
+          name: goal.name,
+          targetAmount: goal.target_amount,
+          startDate: goal.start_date,
+          targetDate: goal.target_date,
+        },
+        saved,
+        new Date(),
+      ),
+      goal: { start_date: goal.start_date, target_date: goal.target_date },
+    };
+  };
+
+  const [{ data }, { data: prevData }, members, budgets, savingsGoal] =
+    await Promise.all([
+      buildQuery(range.start, range.end).overrideTypes<TransactionRow[]>(),
+      buildQuery(prevRange.start, prevRange.end).overrideTypes<TransactionRow[]>(),
+      fetchMembers(),
+      fetchBudgets(),
+      fetchSavingsGoal(),
+    ]);
 
   const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
     rows.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
@@ -228,6 +270,13 @@ export default async function DashboardPage({
           prevExpense={sumBy(prevTransactions, "expense")}
           budgetTotal={budgetTotal}
           budgetSpent={budgetSpent}
+        />
+      </div>
+
+      <div className={reveal} style={{ animationDelay: "90ms" }}>
+        <SavingsGoalCard
+          progress={savingsGoal.progress}
+          goal={savingsGoal.goal}
         />
       </div>
 
