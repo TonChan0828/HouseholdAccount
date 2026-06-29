@@ -1,5 +1,8 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+
+import { upsertSavingsGoal } from "@/app/(dashboard)/dashboard/savings-goal-actions";
 
 import { SavingsGoalCard } from "./savings-goal-card";
 
@@ -69,5 +72,24 @@ describe("SavingsGoalCard", () => {
       />,
     );
     expect(screen.getByText(/達成/)).toBeInTheDocument();
+  });
+
+  it("保存に失敗してもモーダルの入力値が保持される", async () => {
+    const user = userEvent.setup();
+    vi.mocked(upsertSavingsGoal).mockResolvedValue({
+      error: "保存に失敗しました",
+    });
+
+    render(<SavingsGoalCard progress={null} goal={null} />);
+    await user.click(screen.getByRole("button", { name: "目標を設定" }));
+
+    await user.type(await screen.findByLabelText("目標名"), "旅行資金");
+    await user.type(screen.getByLabelText("目標額"), "300000");
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    // エラー表示後も入力値が消えないこと（非制御だと defaultValue にリセットされる）。
+    expect(await screen.findByText("保存に失敗しました")).toBeInTheDocument();
+    expect(screen.getByLabelText("目標名")).toHaveValue("旅行資金");
+    expect(screen.getByLabelText("目標額")).toHaveValue("300000");
   });
 });

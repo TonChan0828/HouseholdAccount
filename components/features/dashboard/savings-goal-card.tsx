@@ -56,6 +56,15 @@ function GoalForm({
     FormData
   >(upsertSavingsGoal, undefined);
 
+  // 制御入力にして、Server Action 送信後のフォーム自動リセットで入力値が
+  // 消えないようにする（保存失敗時も入力を保持する）。
+  const [name, setName] = useState(progress?.name ?? "");
+  const [amount, setAmount] = useState(
+    progress ? String(progress.targetAmount) : "",
+  );
+  const [startDate, setStartDate] = useState(goal?.start_date ?? todayIso());
+  const [targetDate, setTargetDate] = useState(goal?.target_date ?? "");
+
   useEffect(() => {
     if (state && "ok" in state && state.ok) onDone();
   }, [state, onDone]);
@@ -70,7 +79,8 @@ function GoalForm({
             id="goal-name"
             name="name"
             autoComplete="off"
-            defaultValue={progress?.name ?? ""}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             placeholder="例: 旅行資金"
           />
         </div>
@@ -85,7 +95,8 @@ function GoalForm({
               name="target_amount"
               inputMode="numeric"
               autoComplete="off"
-              defaultValue={progress ? String(progress.targetAmount) : ""}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               placeholder="目標額"
               className="pl-7"
             />
@@ -98,7 +109,8 @@ function GoalForm({
               id="goal-start"
               name="start_date"
               type="date"
-              defaultValue={goal?.start_date ?? todayIso()}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
@@ -107,7 +119,8 @@ function GoalForm({
               id="goal-target"
               name="target_date"
               type="date"
-              defaultValue={goal?.target_date ?? ""}
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
             />
           </div>
         </div>
