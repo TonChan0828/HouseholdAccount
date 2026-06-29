@@ -132,7 +132,9 @@ export default async function DashboardPage({
     return budgetRows ?? [];
   };
 
-  // 貯金目標（グループに1件）と、開始日以降・今日までの世帯全体の収支差額を取得する。
+  // 貯金目標（グループに1件）と、開始日以降の世帯全体の収支差額を取得する。
+  // 上限（今日まで）は付けない。サーバの UTC 基準の「今日」とユーザーのローカル
+  // 日付がずれると当日の収支が除外されてしまうため（貯金額＝開始日以降の収支差額）。
   const fetchSavingsGoal = async (): Promise<{
     progress: SavingsProgress | null;
     goal: { start_date: string; target_date: string | null } | null;
@@ -148,8 +150,7 @@ export default async function DashboardPage({
       .from("transactions")
       .select("amount, type")
       .eq("household_id", householdId)
-      .gte("date", goal.start_date)
-      .lte("date", toISODate(new Date()));
+      .gte("date", goal.start_date);
     const saved = (savedRows ?? []).reduce(
       (s, t) => s + (t.type === "income" ? t.amount : -t.amount),
       0,
