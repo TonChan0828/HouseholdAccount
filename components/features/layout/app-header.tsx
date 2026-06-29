@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleHelp, LogOut, Plus, Repeat, Tags, UserCog } from "lucide-react";
+import {
+  CircleHelp,
+  LogOut,
+  Plus,
+  Repeat,
+  Tags,
+  UserCog,
+  Wallet,
+} from "lucide-react";
 
 import { HouseholdSwitcher } from "@/components/features/layout/household-switcher";
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
@@ -105,6 +113,11 @@ export function AppHeader({
               </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              {/* lg 未満ではヘッダーのメインナビが隠れるため、予算もメニューから辿れるようにする。 */}
+              <DropdownMenuItem render={<Link href="/budgets" />}>
+                <Wallet aria-hidden />
+                予算
+              </DropdownMenuItem>
               <DropdownMenuItem render={<Link href="/transactions/recurring" />}>
                 <Repeat aria-hidden />
                 定期項目

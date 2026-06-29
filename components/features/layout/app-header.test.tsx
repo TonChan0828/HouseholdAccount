@@ -119,4 +119,19 @@ describe("AppHeader", () => {
       await screen.findByRole("menuitem", { name: /プロフィール設定/ }),
     ).toHaveAttribute("href", "/settings");
   });
+
+  // ヘッダーのメインナビは lg 未満で非表示のため、予算・定期項目はメニューからも辿れる必要がある。
+  it("ユーザーメニューに予算・定期項目へのリンクを表示する", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+
+    await user.click(screen.getByRole("button", { name: /show/ }));
+
+    expect(
+      await screen.findByRole("menuitem", { name: /予算/ }),
+    ).toHaveAttribute("href", "/budgets");
+    expect(
+      screen.getByRole("menuitem", { name: /定期項目/ }),
+    ).toHaveAttribute("href", "/transactions/recurring");
+  });
 });
