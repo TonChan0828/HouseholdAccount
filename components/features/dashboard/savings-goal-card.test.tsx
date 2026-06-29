@@ -74,6 +74,43 @@ describe("SavingsGoalCard", () => {
     expect(screen.getByText(/達成/)).toBeInTheDocument();
   });
 
+  it("達成時は達成バッジと貯まった額を表示する", () => {
+    render(
+      <SavingsGoalCard
+        progress={{
+          name: "旅行資金",
+          targetAmount: 300_000,
+          saved: 320_000,
+          pct: 107,
+          remaining: 0,
+          reached: true,
+          pace: null,
+        }}
+        goal={{ start_date: "2026-04-01", target_date: null }}
+      />,
+    );
+    expect(screen.getByText(/目標達成/)).toBeInTheDocument();
+    expect(screen.getByText(/貯まりました/)).toBeInTheDocument();
+  });
+
+  it("未達のときは達成バッジを出さない", () => {
+    render(
+      <SavingsGoalCard
+        progress={{
+          name: "旅行資金",
+          targetAmount: 300_000,
+          saved: 80_000,
+          pct: 27,
+          remaining: 220_000,
+          reached: false,
+          pace: null,
+        }}
+        goal={{ start_date: "2026-04-01", target_date: null }}
+      />,
+    );
+    expect(screen.queryByText(/目標達成/)).not.toBeInTheDocument();
+  });
+
   it("保存に失敗してもモーダルの入力値が保持される", async () => {
     const user = userEvent.setup();
     vi.mocked(upsertSavingsGoal).mockResolvedValue({
