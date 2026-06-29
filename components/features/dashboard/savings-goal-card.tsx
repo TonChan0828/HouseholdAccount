@@ -1,6 +1,6 @@
 "use client";
 
-import { Target } from "lucide-react";
+import { Target, Trophy } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 
 import {
@@ -24,6 +24,8 @@ import { yen } from "@/lib/format";
 import type { SavingsProgress } from "@/lib/savings-goal";
 import { cn } from "@/lib/utils";
 
+import { GoalCelebration } from "./goal-celebration";
+
 type Props = {
   progress: SavingsProgress | null;
   goal: { start_date: string; target_date: string | null } | null;
@@ -34,9 +36,8 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** 進捗に応じたペース/残額の補助文言。 */
+/** 未達時のペース/残額の補助文言（達成時は専用バッジを表示するため呼ばれない）。 */
 function paceNote(p: SavingsProgress): string {
-  if (p.reached) return "達成 🎉";
   if (p.pace?.overdue) return `期日超過（あと${yen(p.remaining)}）`;
   if (p.pace) {
     return `期日まであと${p.pace.monthsLeft}ヶ月・月${yen(p.pace.requiredPerMonth)}ペース`;
@@ -152,9 +153,27 @@ export function SavingsGoalCard({ progress, goal }: Props) {
   const [open, setOpen] = useState(false);
   const pct = progress ? Math.min(100, Math.max(0, progress.pct)) : 0;
 
+  const reached = progress?.reached ?? false;
+
   return (
-    <Card data-testid="savings-goal-card" className="shadow-soft">
-      <CardContent className="space-y-3">
+    <Card
+      data-testid="savings-goal-card"
+      className={cn(
+        "relative isolate overflow-hidden shadow-soft transition-shadow",
+        reached && "shadow-lifted ring-1 ring-accent-warm/40",
+      )}
+    >
+      {reached && (
+        <>
+          {/* 達成時の暖色グロー */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-12 -top-16 -z-10 size-48 rounded-full bg-accent-warm/40 blur-3xl"
+          />
+          <GoalCelebration />
+        </>
+      )}
+      <CardContent className="relative z-10 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-income-soft text-income">
@@ -211,19 +230,39 @@ export function SavingsGoalCard({ progress, goal }: Props) {
               className="h-2 w-full overflow-hidden rounded-full bg-secondary"
             >
               <div
-                className="h-full bg-income transition-[width] duration-700 ease-out"
+                data-goal-anim
+                className={cn(
+                  "h-full transition-[width] duration-700 ease-out",
+                  progress.reached
+                    ? "bg-[linear-gradient(110deg,var(--income),var(--accent-warm),var(--income))] bg-[length:200%_100%] animate-[goal-shimmer_2.5s_linear_infinite]"
+                    : "bg-income",
+                )}
                 style={{ width: `${pct}%` }}
                 aria-hidden
               />
             </div>
-            <p
-              className={cn(
-                "text-[11px] tabular-nums",
-                progress.reached ? "font-medium text-income" : "text-muted-foreground",
-              )}
-            >
-              {paceNote(progress)}
-            </p>
+            {progress.reached ? (
+              <div
+                data-goal-anim
+                className="flex items-center gap-2 rounded-xl bg-accent-warm/15 px-3 py-2 ring-1 ring-accent-warm/30 animate-[goal-pop_400ms_cubic-bezier(0.22,1,0.36,1)_both]"
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent-warm/25 text-accent-warm-foreground">
+                  <Trophy className="size-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-heading text-sm font-bold leading-tight text-accent-warm-foreground">
+                    🎉 目標達成！
+                  </p>
+                  <p className="text-[11px] tabular-nums text-muted-foreground">
+                    {yen(progress.saved)} 貯まりました
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] tabular-nums text-muted-foreground">
+                {paceNote(progress)}
+              </p>
+            )}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
