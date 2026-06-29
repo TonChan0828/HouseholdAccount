@@ -34,7 +34,7 @@ export type SavingsProgress = {
   saved: number;
   /** round(max(saved,0)/target*100)。上限なし（表示側で頭打ち）。 */
   pct: number;
-  /** max(target − saved, 0)。 */
+  /** max(target − max(saved, 0), 0)。負の saved は 0 として扱い、残額は目標全額になる。 */
   remaining: number;
   /** saved >= target。 */
   reached: boolean;
@@ -63,6 +63,7 @@ export function buildSavingsProgress(
   const reached = saved >= target;
   const positive = Math.max(saved, 0);
   const pct = target > 0 ? Math.round((positive / target) * 100) : 0;
+  // 負の貯金（支出超過）は 0 として扱い、残額は目標全額とする（spec 準拠）。
   const remaining = Math.max(target - positive, 0);
 
   let pace: SavingsPace | null = null;
