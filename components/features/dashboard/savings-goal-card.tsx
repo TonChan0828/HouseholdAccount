@@ -61,59 +61,63 @@ function GoalForm({
   }, [state, onDone]);
 
   return (
-    <form action={formAction} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="goal-name">目標名</Label>
-        <Input
-          id="goal-name"
-          name="name"
-          autoComplete="off"
-          defaultValue={progress?.name ?? ""}
-          placeholder="例: 旅行資金"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="goal-amount">目標額</Label>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-            ¥
-          </span>
+    <>
+      {/* upsert フォーム：フィールド + エラー。保存ボタンは DialogFooter 内で form 属性で紐付け */}
+      <form id="goal-upsert-form" action={formAction} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="goal-name">目標名</Label>
           <Input
-            id="goal-amount"
-            name="target_amount"
-            inputMode="numeric"
+            id="goal-name"
+            name="name"
             autoComplete="off"
-            defaultValue={progress ? String(progress.targetAmount) : ""}
-            placeholder="目標額"
-            className="pl-7"
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="goal-start">開始日</Label>
-          <Input
-            id="goal-start"
-            name="start_date"
-            type="date"
-            defaultValue={goal?.start_date ?? todayIso()}
+            defaultValue={progress?.name ?? ""}
+            placeholder="例: 旅行資金"
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="goal-target">期日（任意）</Label>
-          <Input
-            id="goal-target"
-            name="target_date"
-            type="date"
-            defaultValue={goal?.target_date ?? ""}
-          />
+          <Label htmlFor="goal-amount">目標額</Label>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              ¥
+            </span>
+            <Input
+              id="goal-amount"
+              name="target_amount"
+              inputMode="numeric"
+              autoComplete="off"
+              defaultValue={progress ? String(progress.targetAmount) : ""}
+              placeholder="目標額"
+              className="pl-7"
+            />
+          </div>
         </div>
-      </div>
-      {state && "error" in state && (
-        <p className="text-xs text-expense" role="alert">
-          {state.error}
-        </p>
-      )}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="goal-start">開始日</Label>
+            <Input
+              id="goal-start"
+              name="start_date"
+              type="date"
+              defaultValue={goal?.start_date ?? todayIso()}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="goal-target">期日（任意）</Label>
+            <Input
+              id="goal-target"
+              name="target_date"
+              type="date"
+              defaultValue={goal?.target_date ?? ""}
+            />
+          </div>
+        </div>
+        {state && "error" in state && (
+          <p className="text-xs text-expense" role="alert">
+            {state.error}
+          </p>
+        )}
+      </form>
+      {/* フッター：削除フォームと保存ボタンを兄弟として並べる（フォームの入れ子なし） */}
       <DialogFooter className="gap-2 sm:justify-between">
         {hasGoal && (
           <form action={deleteSavingsGoal}>
@@ -122,11 +126,11 @@ function GoalForm({
             </Button>
           </form>
         )}
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" form="goal-upsert-form" disabled={pending}>
           保存
         </Button>
       </DialogFooter>
-    </form>
+    </>
   );
 }
 
