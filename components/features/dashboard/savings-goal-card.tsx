@@ -4,6 +4,7 @@ import { Target } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 
 import {
+  deleteSavingsGoal,
   upsertSavingsGoal,
   type SavingsGoalActionState,
 } from "@/app/(dashboard)/dashboard/savings-goal-actions";
@@ -48,7 +49,8 @@ function GoalForm({
   progress,
   goal,
   onDone,
-}: Props & { onDone: () => void }) {
+  hasGoal,
+}: Props & { onDone: () => void; hasGoal: boolean }) {
   const [state, formAction, pending] = useActionState<
     SavingsGoalActionState,
     FormData
@@ -112,7 +114,14 @@ function GoalForm({
           {state.error}
         </p>
       )}
-      <DialogFooter>
+      <DialogFooter className="gap-2 sm:justify-between">
+        {hasGoal && (
+          <form action={deleteSavingsGoal}>
+            <Button type="submit" variant="ghost" onClick={onDone}>
+              目標を解除
+            </Button>
+          </form>
+        )}
         <Button type="submit" disabled={pending}>
           保存
         </Button>
@@ -157,6 +166,7 @@ export function SavingsGoalCard({ progress, goal }: Props) {
                 progress={progress}
                 goal={goal}
                 onDone={() => setOpen(false)}
+                hasGoal={progress !== null}
               />
             </DialogContent>
           </Dialog>
