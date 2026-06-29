@@ -4,14 +4,14 @@
 
 - 仕様書 `docs/specs/32_savings_goal.md` を作成、CLAUDE.md の spec 一覧に追記（予定）。
 - **Task 1**: `supabase/migrations/` に `savings_goals` テーブルを追加。
-  - カラム: id, household_id(UNIQUE), name, target_amount, start_date, target_date(nullable), created_by, created_at。
-  - RLS: `household_members` に所属する世帯のみ SELECT/INSERT/UPDATE/DELETE 可能。
+  - カラム: id, household_id(UNIQUE), name, target_amount, start_date, target_date(nullable), created_at。
+  - RLS: `private.is_household_member(household_id)` でグループ所属を確認（予算・カテゴリと同パターン。`created_by` 列はない）。
 - **Task 2**: `lib/savings-goal.ts` に純関数 `buildSavingsProgress` を実装（Vitest で TDD）。
   - 入力: 目標情報 + 開始日以降の収支サマリー。
   - 出力: `SavingsProgress`（saved / remaining / pct / reached / pace）。
   - pace: 期日がある場合のみ計算（monthsLeft / requiredPerMonth / overdue）。
 - **Task 3**: 目標額フォームに四則演算入力（`evaluateAmount`）を追加。
-  - 既存の `lib/expression.ts` の `evaluateAmount` を再利用。
+  - 既存の `lib/amount-expression.ts` の `evaluateAmount` を再利用。
 - **Task 4**: Server Actions `upsertSavingsGoal` / `deleteSavingsGoal` を実装。
   - `app/(dashboard)/dashboard/savings-goal-actions.ts`。
   - upsert: household_id + name + target_amount + start_date + target_date を受け取り、`savings_goals` へ UPSERT（ON CONFLICT household_id）。
