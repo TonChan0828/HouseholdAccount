@@ -1,11 +1,9 @@
 "use client";
 
 import { Target } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import {
-  deleteSavingsGoal,
   upsertSavingsGoal,
   type SavingsGoalActionState,
 } from "@/app/(dashboard)/dashboard/savings-goal-actions";
