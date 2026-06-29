@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { AdviceSection } from "@/components/features/charts/advice-section";
 import { CategoryBreakdown } from "@/components/features/charts/category-breakdown";
 import { TrendBars } from "@/components/features/charts/trend-bars";
 import { MonthNav } from "@/components/features/transactions/month-nav";
@@ -8,11 +9,14 @@ import { KpiRibbon } from "@/components/shared/kpi-ribbon";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Surface } from "@/components/shared/surface";
+import { buildAdvice } from "@/lib/advice";
 import {
   summarizeCategoryExpense,
+  summarizeCategoryTrend,
   summarizeTrend,
   type TxLite,
 } from "@/lib/analytics";
+import { buildBudgetRows } from "@/lib/budget";
 import {
   getActiveHouseholdId,
   getCurrentUser,
@@ -63,13 +67,33 @@ export default async function AnalyticsPage({
   const baseStart = toISODate(base.start);
   const baseEnd = toISODate(base.end);
 
-  const { data } = await supabase
-    .from("transactions")
-    .select("amount, type, date, category_id, category:categories(name, color)")
-    .eq("household_id", householdId)
-    .gte("date", isoStart)
-    .lt("date", baseEnd)
-    .overrideTypes<TxLite[]>();
+  const [
+    { data },
+    { data: budgetData },
+    { data: categoryData },
+    { data: recurringData },
+  ] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("amount, type, date, category_id, category:categories(name, color)")
+      .eq("household_id", householdId)
+      .gte("date", isoStart)
+      .lt("date", baseEnd)
+      .overrideTypes<TxLite[]>(),
+    supabase
+      .from("budgets")
+      .select("category_id, amount")
+      .eq("household_id", householdId),
+    supabase
+      .from("categories")
+      .select("id, name, color")
+      .eq("household_id", householdId),
+    supabase
+      .from("recurring_transactions")
+      .select("category_id, type")
+      .eq("household_id", householdId)
+      .eq("is_active", true),
+  ]);
 
   const txs = data ?? [];
   const trend = summarizeTrend(txs, ranges);
@@ -77,8 +101,31 @@ export default async function AnalyticsPage({
     txs.filter((t) => t.date >= baseStart && t.date < baseEnd),
   );
 
+  // 家計アドバイス（ルールベース）の入力を組み立てる。
+  const budget = buildBudgetRows(
+    budgetData ?? [],
+    categories,
+    categoryData ?? [],
+  );
+  // 定期支出に紐づくカテゴリは固定費とみなし、集中度判定から除外する。
+  const fixedCategoryIds = (recurringData ?? [])
+    .filter((r) => r.type === "expense" && r.category_id)
+    .map((r) => r.category_id as string);
+  const currentPeriod = trend[trend.length - 1];
+  const prevPeriod = trend[trend.length - 2];
+  const advice = buildAdvice({
+    income: currentPeriod.income,
+    expense: currentPeriod.expense,
+    prevIncome: prevPeriod?.income ?? 0,
+    prevExpense: prevPeriod?.expense ?? 0,
+    expenseTrend: trend.map((t) => t.expense),
+    categories,
+    fixedCategoryIds,
+    categoryTrends: summarizeCategoryTrend(txs, ranges),
+    budget,
+  });
+
   // KPI（テスト衝突回避のため当期支出合計・収支・カテゴリ名は本文に重複させない）。
-  const current = trend[trend.length - 1];
   const totalExpense = categories.reduce((s, c) => s + c.amount, 0) || 1;
   const avgExpense = Math.round(
     trend.reduce((s, t) => s + t.expense, 0) / trend.length,
@@ -88,7 +135,7 @@ export default async function AnalyticsPage({
     : 0;
 
   const kpis = [
-    { label: "当期収入", value: current.income, format: "yen" as const },
+    { label: "当期収入", value: currentPeriod.income, format: "yen" as const },
     { label: "支出カテゴリ", value: categories.length, unit: "件" },
     { label: "最多占有", value: topShare, unit: "%" },
     { label: "月平均支出", value: avgExpense, format: "yen" as const },
@@ -127,6 +174,18 @@ export default async function AnalyticsPage({
       <div className={reveal} style={{ animationDelay: "60ms" }}>
         <KpiRibbon items={kpis} />
       </div>
+
+      {/* 家計アドバイス（ルールベース） */}
+      {advice.length > 0 ? (
+        <section className={reveal} style={{ animationDelay: "90ms" }}>
+          <SectionHeading>家計アドバイス</SectionHeading>
+          <Surface variant="raised">
+            <CardContent className="py-5">
+              <AdviceSection advice={advice} />
+            </CardContent>
+          </Surface>
+        </section>
+      ) : null}
 
       {/* カテゴリ別支出（showpiece） */}
       <section className={reveal} style={{ animationDelay: "120ms" }}>

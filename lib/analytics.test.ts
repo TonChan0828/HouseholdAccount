@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildBalanceBars,
   summarizeCategoryExpense,
+  summarizeCategoryTrend,
   summarizeTrend,
   type TxLite,
 } from "./analytics";
@@ -99,5 +100,35 @@ describe("summarizeCategoryExpense", () => {
 
   it("支出が無ければ空配列を返す", () => {
     expect(summarizeCategoryExpense([tx({ type: "income", amount: 500 })])).toEqual([]);
+  });
+});
+
+describe("summarizeCategoryTrend", () => {
+  const ranges = [
+    range("2026-05-01", "2026-06-01"),
+    range("2026-06-01", "2026-07-01"),
+  ];
+
+  it("カテゴリごとに各期の支出を ranges の並びで集計する", () => {
+    const txs = [
+      tx({ date: "2026-05-10", amount: 300, category_id: "c1", category: { name: "食費", color: "#f00" } }),
+      tx({ date: "2026-06-05", amount: 500, category_id: "c1", category: { name: "食費", color: "#f00" } }),
+      tx({ date: "2026-06-20", amount: 200, category_id: "c1", category: { name: "食費", color: "#f00" } }),
+    ];
+
+    const result = summarizeCategoryTrend(txs, ranges);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ categoryId: "c1", name: "食費" });
+    expect(result[0].amounts).toEqual([300, 700]);
+  });
+
+  it("収入や期外の取引は無視する", () => {
+    const txs = [
+      tx({ date: "2026-06-05", type: "income", amount: 9999, category_id: "c1", category: { name: "食費", color: "#f00" } }),
+      tx({ date: "2026-04-05", amount: 100, category_id: "c1", category: { name: "食費", color: "#f00" } }),
+    ];
+
+    expect(summarizeCategoryTrend(txs, ranges)).toEqual([]);
   });
 });

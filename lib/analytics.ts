@@ -37,6 +37,13 @@ export type CategorySlice = {
   amount: number;
 };
 
+/** カテゴリ別の期別支出推移（amounts は ranges と同じ並び・古い→新しい）。 */
+export type CategoryTrend = {
+  categoryId: string | null;
+  name: string;
+  amounts: number[];
+};
+
 const UNCATEGORIZED_NAME = "未分類";
 const UNCATEGORIZED_COLOR = "#999";
 
@@ -98,4 +105,47 @@ export function summarizeCategoryExpense(txs: TxLite[]): CategorySlice[] {
   }
 
   return [...byCategory.values()].sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * カテゴリごとに各期の支出額を集計し、期別推移を返す（支出のみ）。
+ * amounts は ranges と同じ並び（古い→新しい）。期に属さない取引は無視する。
+ * 「いつもより増えた」カテゴリの検知（lib/advice.ts）に用いる。
+ */
+export function summarizeCategoryTrend(
+  txs: TxLite[],
+  ranges: PeriodRange[],
+): CategoryTrend[] {
+  const bounds = ranges.map(
+    (r) =>
+      [
+        r.start.toISOString().slice(0, 10),
+        r.end.toISOString().slice(0, 10),
+      ] as const,
+  );
+  const index = new Map<string, number>();
+  const result: CategoryTrend[] = [];
+
+  for (const t of txs) {
+    if (t.type !== "expense") continue;
+    const period = bounds.findIndex(
+      ([start, end]) => t.date >= start && t.date < end,
+    );
+    if (period < 0) continue;
+
+    const key = t.category_id ?? "__none__";
+    let pos = index.get(key);
+    if (pos === undefined) {
+      pos = result.length;
+      index.set(key, pos);
+      result.push({
+        categoryId: t.category_id,
+        name: t.category?.name ?? UNCATEGORIZED_NAME,
+        amounts: Array<number>(ranges.length).fill(0),
+      });
+    }
+    result[pos].amounts[period] += t.amount;
+  }
+
+  return result;
 }
