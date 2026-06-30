@@ -37,8 +37,9 @@ test.describe("月次分析", () => {
     await expect(page.getByText("カテゴリ別支出（当期）")).toBeVisible();
 
     // カテゴリ別内訳の凡例に食費と金額が反映される
-    await expect(page.getByText("食費")).toBeVisible();
-    await expect(page.getByText("¥1,200")).toBeVisible();
+    // （家計アドバイス内にも同額が出るため、凡例の金額は完全一致で絞り込む）
+    await expect(page.getByText("食費").first()).toBeVisible();
+    await expect(page.getByText("¥1,200", { exact: true })).toBeVisible();
 
     // 次の期間へ移動すると ?ref= が付き、当期支出が無いためプレースホルダになる
     await page.getByRole("link", { name: "次の期間" }).click();
