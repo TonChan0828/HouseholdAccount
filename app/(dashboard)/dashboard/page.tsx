@@ -4,6 +4,7 @@ import { ArrowRight, Plus, ReceiptText } from "lucide-react";
 
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.client";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
+import { ForecastCard } from "@/components/features/dashboard/forecast-card";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SavingsGoalCard } from "@/components/features/dashboard/savings-goal-card";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
@@ -23,6 +24,7 @@ import {
   getHouseholdSettings,
 } from "@/lib/household";
 import type { MemberInfo } from "@/lib/members";
+import { buildForecast, buildForecastBudget } from "@/lib/forecast";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -42,6 +44,7 @@ type TransactionRow = {
   memo: string | null;
   created_by: string;
   category_id: string | null;
+  recurring_id: string | null;
   category: { name: string; color: string | null } | null;
 };
 
@@ -91,7 +94,7 @@ export default async function DashboardPage({
     supabase
       .from("transactions")
       .select(
-        "id, amount, type, date, memo, created_by, category_id, category:categories(name, color)",
+        "id, amount, type, date, memo, created_by, category_id, recurring_id, category:categories(name, color)",
       )
       .eq("household_id", householdId)
       .gte("date", toISODate(start))
@@ -209,6 +212,10 @@ export default async function DashboardPage({
     0,
   );
 
+  // 月末着地予測（世帯全体）。固定（recurring_id 付き）は満額、変動だけ日割り外挿。
+  const forecast = buildForecast(transactions, range, new Date());
+  const forecastBudget = buildForecastBudget(budgets, transactions, forecast);
+
   // 月送りリンク。scope を引き継ぎつつ ref で期間を移動する。
   const buildHref = (refDate: Date) =>
     `/dashboard?ref=${toISODate(refDate)}${scope === "mine" ? "&scope=mine" : ""}`;
@@ -274,7 +281,13 @@ export default async function DashboardPage({
         />
       </div>
 
-      <div className={reveal} style={{ animationDelay: "90ms" }}>
+      {viewingCurrent ? (
+        <div className={reveal} style={{ animationDelay: "90ms" }}>
+          <ForecastCard forecast={forecast} budget={forecastBudget} />
+        </div>
+      ) : null}
+
+      <div className={reveal} style={{ animationDelay: "120ms" }}>
         <SavingsGoalCard
           progress={savingsGoal.progress}
           goal={savingsGoal.goal}
