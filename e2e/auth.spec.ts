@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { E2E_USER } from "./constants";
+
 test.describe("認証ルーティング", () => {
   test("未認証でダッシュボードにアクセスするとログインへリダイレクトされる", async ({
     page,
@@ -72,5 +74,19 @@ test.describe("認証ルーティング", () => {
     await expect(
       page.getByRole("link", { name: /無料で始める/ }).first(),
     ).toHaveAttribute("href", "/register");
+  });
+
+  // ユーザーストーリー（01_auth）:
+  //   登録済みユーザーとして、メール/パスワードでログインし家計簿に入れる。
+  // （ログアウトは共有 E2E セッションを失効させ他テストを壊すため E2E では行わず、
+  //   signOut の挙動は app/(auth)/actions.test.ts のユニットテストで担保する）
+  test("メール/パスワードでログインするとグループ選択へ進む", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    await page.getByLabel("メールアドレス").fill(E2E_USER.email);
+    await page.getByLabel("パスワード").fill(E2E_USER.password);
+    await page.getByRole("button", { name: "ログイン" }).click();
+    await expect(page).toHaveURL(/\/households$/);
   });
 });
