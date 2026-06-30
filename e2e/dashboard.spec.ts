@@ -158,6 +158,56 @@ test.describe("ダッシュボード", () => {
     await expect(page).toHaveURL(/\/transactions\/new$/);
   });
 
+  test("当期に支出を記録すると月末着地予測カードが表示され、予算超過の見込みを警告する", async ({
+    page,
+  }) => {
+    const group = ephemeralName("着地予測");
+    const memo = `着地テスト-${Date.now()}`;
+
+    // グループ作成（period_start_day=1 のため今日付は当期に含まれる）→ ダッシュボードへ
+    await page.goto("/households");
+    await page.getByLabel("グループ名").fill(group);
+    await page.getByRole("button", { name: "グループを作成" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    // 当期に変動支出を1件記録（食費 / 1200円）
+    await page.goto("/transactions/new");
+    await page.getByLabel("金額").fill("1200");
+    await page.getByRole("radio", { name: "食費" }).check();
+    await page.getByLabel("メモ").fill(memo);
+    await page.getByRole("button", { name: "登録する" }).click();
+    await expect(page).toHaveURL(/\/transactions$/);
+
+    // 着地予測が必ず予算を超えるよう、食費に極小の予算（¥100）を設定する
+    await page.goto("/budgets");
+    const foodRow = page
+      .locator('[data-testid="budget-row"]')
+      .filter({ hasText: "食費" });
+    await foodRow.getByLabel("食費の予算額").fill("100");
+    await foodRow.getByRole("button", { name: "保存" }).click();
+    await expect(foodRow).toContainText("%");
+
+    // ダッシュボードに月末着地予測カードが当期表示される
+    await page.goto("/dashboard");
+    const card = page.getByTestId("forecast-card");
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("月末着地予測");
+    await expect(card).toContainText("着地支出");
+    // 実績は記録額（変動の外挿は経過日数で変動するため実績で検証）
+    await expect(card).toContainText("実績 ¥1,200");
+    await expect(card).toContainText("残り");
+
+    // 着地支出（>= ¥1,200）が予算 ¥100 を超える見込みのため警告が出る
+    const warning = page.getByTestId("forecast-budget-warning");
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText("超過して着地します");
+
+    // 過去の期間（?ref=）を見ているときは予測カードを表示しない
+    await page.getByRole("link", { name: "前の期間" }).click();
+    await expect(page).toHaveURL(/\/dashboard\?ref=/);
+    await expect(page.getByTestId("forecast-card")).toHaveCount(0);
+  });
+
   test("ログイン済みで / に来るとグループ選択へリダイレクトされる", async ({
     page,
   }) => {
