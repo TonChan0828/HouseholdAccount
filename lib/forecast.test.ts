@@ -65,6 +65,32 @@ describe("buildForecast", () => {
     expect(r.projectedIncome).toBe(200_000);
   });
 
+  it("収入は外挿しない: 変動収入も実額のまま計上する", () => {
+    // 6/10 = factor 3。変動収入 50000 は臨時収入とみなし外挿しない。
+    // 固定収入 200000（給料）は期首に満額計上済みでそのまま。
+    const r = buildForecast(
+      [tx("income", 200_000, "r2"), tx("income", 50_000, null)],
+      june,
+      utc("2026-06-10"),
+    );
+    expect(r.factor).toBeCloseTo(3, 10);
+    expect(r.actualIncome).toBe(250_000);
+    // 200000 + 50000（×3 しない）= 250000
+    expect(r.projectedIncome).toBe(250_000);
+  });
+
+  it("収入は実額・支出だけ外挿して着地収支を出す", () => {
+    // 6/10 = factor 3。収入 30 万（実額）、変動支出 2 万 → 着地支出 6 万。
+    const r = buildForecast(
+      [tx("income", 300_000, null), tx("expense", 20_000, null)],
+      june,
+      utc("2026-06-10"),
+    );
+    expect(r.projectedIncome).toBe(300_000);
+    expect(r.projectedExpense).toBe(60_000);
+    expect(r.projectedBalance).toBe(240_000);
+  });
+
   it("期末以降は daysElapsed が totalDays にクランプされ予測＝実績", () => {
     const r = buildForecast(
       [tx("expense", 30_000, null)],
