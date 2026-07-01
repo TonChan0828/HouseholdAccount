@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 
 import { Amount } from "@/components/shared/amount";
+import { MainSideGrid } from "@/components/shared/main-side-grid";
 import { Surface } from "@/components/shared/surface";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { CardContent } from "@/components/ui/card";
@@ -24,6 +25,8 @@ type Props = {
   weeks: CalendarDay[][];
   transactionsByDate: Record<string, CalendarTx[]>;
   initialSelected: string;
+  /** サイドレール上部に置く内容（当月サマリー等）。lg 未満ではグリッドの上に出る。 */
+  side?: ReactNode;
 };
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
@@ -39,11 +42,16 @@ function useHydrated(): boolean {
   );
 }
 
-/** 暦月カレンダー。日セルに収支合計を表示し、選択日の明細を下部に出す。 */
+/**
+ * 暦月カレンダー。日セルに収支合計を表示し、選択日の明細を出す。
+ * lg 以上はメイン=グリッド / サイド=サマリー+明細の2カラム、
+ * lg 未満はサマリー→グリッド→明細の縦積み（max-lg:order-*）。
+ */
 export function CalendarBoard({
   weeks,
   transactionsByDate,
   initialSelected,
+  side,
 }: Props) {
   // ユーザーが明示的に選択した日。未操作の間は「今日 or 初期値」を導出する。
   const [userSelected, setUserSelected] = useState<string | null>(null);
@@ -58,9 +66,8 @@ export function CalendarBoard({
   const selected = userSelected ?? (todayInMonth ? today : initialSelected);
   const items = transactionsByDate[selected] ?? [];
 
-  return (
-    <div className="space-y-4">
-      <Surface variant="raised" className="overflow-hidden">
+  const gridCard = (
+    <Surface variant="raised" className="overflow-hidden">
         <CardContent className="p-2 sm:p-3">
           {/* 曜日ヘッダー */}
           <div className="grid grid-cols-7">
@@ -129,12 +136,13 @@ export function CalendarBoard({
           </div>
         </CardContent>
       </Surface>
+  );
 
-      {/* 選択日の明細 */}
-      <section className="space-y-2">
-        <h2 className="font-heading text-sm font-semibold">
-          {formatDayLabel(selected)}
-        </h2>
+  const detail = (
+    <section className="space-y-2">
+      <h2 className="font-heading text-sm font-semibold">
+        {formatDayLabel(selected)}
+      </h2>
         {items.length === 0 ? (
           <Surface variant="raised">
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
@@ -176,7 +184,18 @@ export function CalendarBoard({
             ))}
           </ul>
         )}
-      </section>
-    </div>
+    </section>
+  );
+
+  return (
+    <MainSideGrid
+      main={<div className="max-lg:order-2">{gridCard}</div>}
+      side={
+        <>
+          {side ? <div className="max-lg:order-1">{side}</div> : null}
+          <div className="max-lg:order-3">{detail}</div>
+        </>
+      }
+    />
   );
 }

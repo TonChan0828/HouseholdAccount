@@ -7,7 +7,7 @@ import { ArrowRight, ReceiptText, User, Users } from "lucide-react";
 import { useDemo } from "@/components/features/demo/demo-provider";
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
-import { DashboardGrid } from "@/components/features/dashboard/dashboard-grid";
+import { MainSideGrid } from "@/components/shared/main-side-grid";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -102,7 +102,7 @@ export default function DemoDashboardPage() {
         2カラム。モバイルは DOM 順のまま従来の縦積み（ヒーロー→チャート→
         マトリクス→最近の取引）になる。
       */}
-      <DashboardGrid
+      <MainSideGrid
         main={
           <>
             <SummaryCards

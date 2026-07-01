@@ -11,15 +11,15 @@ type Props = {
 };
 
 /**
- * ダッシュボードの2カラムレイアウト（presentational）。
+ * デスクトップ向けメイン+サイドレールの2カラムレイアウト（presentational）。
  * モバイルではラッパーを contents にして子を外側の1カラムグリッドへ直接参加させ、
  * 子側の max-lg:order-* で縦積み順を制御できるようにする。lg 以上では
  * メイン7:サイド5の独立した2列（items-start で高さ非連動）になる。
  */
-export function DashboardGrid({ main, side, className }: Props) {
+export function MainSideGrid({ main, side, className }: Props) {
   return (
     <div
-      data-testid="dashboard-grid"
+      data-testid="main-side-grid"
       className={cn(
         "grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start lg:gap-6",
         className,

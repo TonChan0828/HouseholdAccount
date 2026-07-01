@@ -4,7 +4,7 @@ import { ArrowRight, Plus, ReceiptText } from "lucide-react";
 
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.client";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
-import { DashboardGrid } from "@/components/features/dashboard/dashboard-grid";
+import { MainSideGrid } from "@/components/shared/main-side-grid";
 import { ForecastCard } from "@/components/features/dashboard/forecast-card";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SavingsGoalCard } from "@/components/features/dashboard/savings-goal-card";
@@ -276,7 +276,7 @@ export default async function DashboardPage({
         max-lg:order-* で従来の縦積み順（ヒーロー→予測→目標→チャート→
         マトリクス→最近の取引）を維持する。
       */}
-      <DashboardGrid
+      <MainSideGrid
         main={
           <>
             <div
