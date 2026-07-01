@@ -13,6 +13,15 @@
 - `recurring_id != null` … 固定（定期由来）。期中で増減しないため **満額そのまま**。
 - `recurring_id == null` … 変動。**経過日数で日割りし、総日数に外挿**。
 
+### 収入は外挿しない
+
+外挿の対象は**変動支出のみ**。収入は日割り外挿しない。
+
+- 固定収入（給料など）は締め日に満額計上済みで期中に増えない。
+- 変動収入（臨時収入・ボーナス・返金など）は一回限りで、日数に比例して増えるものではない。
+
+したがって `projectedIncome = actualIncome`（固定収入 + 変動収入を実額のまま合算）。日々積み上がるのは変動支出だけ、という前提で着地収支を求める。
+
 ## データモデル（入出力の型）
 
 `lib/forecast.ts`（純関数）。
@@ -30,7 +39,7 @@ type Forecast = {
   daysRemaining: number;  // totalDays - daysElapsed
   actualIncome: number;   // 実績（固定+変動）
   actualExpense: number;
-  projectedIncome: number;   // round(固定収入 + 変動収入 × factor)
+  projectedIncome: number;   // 実額（外挿しない）= 固定収入 + 変動収入
   projectedExpense: number;  // round(固定支出 + 変動支出 × factor)
   projectedBalance: number;  // projectedIncome - projectedExpense
   factor: number;            // 変動に掛ける外挿係数 totalDays/daysElapsed (>= 1)
@@ -60,7 +69,8 @@ function buildForecastBudget(
 - `totalDays = (end - start) / 86_400_000`
 - `daysElapsed = floor((today の UTC 日 - start) / 86_400_000) + 1` を `[1, totalDays]` にクランプ
 - `factor = totalDays / daysElapsed`
-- `projectedExpense = round(固定支出合計 + 変動支出合計 × factor)`（収入も同様）
+- `projectedExpense = round(固定支出合計 + 変動支出合計 × factor)`
+- `projectedIncome = 固定収入合計 + 変動収入合計`（**外挿しない**）
 
 ## UI の動作・バリデーション
 

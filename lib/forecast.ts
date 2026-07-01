@@ -5,6 +5,8 @@
  * 予測する。定期収支（固定費・固定収入）は期首に計上済みのため、支出合計をそのまま
  * 日割り外挿すると過大予測になる。そこで `recurring_id` の有無で固定/変動を分け、
  * 固定は満額・変動だけを経過日数で日割り外挿する「ハイブリッド方式」を採る。
+ * ただし収入は外挿しない（固定収入は期首計上済み、変動収入は一回限りで日数に
+ * 比例しないため）。外挿対象は変動支出のみ。
  *
  * 期間は lib/period.ts の半開区間 [start, end)・UTC 真夜中基準を踏襲する。
  */
@@ -32,8 +34,9 @@ export type Forecast = {
   /** 実績（固定+変動）。 */
   actualIncome: number;
   actualExpense: number;
-  /** 着地予測（固定満額 + 変動×factor を四捨五入）。 */
+  /** 着地収入 = 実額（外挿しない。actualIncome と一致）。 */
   projectedIncome: number;
+  /** 着地支出 = 固定満額 + 変動×factor を四捨五入。 */
   projectedExpense: number;
   /** projectedIncome - projectedExpense。 */
   projectedBalance: number;
@@ -87,7 +90,10 @@ export function buildForecast(
     }
   }
 
-  const projectedIncome = Math.round(fixedIncome + varIncome * factor);
+  // 収入は外挿しない。固定収入（給料）は期首に満額計上済み、変動収入（臨時収入・
+  // ボーナス・返金など）は一回限りで日数に比例しないため、実額のまま計上する。
+  // 変動支出（食費・買い物）だけが日々積み上がるので日割り外挿の対象とする。
+  const projectedIncome = fixedIncome + varIncome;
   const projectedExpense = Math.round(fixedExpense + varExpense * factor);
 
   return {
