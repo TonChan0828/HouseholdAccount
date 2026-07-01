@@ -10,9 +10,10 @@ type Props = {
   budget: ForecastBudget | null;
 };
 
-/** 月末着地予測カード（当期表示時のみ描画）。世帯全体の着地を表示する。 */
+/** 月末着地予測カード（当期表示時のみ描画）。世帯全体の着地収支のみを表示する。 */
 export function ForecastCard({ forecast, budget }: Props) {
   const balancePositive = forecast.projectedBalance >= 0;
+  const actualBalance = forecast.actualIncome - forecast.actualExpense;
 
   return (
     <Card data-testid="forecast-card" className="shadow-soft">
@@ -31,30 +32,19 @@ export function ForecastCard({ forecast, budget }: Props) {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-0.5">
-            <p className="text-[11px] text-muted-foreground">着地支出</p>
-            <p className="font-heading text-lg font-bold tabular-nums text-expense">
-              {yen(forecast.projectedExpense)}
-            </p>
-            <p className="text-[11px] tabular-nums text-muted-foreground">
-              実績 {yen(forecast.actualExpense)}
-            </p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[11px] text-muted-foreground">着地収支</p>
-            <p
-              className={cn(
-                "font-heading text-lg font-bold tabular-nums",
-                balancePositive ? "text-income" : "text-expense",
-              )}
-            >
-              {yen(forecast.projectedBalance)}
-            </p>
-            <p className="text-[11px] tabular-nums text-muted-foreground">
-              着地収入 {yen(forecast.projectedIncome)}
-            </p>
-          </div>
+        <div className="space-y-0.5">
+          <p className="text-[11px] text-muted-foreground">着地収支</p>
+          <p
+            className={cn(
+              "font-heading text-2xl font-bold tabular-nums",
+              balancePositive ? "text-income" : "text-expense",
+            )}
+          >
+            {yen(forecast.projectedBalance)}
+          </p>
+          <p className="text-[11px] tabular-nums text-muted-foreground">
+            実績収支 {yen(actualBalance)}
+          </p>
         </div>
 
         {budget?.willOverrun ? (

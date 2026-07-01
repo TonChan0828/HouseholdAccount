@@ -77,10 +77,10 @@ function buildForecastBudget(
 - 表示場所: **ダッシュボード**（`/dashboard`）の `SummaryCards` 直後の専用カード `ForecastCard`。
 - **当期表示時のみ**描画する（既存 `viewingCurrent` 判定を流用）。過去/未来期間（`?ref=`）では非表示。期末以降はクランプにより予測＝実績。
 - スコープは **世帯全体**（`scope=mine` でも全体を表示）。予算カードと整合させるため。
-- 表示内容:
-  - 着地支出 `projectedExpense`（補助に「実績 ¥… / 残り N 日」）
-  - 着地収支 `projectedBalance`（収入−支出の符号で色分け）
-  - 予算連携: `ForecastBudget.willOverrun` のとき「このペースだと予算を ¥overBy 超過して着地します」を警告色で表示。
+- 表示内容（**収支の合算のみ**）:
+  - 着地収支 `projectedBalance`（収入−支出の符号で色分け）を主表示。補助に「実績収支（= actualIncome − actualExpense）／ 残り N 日」。
+  - 着地支出・着地収入の内訳は表示しない。
+  - 予算連携: `ForecastBudget.willOverrun` のとき「このペースだと予算を ¥overBy 超過して着地します」を警告色で表示（着地支出ベースの別助言要素として残す）。
 
 ## Supabase テーブル・RLS ポリシー
 

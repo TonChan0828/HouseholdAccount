@@ -192,9 +192,11 @@ test.describe("ダッシュボード", () => {
     const card = page.getByTestId("forecast-card");
     await expect(card).toBeVisible();
     await expect(card).toContainText("月末着地予測");
-    await expect(card).toContainText("着地支出");
-    // 実績は記録額（変動の外挿は経過日数で変動するため実績で検証）
-    await expect(card).toContainText("実績 ¥1,200");
+    // 着地予測は収支の合算（着地収支）のみを表示する
+    await expect(card).toContainText("着地収支");
+    await expect(card).not.toContainText("着地支出");
+    // 実績収支は支出1,200円のみのため -¥1,200（外挿に依らず実績で検証）
+    await expect(card).toContainText("実績収支 -¥1,200");
     await expect(card).toContainText("残り");
 
     // 着地支出（>= ¥1,200）が予算 ¥100 を超える見込みのため警告が出る
