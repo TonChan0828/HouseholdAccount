@@ -29,6 +29,19 @@ function useCanNativeShare(): boolean {
   );
 }
 
+/**
+ * ブラウザのオリジン。SSR・ハイドレーション中は ""（相対URL）で描画し、
+ * クライアント確定後に絶対URLへ更新する（typeof window 分岐だと
+ * サーバHTMLとクライアントが食い違いハイドレーションエラーになる）。
+ */
+function useOrigin(): string {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => window.location.origin,
+    () => "",
+  );
+}
+
 type CreateAction = (
   state: InvitationActionState,
   formData: FormData,
@@ -43,12 +56,6 @@ type Props = {
   revokeAction: SimpleAction;
 };
 
-function inviteUrl(token: string): string {
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}/invite/${token}`;
-}
-
 export function InvitationManager({
   householdId,
   invitations,
@@ -56,6 +63,8 @@ export function InvitationManager({
   updateAction,
   revokeAction,
 }: Props) {
+  const origin = useOrigin();
+  const inviteUrl = (token: string) => `${origin}/invite/${token}`;
   const [state, formAction, pending] = useActionState<
     InvitationActionState,
     FormData

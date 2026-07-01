@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { HouseholdInvitation } from "@/types";
@@ -46,6 +47,18 @@ describe("InvitationManager", () => {
     expect(
       screen.getByRole("button", { name: "失効" }),
     ).toBeInTheDocument();
+  });
+
+  it("SSR ではオリジン無しの相対URLを描画する（ハイドレーション不一致の防止）", () => {
+    // jsdom では window が存在するため `typeof window` 分岐だと SSR を再現できない。
+    // renderToString はハイドレーション用スナップショット（サーバ値）を使うため、
+    // ここで相対URLであることがサーバHTMLとの一致を保証する。
+    const html = renderToString(
+      <InvitationManager {...baseProps} invitations={[sampleInvitation]} />,
+    );
+    expect(html).toContain("/invite/tok_abc");
+    // サーバHTMLに実行環境のオリジンが混入していたら不一致になる
+    expect(html).not.toContain("http://localhost");
   });
 
   describe("招待リンクの共有", () => {
