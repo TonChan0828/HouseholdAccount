@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CalendarDay } from "@/lib/calendar";
 import { CalendarBoard, type CalendarTx } from "./calendar-board";
@@ -75,5 +75,48 @@ describe("CalendarBoard", () => {
     fireEvent.click(cell as Element);
     expect(screen.getByText("ランチ")).toBeInTheDocument();
     expect(screen.getByText("食費")).toBeInTheDocument();
+  });
+});
+
+describe("CalendarBoard: ローカルの今日への補正", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // システム時刻はローカルコンストラクタで組み立てるため TZ に依らず決定的。
+  const setLocalNow = (y: number, m1: number, d: number) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(y, m1 - 1, d, 1, 30));
+  };
+
+  it("ローカルの今日が当月内なら、初期選択を今日へ補正しハイライトする", () => {
+    // サーバは UTC 基準で 6/1 を初期選択にしたが、ユーザーのローカルは 6/3。
+    setLocalNow(2026, 6, 3);
+    const { container } = renderBoard();
+
+    const todayCell = container.querySelector('[data-date="2026-06-03"]');
+    expect(todayCell).toHaveAttribute("aria-pressed", "true");
+    expect(
+      container.querySelector('[data-date="2026-06-01"]'),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("ローカルの今日が表示月に無ければ初期選択のまま", () => {
+    setLocalNow(2026, 7, 15);
+    const { container } = renderBoard();
+
+    expect(
+      container.querySelector('[data-date="2026-06-01"]'),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("ローカルの今日が当月外セル（前月の埋め日）でも補正しない", () => {
+    // 5/31 はグリッドに存在するが inMonth=false のため補正対象にしない。
+    setLocalNow(2026, 5, 31);
+    const { container } = renderBoard();
+
+    expect(
+      container.querySelector('[data-date="2026-06-01"]'),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 });

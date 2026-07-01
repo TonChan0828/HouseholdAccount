@@ -13,6 +13,16 @@ export function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * 「ユーザーにとっての今日」を `YYYY-MM-DD` にする（ローカル TZ 基準）。
+ * UTC 基準の toISODate(new Date()) はローカルの深夜〜早朝に前日へずれるため、
+ * ブラウザで「今日」を扱う UI（収支フォームの既定日・カレンダーの今日）はこちらを使う。
+ */
+export function localToday(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 /** `?ref=YYYY-MM-DD` を UTC 真夜中の Date に解釈する。不正・未指定は今日。 */
 export function refFromParam(ref: string | undefined): Date {
   if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {

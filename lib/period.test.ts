@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatPeriodLabel,
   getPeriodRange,
+  localToday,
   shiftPeriod,
   toISODate,
 } from "./period";
@@ -74,5 +75,21 @@ describe("formatPeriodLabel", () => {
   it("非うるう年の2月は2/28まで", () => {
     const range = getPeriodRange(utc(2026, 2, 10), 1);
     expect(formatPeriodLabel(range)).toBe("2026/02/01 〜 2026/02/28");
+  });
+});
+
+describe("localToday", () => {
+  // ローカルコンストラクタで組み立てるため、実行環境の TZ に依らず決定的。
+  it("ローカル日付を YYYY-MM-DD にする", () => {
+    expect(localToday(new Date(2026, 6, 2, 0, 30))).toBe("2026-07-02");
+  });
+
+  it("月・日を0埋めする", () => {
+    expect(localToday(new Date(2026, 0, 5, 12))).toBe("2026-01-05");
+  });
+
+  it("ローカルの日境界（深夜）でも日付が繰り上がらない・繰り下がらない", () => {
+    expect(localToday(new Date(2026, 11, 31, 23, 59, 59))).toBe("2026-12-31");
+    expect(localToday(new Date(2027, 0, 1, 0, 0, 0))).toBe("2027-01-01");
   });
 });
