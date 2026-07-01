@@ -105,44 +105,40 @@ export default async function CalendarPage({
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8 lg:max-w-6xl">
       <PageHeader
         eyebrow="記録"
         title="カレンダー"
         meta={formatMonthLabel(refDate)}
         className={reveal}
         actions={
-          <Link
-            href="/transactions/new"
-            className={buttonVariants({ variant: "default", size: "sm" })}
-          >
-            <Plus className="size-4" aria-hidden />
-            収支を追加
-          </Link>
+          <>
+            <ViewToggle active="calendar" />
+            <MonthNav
+              label={formatMonthLabel(refDate)}
+              prevHref={prevHref}
+              nextHref={nextHref}
+            />
+            <Link
+              href="/transactions/new"
+              className={cn(
+                buttonVariants({ variant: "default", size: "sm" }),
+                "hidden sm:inline-flex",
+              )}
+            >
+              <Plus className="size-4" aria-hidden />
+              収支を追加
+            </Link>
+          </>
         }
       />
 
-      <div
-        className={cn("flex flex-col items-center gap-3", reveal)}
-        style={{ animationDelay: "60ms" }}
-      >
-        <ViewToggle active="calendar" />
-        <MonthNav
-          label={formatMonthLabel(refDate)}
-          prevHref={prevHref}
-          nextHref={nextHref}
-        />
-      </div>
-
       <div className={reveal} style={{ animationDelay: "120ms" }}>
-        <SummaryCards income={income} expense={expense} />
-      </div>
-
-      <div className={reveal} style={{ animationDelay: "180ms" }}>
         <CalendarBoard
           weeks={weeks}
           transactionsByDate={transactionsByDate}
           initialSelected={initialSelected}
+          side={<SummaryCards income={income} expense={expense} />}
         />
       </div>
     </main>

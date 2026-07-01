@@ -78,6 +78,50 @@ describe("CalendarBoard", () => {
   });
 });
 
+describe("CalendarBoard: デスクトップ2カラム構成", () => {
+  it("side スロットの内容（サマリー等）を表示する", () => {
+    render(
+      <CalendarBoard
+        weeks={[week]}
+        transactionsByDate={txByDate}
+        initialSelected="2026-06-01"
+        side={<p>サマリーカード</p>}
+      />,
+    );
+    expect(screen.getByText("サマリーカード")).toBeInTheDocument();
+  });
+
+  it("メイン=グリッド / サイド=サマリー+明細 の2カラムを MainSideGrid で構成する", () => {
+    const { container } = render(
+      <CalendarBoard
+        weeks={[week]}
+        transactionsByDate={txByDate}
+        initialSelected="2026-06-01"
+        side={<p>サマリーカード</p>}
+      />,
+    );
+    const grid = container.querySelector('[data-testid="main-side-grid"]');
+    expect(grid).not.toBeNull();
+    // モバイルの縦積み順: サマリー(1) → カレンダーグリッド(2) → 明細(3)
+    expect(container.querySelector(".max-lg\\:order-1")).toHaveTextContent(
+      "サマリーカード",
+    );
+    const gridWrapper = container.querySelector(".max-lg\\:order-2");
+    expect(
+      gridWrapper?.querySelector('[data-testid="calendar-day"]'),
+    ).not.toBeNull();
+    expect(container.querySelector(".max-lg\\:order-3")).toHaveTextContent(
+      "この日の収支はありません。",
+    );
+  });
+
+  it("side 未指定でもグリッドと明細を表示する", () => {
+    renderBoard();
+    expect(screen.getAllByTestId("calendar-day")).toHaveLength(7);
+    expect(screen.getByText("この日の収支はありません。")).toBeInTheDocument();
+  });
+});
+
 describe("CalendarBoard: ローカルの今日への補正", () => {
   afterEach(() => {
     vi.useRealTimers();

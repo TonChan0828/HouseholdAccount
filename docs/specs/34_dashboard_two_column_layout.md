@@ -34,7 +34,9 @@
 
 ### インタラクション・バリデーション
 
-- 実現方法: 共有プリミティブ `DashboardGrid`（`components/features/dashboard/dashboard-grid.tsx`）
+- 実現方法: 共有プリミティブ `MainSideGrid`（`components/shared/main-side-grid.tsx`。
+  当初 `DashboardGrid` として dashboard 配下に置いたが、カレンダー（spec 29）でも
+  使うため shared へ移動・改名した）
   - 外側: `grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start lg:gap-6`
   - main / side ラッパー: モバイルでは `contents`（子が外側グリッドに直接参加し、
     `max-lg:order-*` で現行の縦積み順を再現）、lg 以上では `lg:block lg:space-y-6` の列になる
@@ -47,7 +49,7 @@
 ### 入力
 
 ```typescript
-// DashboardGrid（presentational）
+// MainSideGrid（presentational）
 type Props = {
   /** メイン列（lg で左・7/12） */
   main: React.ReactNode;
