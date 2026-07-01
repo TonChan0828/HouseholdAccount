@@ -27,6 +27,9 @@ test.describe("グループ毎の表示名（ニックネーム）", () => {
       .filter({ hasText: group });
     await expect(card).toBeVisible();
 
+    // 管理セクションは既定で折り畳まれているため開く
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+
     // 作成直後はメンバーは自分だけ。自分の行でニックネームを設定する。
     await card.getByRole("button", { name: "ニックネーム編集" }).click();
     await card.getByLabel("このグループでの表示名").fill(nickname);
@@ -42,7 +45,9 @@ test.describe("グループ毎の表示名（ニックネーム）", () => {
     ).toBeVisible();
 
     // 空で保存するとニックネームを解除し、グローバル名へフォールバックする
+    // （ページ再訪で折り畳みは閉じた状態に戻るため開き直す）
     await page.goto("/households");
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
     await card.getByRole("button", { name: "ニックネーム編集" }).click();
     await card.getByLabel("このグループでの表示名").fill("");
     await card.getByTestId("member-list").getByRole("button", { name: "保存" }).click();

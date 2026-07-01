@@ -126,6 +126,9 @@ test.describe("家計簿グループ管理", () => {
     await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto("/households");
 
+    // 管理セクション（メンバー・招待・設定）は既定で折り畳まれているため開く
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+
     // 人数上限 2 で招待リンクを発行
     await card.getByLabel("参加できる人数").fill("2");
     await card.getByRole("button", { name: "招待リンクを発行" }).click();
@@ -163,6 +166,9 @@ test.describe("家計簿グループ管理", () => {
       .locator('[data-testid="household-card"]')
       .filter({ hasText: group });
 
+    // 管理セクション（メンバー・招待・設定）は既定で折り畳まれているため開く
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+
     // メンバー一覧に自分が「オーナー」「あなた」として表示される
     const memberItem = card.getByTestId("member-item").first();
     await expect(memberItem).toBeVisible();
@@ -188,6 +194,9 @@ test.describe("家計簿グループ管理", () => {
     const card = page
       .locator('[data-testid="household-card"]')
       .filter({ hasText: MULTI_MEMBER_HOUSEHOLD });
+
+    // 管理セクション（メンバー・招待・設定）は既定で折り畳まれているため開く
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
 
     // メンバーが2人以上表示される
     await expect(card.getByTestId("member-item")).toHaveCount(2);
@@ -216,6 +225,9 @@ test.describe("家計簿グループ管理", () => {
       .locator('[data-testid="household-card"]')
       .filter({ hasText: group });
     await expect(card).toBeVisible();
+
+    // 管理セクション（メンバー・招待・設定）は既定で折り畳まれているため開く
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
 
     // 「グループを削除」→ モーダルで再確認 → 「削除する」
     await card.getByRole("button", { name: "グループを削除" }).click();
