@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 
 import { Amount } from "@/components/shared/amount";
@@ -9,6 +9,7 @@ import { CategoryBadge } from "@/components/features/transactions/category-badge
 import { CardContent } from "@/components/ui/card";
 import type { CalendarDay } from "@/lib/calendar";
 import { compactAmount, formatDayLabel } from "@/lib/format";
+import { localToday } from "@/lib/period";
 import { cn } from "@/lib/utils";
 
 export type CalendarTx = {
@@ -27,14 +28,34 @@ type Props = {
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
+const emptySubscribe = () => () => {};
+
+/** SSR/ハイドレーション中は false、クライアント確定後に true。 */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+}
+
 /** 暦月カレンダー。日セルに収支合計を表示し、選択日の明細を下部に出す。 */
 export function CalendarBoard({
   weeks,
   transactionsByDate,
   initialSelected,
 }: Props) {
-  const [selected, setSelected] = useState(initialSelected);
-  const today = new Date().toISOString().slice(0, 10);
+  // ユーザーが明示的に選択した日。未操作の間は「今日 or 初期値」を導出する。
+  const [userSelected, setUserSelected] = useState<string | null>(null);
+  // 「今日」はブラウザのローカル日付基準。サーバ描画時に確定するとローカルと
+  // UTC の日境界ずれ（深夜〜早朝）でハイライト・初期選択が前日になるため、
+  // ハイドレーション完了後にクライアントで確定する。
+  const hydrated = useHydrated();
+  const today = hydrated ? localToday() : null;
+  const todayInMonth =
+    today !== null &&
+    weeks.some((w) => w.some((d) => d.inMonth && d.date === today));
+  const selected = userSelected ?? (todayInMonth ? today : initialSelected);
   const items = transactionsByDate[selected] ?? [];
 
   return (
@@ -74,7 +95,7 @@ export function CalendarBoard({
                   data-date={d.date}
                   data-in-month={d.inMonth}
                   aria-pressed={isSelected}
-                  onClick={() => setSelected(d.date)}
+                  onClick={() => setUserSelected(d.date)}
                   className={cn(
                     "flex min-h-14 min-w-0 flex-col gap-0.5 overflow-hidden rounded-md p-0.5 text-left transition-colors sm:min-h-20 sm:p-1",
                     "hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

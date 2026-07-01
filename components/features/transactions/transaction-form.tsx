@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { evaluateExpression } from "@/lib/amount-expression";
 import { yen } from "@/lib/format";
+import { localToday } from "@/lib/period";
 import type { ParsedReceipt } from "@/lib/receipt/parse-receipt";
 import { cn } from "@/lib/utils";
 import type { Category, TransactionType } from "@/types";
@@ -42,12 +43,6 @@ type Props = {
     memo?: string | null;
   };
 };
-
-function localToday(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 export function TransactionForm({
   action,
