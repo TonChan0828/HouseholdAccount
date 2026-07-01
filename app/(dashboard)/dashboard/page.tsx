@@ -4,6 +4,7 @@ import { ArrowRight, Plus, ReceiptText } from "lucide-react";
 
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.client";
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
+import { DashboardGrid } from "@/components/features/dashboard/dashboard-grid";
 import { ForecastCard } from "@/components/features/dashboard/forecast-card";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SavingsGoalCard } from "@/components/features/dashboard/savings-goal-card";
@@ -239,7 +240,7 @@ export default async function DashboardPage({
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8 lg:max-w-6xl">
       <PageHeader
         eyebrow="ホーム"
         title="ダッシュボード"
@@ -270,124 +271,156 @@ export default async function DashboardPage({
         }
       />
 
-      <div className={reveal} style={{ animationDelay: "60ms" }}>
-        <SummaryCards
-          income={income}
-          expense={expense}
-          prevIncome={sumBy(prevTransactions, "income")}
-          prevExpense={sumBy(prevTransactions, "expense")}
-          budgetTotal={budgetTotal}
-          budgetSpent={budgetSpent}
-        />
-      </div>
+      {/*
+        デスクトップ（lg 以上）はメイン7:サイド5の2カラム、モバイルは
+        max-lg:order-* で従来の縦積み順（ヒーロー→予測→目標→チャート→
+        マトリクス→最近の取引）を維持する。
+      */}
+      <DashboardGrid
+        main={
+          <>
+            <div
+              className={cn(reveal, "max-lg:order-1")}
+              style={{ animationDelay: "60ms" }}
+            >
+              <SummaryCards
+                income={income}
+                expense={expense}
+                prevIncome={sumBy(prevTransactions, "income")}
+                prevExpense={sumBy(prevTransactions, "expense")}
+                budgetTotal={budgetTotal}
+                budgetSpent={budgetSpent}
+              />
+            </div>
 
-      {viewingCurrent ? (
-        <div className={reveal} style={{ animationDelay: "90ms" }}>
-          <ForecastCard forecast={forecast} budget={forecastBudget} />
-        </div>
-      ) : null}
+            <div
+              className={cn(reveal, "max-lg:order-4")}
+              style={{ animationDelay: "150ms" }}
+            >
+              <SectionHeading>当期の収支</SectionHeading>
+              <Surface variant="raised">
+                <CardContent>
+                  <BalanceBarChart income={income} expense={expense} />
+                </CardContent>
+              </Surface>
+            </div>
 
-      <div className={reveal} style={{ animationDelay: "120ms" }}>
-        <SavingsGoalCard
-          progress={savingsGoal.progress}
-          goal={savingsGoal.goal}
-        />
-      </div>
-
-      <div className={reveal} style={{ animationDelay: "120ms" }}>
-        <SectionHeading>当期の収支</SectionHeading>
-        <Surface variant="raised">
-          <CardContent>
-            <BalanceBarChart income={income} expense={expense} />
-          </CardContent>
-        </Surface>
-      </div>
-
-      <div className={reveal} style={{ animationDelay: "180ms" }}>
-        <CategoryMemberMatrix matrix={matrix} />
-      </div>
-
-      <div className={reveal} style={{ animationDelay: "240ms" }}>
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-base font-bold">最近の取引</h2>
-          <Link
-            href={allTransactionsHref}
-            className={buttonVariants({ variant: "link", size: "sm" })}
-          >
-            すべて見る
-            <ArrowRight className="size-4" aria-hidden />
-          </Link>
-        </div>
-
-        {recentGroups.length === 0 ? (
-          <Surface variant="raised" className="mt-2">
-            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-              <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                <ReceiptText className="size-6" aria-hidden />
-              </span>
-              <p className="text-sm text-muted-foreground">
-                この期間の収支はまだありません。
-                <br />
-                最初の一件を記録してみましょう。
-              </p>
-              <Link
-                href={newTransactionHref}
-                className={buttonVariants({ size: "sm" })}
+            <div
+              className={cn(reveal, "max-lg:order-5")}
+              style={{ animationDelay: "180ms" }}
+            >
+              <CategoryMemberMatrix matrix={matrix} />
+            </div>
+          </>
+        }
+        side={
+          <>
+            {viewingCurrent ? (
+              <div
+                className={cn(reveal, "max-lg:order-2")}
+                style={{ animationDelay: "90ms" }}
               >
-                収支を記録
-              </Link>
-            </CardContent>
-          </Surface>
-        ) : (
-          <div className="mt-2 space-y-4">
-            {recentGroups.map((group) => (
-              <section key={group.date} className="space-y-2">
-                <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
-                  {formatDayLabel(group.date)}
-                </h3>
-                <ul className="space-y-2">
-                  {group.items.map((t) => (
-                    <li key={t.id}>
-                      <Surface
-                        variant="raised"
-                        data-testid="dashboard-transaction-row"
-                        className="transition-shadow hover:shadow-lifted"
-                      >
-                        <CardContent className="flex items-center justify-between gap-3 py-3">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <span
-                              aria-hidden
-                              className={cn(
-                                "h-9 w-1 shrink-0 rounded-full",
-                                t.type === "income"
-                                  ? "bg-income"
-                                  : "bg-expense",
-                              )}
-                            />
-                            <div className="min-w-0 space-y-0.5">
-                              <CategoryBadge category={t.category} />
-                              {t.memo ? (
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {t.memo}
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-                          <Amount
-                            value={t.amount}
-                            type={t.type}
-                            className="shrink-0"
-                          />
-                        </CardContent>
-                      </Surface>
-                    </li>
+                <ForecastCard forecast={forecast} budget={forecastBudget} />
+              </div>
+            ) : null}
+
+            <div
+              className={cn(reveal, "max-lg:order-3")}
+              style={{ animationDelay: "120ms" }}
+            >
+              <SavingsGoalCard
+                progress={savingsGoal.progress}
+                goal={savingsGoal.goal}
+              />
+            </div>
+
+            <div
+              className={cn(reveal, "max-lg:order-6")}
+              style={{ animationDelay: "240ms" }}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading text-base font-bold">最近の取引</h2>
+                <Link
+                  href={allTransactionsHref}
+                  className={buttonVariants({ variant: "link", size: "sm" })}
+                >
+                  すべて見る
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
+              </div>
+
+              {recentGroups.length === 0 ? (
+                <Surface variant="raised" className="mt-2">
+                  <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                    <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                      <ReceiptText className="size-6" aria-hidden />
+                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      この期間の収支はまだありません。
+                      <br />
+                      最初の一件を記録してみましょう。
+                    </p>
+                    <Link
+                      href={newTransactionHref}
+                      className={buttonVariants({ size: "sm" })}
+                    >
+                      収支を記録
+                    </Link>
+                  </CardContent>
+                </Surface>
+              ) : (
+                <div className="mt-2 space-y-4">
+                  {recentGroups.map((group) => (
+                    <section key={group.date} className="space-y-2">
+                      <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
+                        {formatDayLabel(group.date)}
+                      </h3>
+                      <ul className="space-y-2">
+                        {group.items.map((t) => (
+                          <li key={t.id}>
+                            <Surface
+                              variant="raised"
+                              data-testid="dashboard-transaction-row"
+                              className="transition-shadow hover:shadow-lifted"
+                            >
+                              <CardContent className="flex items-center justify-between gap-3 py-3">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <span
+                                    aria-hidden
+                                    className={cn(
+                                      "h-9 w-1 shrink-0 rounded-full",
+                                      t.type === "income"
+                                        ? "bg-income"
+                                        : "bg-expense",
+                                    )}
+                                  />
+                                  <div className="min-w-0 space-y-0.5">
+                                    <CategoryBadge category={t.category} />
+                                    {t.memo ? (
+                                      <p className="truncate text-xs text-muted-foreground">
+                                        {t.memo}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <Amount
+                                  value={t.amount}
+                                  type={t.type}
+                                  className="shrink-0"
+                                />
+                              </CardContent>
+                            </Surface>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
                   ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
-      </div>
+                </div>
+              )}
+            </div>
+          </>
+        }
+      />
     </main>
   );
 }
