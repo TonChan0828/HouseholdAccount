@@ -56,6 +56,7 @@ E2E は CI と同条件（`--workers=1`）で全通過することを基準と�
 | 33 | month_end_forecast | メンバーとして、当期途中で月末の着地（収支）と予算超過の見込みを知りたい | E2E + Unit | `dashboard.spec.ts`（着地予測カード・予算警告・当期のみ表示）/ `lib/forecast.test.ts`（ハイブリッド算出） |
 | 34 | dashboard_two_column_layout | デスクトップ利用者として、ダッシュボード/カレンダーを少ないスクロールで一覧したい | E2E + Component | `dashboard.spec.ts`・`demo.spec.ts`・`calendar.spec.ts`（内容・セレクタ不変のレイアウト再構成のため表示・操作は既存 E2E で担保）/ `main-side-grid.test.tsx`・`calendar-board.test.tsx`（2カラム構成・モバイル順制御） |
 | 35 | architecture_refactor | メンバーとして、月初に分析・予算・メンバー画面を最初に開いても定期収支が集計に含まれていてほしい（内部整理は挙動不変） | Unit + 既存E2E | `analytics/page.test.tsx`・`budgets/page.test.tsx`・`members/page.test.tsx`（閲覧時生成の呼び出し）/ 集約ヘルパーは `lib/household.test.ts`・`lib/queries/*.test.ts`。期跨ぎの実データ検証は E2E では期間境界を再現できないためユニットで代替。挙動不変の確認は既存 E2E 全53件の通過で担保 |
+| 36 | transaction_search_filter | メンバーとして、収支一覧を種別・カテゴリ・メンバー・メモ・金額で絞り込み、記録した収支を素早く見つけたい | E2E + Unit | `transactions-filter.spec.ts`（種別/カテゴリ/メモ/金額の絞り込み・クリア・0件時の空状態）/ パラメータ検証・LIKEエスケープは `lib/transaction-filter.test.ts`、クエリ組み立ては `lib/queries/transactions.test.ts`、URL更新・デバウンスは `filter-bar.test.tsx`。メンバーフィルタはセレクトのURL更新を Component で検証（複数ユーザーの実書き込みを要するため E2E は過剰と判断） |
 
 ---
 
