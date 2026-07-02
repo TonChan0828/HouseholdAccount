@@ -22,8 +22,8 @@ import {
   getHouseholdSettings,
   requireDashboardContext,
 } from "@/lib/household";
-import type { MemberInfo } from "@/lib/members";
 import { buildForecast, buildForecastBudget } from "@/lib/forecast";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -91,31 +91,6 @@ export default async function DashboardPage({
       .order("date", { ascending: false })
       .order("created_at", { ascending: false });
 
-  const fetchMembers = async (): Promise<MemberInfo[]> => {
-    const { data: memberRows } = await supabase
-      .from("household_members")
-      .select("user_id, joined_at, display_name")
-      .eq("household_id", householdId)
-      .order("joined_at");
-    const memberList = memberRows ?? [];
-    const userIds = memberList.map((m) => m.user_id);
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, display_name")
-      .in("id", userIds);
-    const nameById = new Map(
-      (profiles ?? []).map((p) => [p.id, p.display_name]),
-    );
-
-    // グループ毎の名前（household_members.display_name）優先・未設定はグローバル名へ。
-    return memberList.map((m) => ({
-      user_id: m.user_id,
-      display_name:
-        m.display_name ?? nameById.get(m.user_id) ?? "不明なユーザー",
-    }));
-  };
-
   const fetchBudgets = async () => {
     const { data: budgetRows } = await supabase
       .from("budgets")
@@ -167,7 +142,7 @@ export default async function DashboardPage({
     await Promise.all([
       buildQuery(range.start, range.end).overrideTypes<TransactionRow[]>(),
       buildQuery(prevRange.start, prevRange.end).overrideTypes<TransactionRow[]>(),
-      fetchMembers(),
+      getHouseholdMemberNames(householdId),
       fetchBudgets(),
       fetchSavingsGoal(),
     ]);
