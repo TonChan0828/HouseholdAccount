@@ -20,18 +20,9 @@ import {
 } from "@/lib/calendar";
 import { requireDashboardContext } from "@/lib/household";
 import { refFromParam, toISODate } from "@/lib/period";
+import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 import { ensureRecurringGenerated } from "@/lib/recurring";
 import { cn } from "@/lib/utils";
-
-type TxRow = {
-  id: string;
-  amount: number;
-  type: "income" | "expense";
-  date: string;
-  memo: string | null;
-  created_by: string;
-  category: { name: string; color: string | null } | null;
-};
 
 export default async function CalendarPage({
   searchParams,
@@ -49,17 +40,9 @@ export default async function CalendarPage({
   const grid = getCalendarGridRange(refDate);
   const month = getCalendarMonthRange(refDate);
 
-  const { data } = await supabase
-    .from("transactions")
-    .select("id, amount, type, date, memo, created_by, category:categories(name, color)")
-    .eq("household_id", householdId)
-    .gte("date", toISODate(grid.start))
-    .lt("date", toISODate(grid.end))
-    .order("date", { ascending: true })
-    .order("created_at", { ascending: true })
-    .overrideTypes<TxRow[]>();
-
-  const txs = data ?? [];
+  const txs = await fetchTransactionsInRange(supabase, householdId, grid, {
+    order: "asc",
+  });
 
   const weeks = buildCalendarWeeks(refDate, summarizeDailyTotals(txs));
 

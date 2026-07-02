@@ -31,18 +31,12 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
+import {
+  fetchTransactionsInRange,
+  type TransactionRow,
+} from "@/lib/queries/transactions";
 import { ensureRecurringGenerated } from "@/lib/recurring";
 import { cn } from "@/lib/utils";
-
-type TransactionRow = {
-  id: string;
-  amount: number;
-  type: "income" | "expense";
-  date: string;
-  memo: string | null;
-  created_by: string;
-  category: { name: string; color: string | null } | null;
-};
 
 /** 1 日分の収入・支出小計を求める。 */
 function daySums(items: TransactionRow[]) {
@@ -70,20 +64,12 @@ export default async function TransactionsPage({
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const range = getPeriodRange(refFromParam(ref), startDay);
-  const isoStart = toISODate(range.start);
-  const isoEnd = toISODate(range.end);
 
-  const { data } = await supabase
-    .from("transactions")
-    .select("id, amount, type, date, memo, created_by, category:categories(name, color)")
-    .eq("household_id", householdId)
-    .gte("date", isoStart)
-    .lt("date", isoEnd)
-    .order("date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .overrideTypes<TransactionRow[]>();
-
-  const transactions = data ?? [];
+  const transactions = await fetchTransactionsInRange(
+    supabase,
+    householdId,
+    range,
+  );
   const income = transactions
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + t.amount, 0);

@@ -7,6 +7,7 @@ import {
 } from "@/lib/household";
 import { summarizeByMember } from "@/lib/members";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -33,22 +34,13 @@ export default async function MembersPage({
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const range = getPeriodRange(refFromParam(ref), startDay);
-  const isoStart = toISODate(range.start);
-  const isoEnd = toISODate(range.end);
 
   const members = await getHouseholdMemberNames(householdId);
-
-  const { data } = await supabase
-    .from("transactions")
-    .select("id, amount, type, date, memo, created_by, category:categories(name, color)")
-    .eq("household_id", householdId)
-    .gte("date", isoStart)
-    .lt("date", isoEnd)
-    .order("date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .overrideTypes<MemberTxRow[]>();
-
-  const txs = data ?? [];
+  const txs: MemberTxRow[] = await fetchTransactionsInRange(
+    supabase,
+    householdId,
+    range,
+  );
   const summaries = summarizeByMember(txs, members);
 
   const prevHref = `/members?ref=${toISODate(shiftPeriod(range, -1, startDay).start)}`;

@@ -12,9 +12,9 @@ import {
   summarizeCategoryExpense,
   summarizeCategoryTrend,
   summarizeTrend,
-  type TxLite,
 } from "@/lib/analytics";
 import { buildBudgetRows } from "@/lib/budget";
+import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 import {
   getHouseholdSettings,
   requireDashboardContext,
@@ -50,23 +50,19 @@ export default async function AnalyticsPage({
   const ranges = Array.from({ length: TREND_PERIODS }, (_, i) =>
     shiftPeriod(base, i - (TREND_PERIODS - 1), startDay),
   );
-  const isoStart = toISODate(ranges[0].start);
   const baseStart = toISODate(base.start);
   const baseEnd = toISODate(base.end);
 
   const [
-    { data },
+    txs,
     { data: budgetData },
     { data: categoryData },
     { data: recurringData },
   ] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("amount, type, date, category_id, category:categories(name, color)")
-      .eq("household_id", householdId)
-      .gte("date", isoStart)
-      .lt("date", baseEnd)
-      .overrideTypes<TxLite[]>(),
+    fetchTransactionsInRange(supabase, householdId, {
+      start: ranges[0].start,
+      end: base.end,
+    }),
     supabase
       .from("budgets")
       .select("category_id, amount")
@@ -82,7 +78,6 @@ export default async function AnalyticsPage({
       .eq("is_active", true),
   ]);
 
-  const txs = data ?? [];
   const trend = summarizeTrend(txs, ranges);
   const categories = summarizeCategoryExpense(
     txs.filter((t) => t.date >= baseStart && t.date < baseEnd),
