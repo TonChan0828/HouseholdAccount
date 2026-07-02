@@ -87,9 +87,10 @@ test.describe("Excel取り込み", () => {
     await page.getByRole("button", { name: /取り込む/ }).click();
     await expect(page).toHaveURL(/\/transactions\?ref=2026-06-01/);
 
-    // 取り込んだ収支が一覧に反映される
-    await expect(page.getByText("給料")).toBeVisible();
-    await expect(page.getByText("食費")).toBeVisible();
+    // 取り込んだ収支が一覧に反映される（絞り込みバーの option と重複するため行にスコープ）
+    const rows = page.locator('[data-testid="transaction-row"]');
+    await expect(rows.filter({ hasText: "給料" })).toBeVisible();
+    await expect(rows.filter({ hasText: "食費" })).toBeVisible();
   });
 
   test("複数シートのExcelはシートを選択して取り込める", async ({ page }) => {
@@ -112,6 +113,8 @@ test.describe("Excel取り込み", () => {
     // 選んだシート（7月）を確定 → その月に反映
     await page.getByRole("button", { name: /取り込む/ }).click();
     await expect(page).toHaveURL(/\/transactions\?ref=2026-07-01/);
-    await expect(page.getByText("食費")).toBeVisible();
+    await expect(
+      page.locator('[data-testid="transaction-row"]').filter({ hasText: "食費" }),
+    ).toBeVisible();
   });
 });
