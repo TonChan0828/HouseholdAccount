@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 反映には2つ以上の所属グループが必要なため、各テストで一時グループを2つ作る。
@@ -19,14 +20,8 @@ test.describe("収支のグループ間反映", () => {
     const memo = `反映-${stamp}`;
 
     // A → B の順で作成（最後に作った B がアクティブになる）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(groupA);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(groupB);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, groupA);
+    await createHousehold(page, groupB);
 
     // B（アクティブ）で収支を登録し、A にも反映する
     await page.goto("/transactions/new");
@@ -63,14 +58,8 @@ test.describe("収支のグループ間反映", () => {
     const memo = `後追い-${stamp}`;
 
     // C → D の順で作成
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(groupC);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(groupD);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, groupC);
+    await createHousehold(page, groupD);
 
     // C をアクティブに戻して C で登録（反映なし）
     await page.goto("/households");

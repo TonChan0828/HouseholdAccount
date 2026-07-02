@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 貯金額 = 開始日以降の世帯全体の (収入 − 支出)。開始日は当日デフォルトのため、
@@ -14,10 +15,7 @@ test.describe("貯金目標", () => {
     const goalName = `旅行資金-${Date.now()}`;
 
     // グループ作成（作成者=オーナー、アクティブ化）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 初期状態: 目標は未設定
     const card = page.locator('[data-testid="savings-goal-card"]');

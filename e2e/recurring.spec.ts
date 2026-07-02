@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 新規グループは period_start_day=1 のため、定期項目の作成時に当期（今月1日）の収支が即時生成される。
@@ -14,10 +15,7 @@ test.describe("定期項目", () => {
     const memo = `サブスク-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 定期項目を追加（支出 / 食費 / 7777円）
     await page.goto("/transactions/recurring/new");

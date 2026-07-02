@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // テーマ切り替え（ライト/ダーク/システム）と localStorage による永続化を検証する。
@@ -32,10 +33,7 @@ test.describe("テーマ切り替え", () => {
     const group = ephemeralName("テーマ");
 
     // グループを作成してダッシュボード（AppHeader あり）へ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // ユーザーメニュー内のテーマ項目でダークに切り替え
     await page.getByRole("button", { name: /のメニュー/ }).click();

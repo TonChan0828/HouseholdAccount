@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 注意: 表示名は共有 E2E ユーザーのグローバル状態で、members.spec.ts が表示名 "e2e" に
@@ -14,10 +15,7 @@ test.describe("プロフィール設定", () => {
     const newName = `e2e改${stamp}`;
 
     // グループを作成してダッシュボード（AppHeader あり）へ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // ユーザーメニューからプロフィール設定へ遷移
     await page.getByRole("button", { name: /のメニュー/ }).click();
