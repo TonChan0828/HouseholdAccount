@@ -1,12 +1,9 @@
-import { redirect } from "next/navigation";
-
 import { MemberActivity, type MemberTxRow } from "@/components/features/members/member-activity";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import { PageHeader } from "@/components/shared/page-header";
 import {
-  getActiveHouseholdId,
-  getCurrentUser,
   getHouseholdSettings,
+  requireDashboardContext,
 } from "@/lib/household";
 import { summarizeByMember, type MemberInfo } from "@/lib/members";
 import {
@@ -15,7 +12,6 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
-import { createClient } from "@/lib/supabase/server";
 
 function refFromParam(ref: string | undefined): Date {
   if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {
@@ -31,16 +27,7 @@ export default async function MembersPage({
 }) {
   const { ref } = await searchParams;
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 

@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
 import { AdviceSection } from "@/components/features/charts/advice-section";
 import { CategoryBreakdown } from "@/components/features/charts/category-breakdown";
 import { TrendBars } from "@/components/features/charts/trend-bars";
@@ -18,9 +16,8 @@ import {
 } from "@/lib/analytics";
 import { buildBudgetRows } from "@/lib/budget";
 import {
-  getActiveHouseholdId,
-  getCurrentUser,
   getHouseholdSettings,
+  requireDashboardContext,
 } from "@/lib/household";
 import {
   formatPeriodLabel,
@@ -28,7 +25,6 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
-import { createClient } from "@/lib/supabase/server";
 
 const TREND_PERIODS = 6;
 
@@ -46,16 +42,7 @@ export default async function AnalyticsPage({
 }) {
   const { ref } = await searchParams;
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 

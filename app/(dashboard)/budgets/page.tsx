@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { Wallet } from "lucide-react";
 
 import { BudgetProgressBar } from "@/components/features/budgets/budget-progress-bar";
@@ -11,9 +10,8 @@ import { Surface } from "@/components/shared/surface";
 import { summarizeCategoryExpense, type TxLite } from "@/lib/analytics";
 import { buildBudgetRows } from "@/lib/budget";
 import {
-  getActiveHouseholdId,
-  getCurrentUser,
   getHouseholdSettings,
+  requireDashboardContext,
 } from "@/lib/household";
 import {
   formatPeriodLabel,
@@ -22,7 +20,6 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
-import { createClient } from "@/lib/supabase/server";
 import { yen } from "@/lib/format";
 import type { Budget, Category } from "@/types";
 
@@ -33,16 +30,7 @@ export default async function BudgetsPage({
 }) {
   const { ref } = await searchParams;
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
   const range = getPeriodRange(refFromParam(ref), startDay);

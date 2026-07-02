@@ -1,31 +1,14 @@
-import { redirect } from "next/navigation";
-
 import { signOut } from "@/app/(auth)/actions";
 import { setActiveHousehold } from "@/app/households/actions";
 import { AppHeader } from "@/components/features/layout/app-header";
 import { MobileTabBar } from "@/components/features/layout/mobile-tab-bar";
-import {
-  getActiveHouseholdId,
-  getCurrentUser,
-  getUserHouseholds,
-} from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { getUserHouseholds, requireDashboardContext } from "@/lib/household";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-
   // proxy.ts でも保護しているが、二重防御として確認する。
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const [{ data: profile }, { data: membership }, households] =
     await Promise.all([

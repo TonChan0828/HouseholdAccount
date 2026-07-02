@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { createRecurring } from "@/app/(dashboard)/transactions/recurring/actions";
 import { RecurringForm } from "@/components/features/transactions/recurring-form";
@@ -7,16 +6,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
-import { getActiveHouseholdId } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardContext } from "@/lib/household";
 import type { Category } from "@/types";
 
 export default async function NewRecurringPage() {
-  const supabase = await createClient();
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { data } = await supabase
     .from("categories")

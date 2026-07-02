@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   Download,
   Pencil,
@@ -22,9 +21,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
 import { formatDayLabel, groupByDate } from "@/lib/format";
 import {
-  getActiveHouseholdId,
-  getCurrentUser,
   getHouseholdSettings,
+  requireDashboardContext,
 } from "@/lib/household";
 import {
   formatPeriodLabel,
@@ -34,7 +32,6 @@ import {
   toISODate,
 } from "@/lib/period";
 import { ensureRecurringGenerated } from "@/lib/recurring";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type TransactionRow = {
@@ -65,16 +62,7 @@ export default async function TransactionsPage({
 }) {
   const { ref } = await searchParams;
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
   await ensureRecurringGenerated(householdId);

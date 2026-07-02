@@ -10,8 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
-import { getActiveHouseholdId, getCurrentUser } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardContext } from "@/lib/household";
 import type { Category } from "@/types";
 
 export default async function EditRecurringPage({
@@ -21,16 +20,7 @@ export default async function EditRecurringPage({
 }) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const { data: recurring } = await supabase
     .from("recurring_transactions")

@@ -4,6 +4,7 @@ import {
   getActiveHouseholdId,
   getCurrentUser,
   getHouseholdSettings,
+  requireDashboardContext,
   setActiveHouseholdCookie,
 } from "./household";
 
@@ -27,6 +28,13 @@ vi.mock("next/headers", () => ({
       state.setCalls.push({ name, value, options });
     },
   }),
+}));
+
+// Next.js の redirect は例外を投げて処理を中断する。テストでも同様に再現する。
+vi.mock("next/navigation", () => ({
+  redirect: (url: string) => {
+    throw new Error(`NEXT_REDIRECT:${url}`);
+  },
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -136,6 +144,35 @@ describe("getHouseholdSettings", () => {
     expect(await getHouseholdSettings("h-missing")).toEqual({
       periodStartDay: 1,
     });
+  });
+});
+
+describe("requireDashboardContext", () => {
+  it("ログイン済み・所属ありなら user / householdId / supabase を返す", async () => {
+    state.cookieValue = "h-new";
+
+    const ctx = await requireDashboardContext();
+
+    expect(ctx.user).toEqual({ id: "user-1" });
+    expect(ctx.householdId).toBe("h-new");
+    expect(ctx.supabase).toBeDefined();
+    expect(typeof ctx.supabase.from).toBe("function");
+  });
+
+  it("未ログインなら /login へリダイレクトする", async () => {
+    state.user = null;
+
+    await expect(requireDashboardContext()).rejects.toThrow(
+      "NEXT_REDIRECT:/login",
+    );
+  });
+
+  it("所属グループが無ければ /households へリダイレクトする", async () => {
+    state.members = [];
+
+    await expect(requireDashboardContext()).rejects.toThrow(
+      "NEXT_REDIRECT:/households",
+    );
   });
 });
 

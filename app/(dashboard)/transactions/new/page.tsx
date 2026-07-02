@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { createTransaction } from "@/app/(dashboard)/transactions/actions";
 import { TransactionForm } from "@/components/features/transactions/transaction-form";
@@ -7,8 +6,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
-import { getActiveHouseholdId, getUserHouseholds } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserHouseholds,
+  requireDashboardContext,
+} from "@/lib/household";
 import type { Category } from "@/types";
 
 export default async function NewTransactionPage({
@@ -20,11 +21,7 @@ export default async function NewTransactionPage({
   // ダッシュボード等から表示中の期間を引き継ぐ。不正値は無視してフォーム側の既定（今日）に委ねる。
   const defaultDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
 
-  const supabase = await createClient();
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { data } = await supabase
     .from("categories")

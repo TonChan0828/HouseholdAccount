@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import {
   confirmImport,
@@ -13,13 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getActiveHouseholdId } from "@/lib/household";
+import { requireDashboardContext } from "@/lib/household";
 
 export default async function ImportTransactionsPage() {
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  await requireDashboardContext();
 
   return (
     <main className="mx-auto w-full max-w-md space-y-4 p-4 sm:py-8">

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { deleteCategory } from "@/app/(dashboard)/categories/actions";
@@ -9,8 +8,7 @@ import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Surface } from "@/components/shared/surface";
-import { getActiveHouseholdId, getCurrentUser } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardContext } from "@/lib/household";
 import type { Category, CategoryType } from "@/types";
 
 const GROUPS: { type: CategoryType; label: string }[] = [
@@ -20,16 +18,7 @@ const GROUPS: { type: CategoryType; label: string }[] = [
 ];
 
 export default async function CategoriesPage() {
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { data } = await supabase
     .from("categories")

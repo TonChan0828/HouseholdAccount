@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getActiveHouseholdId } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardContext } from "@/lib/household";
 import { categorySchema } from "@/lib/validations/category";
 
 export type CategoryActionState = { error: string } | undefined;
@@ -27,12 +26,7 @@ export async function createCategory(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
-
-  const supabase = await createClient();
+  const { householdId, supabase } = await requireDashboardContext();
   const { error } = await supabase.from("categories").insert({
     household_id: householdId,
     ...parsed.data,
@@ -62,12 +56,7 @@ export async function updateCategory(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
-
-  const supabase = await createClient();
+  const { householdId, supabase } = await requireDashboardContext();
   const { error } = await supabase
     .from("categories")
     .update(parsed.data)
@@ -90,12 +79,7 @@ export async function deleteCategory(formData: FormData): Promise<void> {
     return;
   }
 
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
-
-  const supabase = await createClient();
+  const { householdId, supabase } = await requireDashboardContext();
   await supabase
     .from("categories")
     .delete()
