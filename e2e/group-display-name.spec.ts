@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // グループ毎の表示名（ニックネーム）: /households の自分の行で設定でき、
@@ -15,10 +16,7 @@ test.describe("グループ毎の表示名（ニックネーム）", () => {
     const nickname = `パパ${stamp}`.slice(0, 20);
 
     // グループ作成（作成者=オーナー・アクティブ化）→ ダッシュボード
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 作成したグループのカードに絞り込む
     await page.goto("/households");

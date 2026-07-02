@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 分析は当期の支出カテゴリ内訳と直近6期の推移を表示する。各テストでグループを作成する。
@@ -14,10 +15,7 @@ test.describe("月次分析", () => {
     const memo = `分析ランチ-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）→ ダッシュボードへ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 収支を追加（支出 / 食費 / 1200円）
     await page.goto("/transactions/new");

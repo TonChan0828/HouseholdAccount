@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 家計アドバイスはルールベース（lib/advice.ts）。当期の収支から決定的に生成される。
@@ -12,10 +13,7 @@ test.describe("家計アドバイス", () => {
     const group = ephemeralName("助言グループ");
 
     // グループ作成（作成者=オーナー、アクティブ化）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // データ不足時は案内文言（no-data）が出る
     await page.goto("/analytics");

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // カテゴリはグループ共有のため、各テストでグループを作成する。
@@ -15,10 +16,7 @@ test.describe("カテゴリ管理", () => {
     const renamed = `ペット改-${stamp}`;
 
     // グループ作成（デフォルトカテゴリ付与、アクティブ化）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // カテゴリを追加（支出）
     await page.goto("/categories/new");

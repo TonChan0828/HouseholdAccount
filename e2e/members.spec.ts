@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // メンバー別アクティビティは当期のメンバー別集計と取引展開を表示する。各テストでグループを作成する。
@@ -14,10 +15,7 @@ test.describe("メンバー別アクティビティ", () => {
     const memo = `メンバーランチ-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）→ ダッシュボードへ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 収支を追加（支出 / 食費 / 1500円）
     await page.goto("/transactions/new");

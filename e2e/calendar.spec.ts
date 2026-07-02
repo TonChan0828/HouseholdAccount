@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // カレンダーは当月の収支をグリッド表示し、日タップでその日の明細を出す。
@@ -15,10 +16,7 @@ test.describe("カレンダービュー", () => {
     const memo = `カレンダーランチ-${stamp}`;
 
     // グループ作成 → ダッシュボードへ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 収支を追加（支出 / 食費 / 1200円・当日付）
     await page.goto("/transactions/new");

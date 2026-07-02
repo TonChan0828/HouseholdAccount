@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ユーザーストーリー（00_overview / 08_ui_overhaul）:
 //   ログイン済みメンバーとして、共通のアプリシェル（ヘッダーのメインナビ）から
@@ -11,10 +12,7 @@ test.describe("アプリシェルのナビゲーション", () => {
     const group = ephemeralName("ナビグループ");
 
     // グループ作成（作成者=オーナー、アクティブ化）→ ダッシュボード
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     const nav = page.getByRole("navigation", { name: "メイン" });
 

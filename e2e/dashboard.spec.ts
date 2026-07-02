@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // ダッシュボードは当期間のサマリーと最近の取引を表示する。各テストでグループを作成する。
@@ -14,10 +15,7 @@ test.describe("ダッシュボード", () => {
     const memo = `ランチ-${stamp}`;
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）→ ダッシュボードへ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 収支を追加（支出 / 食費 / 1200円）
     await page.goto("/transactions/new");
@@ -71,10 +69,7 @@ test.describe("ダッシュボード", () => {
     const memo = `当月ランチ-${stamp}`;
 
     // グループ作成 → ダッシュボードへ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 当月に収支を追加（支出 / 食費 / 1200円）
     await page.goto("/transactions/new");
@@ -119,10 +114,7 @@ test.describe("ダッシュボード", () => {
   }) => {
     const group = ephemeralName("記録月引継ぎ");
 
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 前の期間へ移動し、ラベルから期間開始日（YYYY/MM/01）を読む
     await page.getByRole("link", { name: "前の期間" }).click();
@@ -148,10 +140,7 @@ test.describe("ダッシュボード", () => {
   }) => {
     const group = ephemeralName("記録当月");
 
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 当期表示のまま「記録する」→ date パラメータは付かない（フォームは今日を既定にする）
     await page.getByRole("link", { name: "記録する" }).click();
@@ -165,10 +154,7 @@ test.describe("ダッシュボード", () => {
     const memo = `着地テスト-${Date.now()}`;
 
     // グループ作成（period_start_day=1 のため今日付は当期に含まれる）→ ダッシュボードへ
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 当期に変動支出を1件記録（食費 / 1200円）
     await page.goto("/transactions/new");

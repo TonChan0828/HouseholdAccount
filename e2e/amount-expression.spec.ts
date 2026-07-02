@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ユーザーストーリー（25_amount_expression）:
 //   レシートや割り勘の合計を、電卓を使わず金額欄に式のまま入力して登録できる。
@@ -12,10 +13,7 @@ test.describe("金額の四則演算入力", () => {
     const memo = `レシート合計-${Date.now()}`;
 
     // グループ作成（作成者=オーナー、アクティブ化）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // 金額欄に式を入力（1280+980+550 = 2810）
     await page.goto("/transactions/new");

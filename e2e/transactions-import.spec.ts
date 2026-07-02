@@ -6,6 +6,7 @@ import ExcelJS from "exceljs";
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 取り込みには Excel ファイルが必要なため、合成フィクスチャ（実データは使わない）を生成する。
@@ -64,10 +65,7 @@ test.describe("Excel取り込み", () => {
     const fixture = await buildFixtureXlsx();
 
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     // インポート画面へ
     await page.goto("/transactions");
@@ -98,10 +96,7 @@ test.describe("Excel取り込み", () => {
     const group = ephemeralName("複数タブ取込");
     const fixture = await buildMultiSheetXlsx();
 
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
 
     await page.goto("/transactions/import");
     await page.getByLabel(/Excel ファイル/).setInputFiles(fixture);
