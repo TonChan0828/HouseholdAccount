@@ -5,6 +5,7 @@ import {
   ephemeralName,
   MULTI_MEMBER_HOUSEHOLD,
 } from "./constants";
+import { createHousehold } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 
@@ -34,10 +35,7 @@ test.describe("家計簿グループ管理", () => {
 
   test("複数メンバーのグループに切り替えできる", async ({ page }) => {
     // 別グループを作成してアクティブにし、切り替えボタンを表示させる
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(ephemeralName("切替元"));
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, ephemeralName("切替元"));
 
     // 2人メンバーのグループ（seed 済み）へ切り替えると利用中になる
     await page.goto("/households");
@@ -60,10 +58,7 @@ test.describe("家計簿グループ管理", () => {
       page.locator('[data-testid="household-card"]').filter({ hasText: name });
 
     // グループ A を作成 → ダッシュボードへ遷移
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(groupA);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, groupA);
 
     // 作成直後は A がアクティブ
     await page.goto("/households");
@@ -91,14 +86,8 @@ test.describe("家計簿グループ管理", () => {
     const groupB = ephemeralName("スイッチャーB");
 
     // A → B の順で作成（最後に作った B がアクティブになる）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(groupA);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(groupB);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, groupA);
+    await createHousehold(page, groupB);
 
     // ダッシュボード上のヘッダー・スイッチャーを開き、A に切り替える
     const switcher = page.getByRole("button", { name: /グループを切り替え/ });
@@ -120,10 +109,7 @@ test.describe("家計簿グループ管理", () => {
       .filter({ hasText: group });
 
     // グループ作成（作成者はオーナー）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
     await page.goto("/households");
 
     // 管理セクション（メンバー・招待・設定）は既定で折り畳まれているため開く
@@ -150,16 +136,83 @@ test.describe("家計簿グループ管理", () => {
     ).toBeVisible();
   });
 
+  test("招待リンクから別ユーザーが参加でき、参加者は自分で脱退できる", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    const group = ephemeralName("参加");
+    const card = page
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: group });
+
+    // オーナー（共有セッション）がグループを作成し、招待リンクを発行する
+    await createHousehold(page, group);
+    await page.goto("/households");
+
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+    await card.getByLabel("参加できる人数").fill("2");
+    await card.getByRole("button", { name: "招待リンクを発行" }).click();
+    const linkInput = card
+      .locator('input[readonly][value*="/invite/"]')
+      .first();
+    await expect(linkInput).toBeVisible();
+    const inviteUrl = await linkInput.inputValue();
+
+    // 第2ユーザー（テストメンバー）は共有セッションとは別の未認証コンテキストでログインする
+    // （@playwright/test の newContext はプロジェクトの storageState を継承するため、
+    //   空の storageState を明示して未認証にする）
+    const memberContext = await browser.newContext({
+      baseURL,
+      storageState: { cookies: [], origins: [] },
+    });
+    const memberPage = await memberContext.newPage();
+    await memberPage.goto("/login");
+    await memberPage.getByLabel("メールアドレス").fill(E2E_MEMBER_USER.email);
+    await memberPage.getByLabel("パスワード").fill(E2E_MEMBER_USER.password);
+    await memberPage.getByRole("button", { name: "ログイン" }).click();
+    await expect(memberPage).toHaveURL(/\/households$/);
+
+    // 招待ページから参加すると、参加先グループがアクティブになりダッシュボードへ入る
+    await memberPage.goto(inviteUrl);
+    await memberPage
+      .getByRole("button", { name: "このグループに参加する" })
+      .click();
+    await expect(memberPage).toHaveURL(/\/dashboard$/);
+
+    // オーナー側のメンバー一覧に参加者が現れる
+    await page.reload();
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+    await expect(card.getByTestId("member-item")).toHaveCount(2);
+    await expect(card.getByText(E2E_MEMBER_USER.displayName)).toBeVisible();
+
+    // 参加者は確認ステップを経て自分で脱退でき、一覧からグループが消える
+    await memberPage.goto("/households");
+    const memberCard = memberPage
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: group });
+    await memberCard.getByRole("button", { name: /^管理（メンバー/ }).click();
+    await memberCard
+      .getByRole("button", { name: "脱退", exact: true })
+      .click();
+    await memberCard.getByRole("button", { name: "脱退する" }).click();
+    await expect(memberPage).toHaveURL(/\/households$/);
+    await expect(
+      memberPage
+        .locator('[data-testid="household-card"]')
+        .filter({ hasText: group }),
+    ).toHaveCount(0);
+
+    await memberContext.close();
+  });
+
   test("メンバー一覧に自分が表示され、単独オーナーには脱退ではなく削除導線が出る", async ({
     page,
   }) => {
     const group = ephemeralName("メンバー");
 
     // グループ作成（作成者はオーナー＝唯一のメンバー）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
     await page.goto("/households");
 
     const card = page
@@ -215,10 +268,7 @@ test.describe("家計簿グループ管理", () => {
     const group = ephemeralName("削除");
 
     // 使い捨てグループを作成（作成者＝オーナー＝唯一のメンバー）
-    await page.goto("/households");
-    await page.getByLabel("グループ名").fill(group);
-    await page.getByRole("button", { name: "グループを作成" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await createHousehold(page, group);
     await page.goto("/households");
 
     const card = page
