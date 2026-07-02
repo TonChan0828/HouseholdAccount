@@ -10,6 +10,7 @@ import { Surface } from "@/components/shared/surface";
 import { summarizeCategoryExpense } from "@/lib/analytics";
 import { buildBudgetRows } from "@/lib/budget";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
+import { ensureRecurringGenerated } from "@/lib/recurring";
 import {
   getHouseholdSettings,
   requireDashboardContext,
@@ -32,6 +33,9 @@ export default async function BudgetsPage({
   const { ref } = await searchParams;
 
   const { householdId, supabase } = await requireDashboardContext();
+
+  // 当期分の定期収支を（未生成なら）生成してから実績を集計する。冪等。
+  await ensureRecurringGenerated(householdId);
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
   const range = getPeriodRange(refFromParam(ref), startDay);
