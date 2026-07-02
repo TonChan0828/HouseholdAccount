@@ -156,5 +156,8 @@ acceptInvitation(token)          // rpc("accept_invitation") → 成功時 activ
 ## 未解決の課題
 
 - メンバー一覧での auth.users 情報（email/表示名）取得方法（後続フェーズ。Edge Function か admin API 検討）
+  - → 15_member_management で profiles / display_name ベースに解決済み
 - メンバー一覧・脱退・削除の UI（後続フェーズ）
-- 招待リンクの multi-user 参加は E2E では関数レベル（SQL）検証に留める
+  - → 15_member_management / 16_household_deletion で実装済み
+- ~~招待リンクの multi-user 参加は E2E では関数レベル（SQL）検証に留める~~
+  - → 解消済み: 第2ユーザーが招待リンクから参加し脱退する E2E を `e2e/household.spec.ts` に追加
