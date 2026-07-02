@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
   captured: {
     table: "",
     select: "",
-    filters: {} as Record<string, string>,
+    filters: {} as Record<string, string | number>,
     orders: [] as OrderCall[],
   },
 }));
@@ -20,16 +20,24 @@ function makeClient() {
       state.captured.select = columns;
       return query;
     },
-    eq: (column: string, value: string) => {
+    eq: (column: string, value: string | number) => {
       state.captured.filters[`eq:${column}`] = value;
       return query;
     },
-    gte: (column: string, value: string) => {
+    gte: (column: string, value: string | number) => {
       state.captured.filters[`gte:${column}`] = value;
       return query;
     },
-    lt: (column: string, value: string) => {
+    lt: (column: string, value: string | number) => {
       state.captured.filters[`lt:${column}`] = value;
+      return query;
+    },
+    lte: (column: string, value: string | number) => {
+      state.captured.filters[`lte:${column}`] = value;
+      return query;
+    },
+    ilike: (column: string, pattern: string) => {
+      state.captured.filters[`ilike:${column}`] = pattern;
       return query;
     },
     order: (column: string, opts?: { ascending?: boolean }) => {
@@ -93,6 +101,52 @@ describe("fetchTransactionsInRange", () => {
       { column: "date", ascending: true },
       { column: "created_at", ascending: true },
     ]);
+  });
+
+  it("filter の各条件を指定時のみクエリに追加する（spec 36）", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await fetchTransactionsInRange(makeClient() as any, "h-1", range, {
+      filter: {
+        type: "expense",
+        categoryId: "cat-1",
+        createdBy: "user-1",
+        minAmount: 100,
+        maxAmount: 5000,
+      },
+    });
+
+    expect(state.captured.filters).toEqual({
+      "eq:household_id": "h-1",
+      "gte:date": "2026-07-01",
+      "lt:date": "2026-08-01",
+      "eq:type": "expense",
+      "eq:category_id": "cat-1",
+      "eq:created_by": "user-1",
+      "gte:amount": 100,
+      "lte:amount": 5000,
+    });
+  });
+
+  it("memoQuery は LIKE 特殊文字をエスケープして部分一致検索する", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await fetchTransactionsInRange(makeClient() as any, "h-1", range, {
+      filter: { memoQuery: "100%引_き" },
+    });
+
+    expect(state.captured.filters["ilike:memo"]).toBe("%100\\%引\\_き%");
+  });
+
+  it("空の filter では余計な条件を追加しない", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await fetchTransactionsInRange(makeClient() as any, "h-1", range, {
+      filter: {},
+    });
+
+    expect(state.captured.filters).toEqual({
+      "eq:household_id": "h-1",
+      "gte:date": "2026-07-01",
+      "lt:date": "2026-08-01",
+    });
   });
 
   it("結果が null の場合は空配列を返す", async () => {

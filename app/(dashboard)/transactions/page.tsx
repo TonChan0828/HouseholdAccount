@@ -12,6 +12,7 @@ import {
 import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
+import { FilterBar } from "@/components/features/transactions/filter-bar";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import { ViewToggle } from "@/components/features/transactions/view-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -31,11 +32,18 @@ import {
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
 import {
   fetchTransactionsInRange,
   type TransactionRow,
 } from "@/lib/queries/transactions";
 import { ensureRecurringGenerated } from "@/lib/recurring";
+import {
+  buildFilterQueryString,
+  hasActiveFilter,
+  parseTransactionFilter,
+  type TransactionFilterParams,
+} from "@/lib/transaction-filter";
 import { cn } from "@/lib/utils";
 
 /** 1 日分の収入・支出小計を求める。 */
@@ -52,9 +60,11 @@ function daySums(items: TransactionRow[]) {
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<{ ref?: string } & TransactionFilterParams>;
 }) {
-  const { ref } = await searchParams;
+  const { ref, ...filterParams } = await searchParams;
+  const filter = parseTransactionFilter(filterParams);
+  const filtering = hasActiveFilter(filter);
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
@@ -65,11 +75,17 @@ export default async function TransactionsPage({
 
   const range = getPeriodRange(refFromParam(ref), startDay);
 
-  const transactions = await fetchTransactionsInRange(
-    supabase,
-    householdId,
-    range,
-  );
+  const [transactions, members, { data: categoryRows }] = await Promise.all([
+    fetchTransactionsInRange(supabase, householdId, range, { filter }),
+    getHouseholdMemberNames(householdId),
+    supabase
+      .from("categories")
+      .select("id, name, color")
+      .eq("household_id", householdId)
+      .order("type", { ascending: true })
+      .order("name", { ascending: true }),
+  ]);
+  const categoryOptions = categoryRows ?? [];
   const income = transactions
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + t.amount, 0);
@@ -78,8 +94,11 @@ export default async function TransactionsPage({
     .reduce((s, t) => s + t.amount, 0);
   const groups = groupByDate(transactions);
 
-  const prevHref = `/transactions?ref=${toISODate(shiftPeriod(range, -1, startDay).start)}`;
-  const nextHref = `/transactions?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}`;
+  // 前月/翌月リンクにはフィルタ条件を引き継ぐ（期間移動で条件が消えないように）
+  const filterQs = buildFilterQueryString(filter);
+  const filterSuffix = filterQs ? `&${filterQs}` : "";
+  const prevHref = `/transactions?ref=${toISODate(shiftPeriod(range, -1, startDay).start)}${filterSuffix}`;
+  const nextHref = `/transactions?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}${filterSuffix}`;
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
@@ -139,6 +158,15 @@ export default async function TransactionsPage({
         />
       </div>
 
+      <div className={reveal} style={{ animationDelay: "90ms" }}>
+        <FilterBar
+          filter={filter}
+          currentRef={ref}
+          categories={categoryOptions}
+          members={members}
+        />
+      </div>
+
       <div className={reveal} style={{ animationDelay: "120ms" }}>
         <SummaryCards income={income} expense={expense} />
       </div>
@@ -153,15 +181,31 @@ export default async function TransactionsPage({
             <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
               <ReceiptText className="size-6" aria-hidden />
             </span>
-            <p className="text-sm text-muted-foreground">
-              この期間の収支はまだありません。
-            </p>
-            <Link
-              href="/transactions/new"
-              className={buttonVariants({ size: "sm" })}
-            >
-              収支を記録
-            </Link>
+            {filtering ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  条件に一致する収支がありません。
+                </p>
+                <Link
+                  href={`/transactions${ref ? `?ref=${ref}` : ""}`}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  条件をクリア
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  この期間の収支はまだありません。
+                </p>
+                <Link
+                  href="/transactions/new"
+                  className={buttonVariants({ size: "sm" })}
+                >
+                  収支を記録
+                </Link>
+              </>
+            )}
           </CardContent>
         </Surface>
       ) : (
