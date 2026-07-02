@@ -12,6 +12,7 @@ import {
   getHouseholdSettings,
   requireDashboardContext,
 } from "@/lib/household";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { cn } from "@/lib/utils";
 
 type RecurringRow = {
@@ -40,21 +41,10 @@ export default async function RecurringTransactionsPage() {
   const items = data ?? [];
 
   // 登録者名の解決（グループ毎の表示名優先・未設定はグローバル名へ）。
-  const { data: memberRows } = await supabase
-    .from("household_members")
-    .select("user_id, display_name")
-    .eq("household_id", householdId);
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .in("id", (memberRows ?? []).map((m) => m.user_id));
-  const globalName = new Map(
-    (profiles ?? []).map((p) => [p.id, p.display_name]),
-  );
   const nameByUser = new Map(
-    (memberRows ?? []).map((m) => [
+    (await getHouseholdMemberNames(householdId)).map((m) => [
       m.user_id,
-      m.display_name ?? globalName.get(m.user_id) ?? "不明なユーザー",
+      m.display_name,
     ]),
   );
 
