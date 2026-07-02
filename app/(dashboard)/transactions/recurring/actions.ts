@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getActiveHouseholdId } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardContext } from "@/lib/household";
 import { recurringTransactionSchema } from "@/lib/validations/transaction";
 
 export type RecurringActionState = { error: string } | undefined;
@@ -29,18 +28,7 @@ export async function createRecurring(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const { type, amount, category_id, memo, is_active } = parsed.data;
   const { error } = await supabase.from("recurring_transactions").insert({
@@ -80,18 +68,7 @@ export async function updateRecurring(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { type, amount, category_id, memo, is_active } = parsed.data;
   const { data, error } = await supabase
@@ -125,18 +102,7 @@ export async function deleteRecurring(formData: FormData): Promise<void> {
     return;
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   await supabase
     .from("recurring_transactions")
@@ -156,18 +122,7 @@ export async function toggleRecurringActive(formData: FormData): Promise<void> {
   }
   const isActive = formData.get("is_active") === "true";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   await supabase
     .from("recurring_transactions")

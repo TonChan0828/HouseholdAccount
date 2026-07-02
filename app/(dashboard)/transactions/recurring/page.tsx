@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Pencil, Plus, Repeat } from "lucide-react";
 
 import { toggleRecurringActive } from "@/app/(dashboard)/transactions/recurring/actions";
@@ -10,11 +9,9 @@ import { Amount } from "@/components/shared/amount";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
 import {
-  getActiveHouseholdId,
-  getCurrentUser,
   getHouseholdSettings,
+  requireDashboardContext,
 } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type RecurringRow = {
@@ -28,16 +25,7 @@ type RecurringRow = {
 };
 
 export default async function RecurringTransactionsPage() {
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const { periodStartDay } = await getHouseholdSettings(householdId);
 

@@ -1,10 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
-import { getActiveHouseholdId } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardContext } from "@/lib/household";
 import { savingsGoalSchema } from "@/lib/validations/savings-goal";
 
 export type SavingsGoalActionState = { error: string } | { ok: true } | undefined;
@@ -24,12 +22,7 @@ export async function upsertSavingsGoal(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
-
-  const supabase = await createClient();
+  const { householdId, supabase } = await requireDashboardContext();
   const { error } = await supabase.from("savings_goals").upsert(
     {
       household_id: householdId,
@@ -51,12 +44,7 @@ export async function upsertSavingsGoal(
 
 /** 貯金目標を解除（削除）する。household_id でスコープする。 */
 export async function deleteSavingsGoal(): Promise<void> {
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
-
-  const supabase = await createClient();
+  const { householdId, supabase } = await requireDashboardContext();
   await supabase.from("savings_goals").delete().eq("household_id", householdId);
 
   revalidatePath("/dashboard");

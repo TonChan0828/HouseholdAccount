@@ -4,16 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import type { ExistingCategory } from "@/lib/import/excel";
-import { getActiveHouseholdId, getUserHouseholds } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getUserHouseholds,
+  requireDashboardContext,
+  type ServerClient,
+} from "@/lib/household";
 import {
   buildMirrorRows,
   type MirrorSource,
 } from "@/lib/transactions/mirror";
 import { transactionSchema } from "@/lib/validations/transaction";
-
-/** Server 用 Supabase クライアント（createClient の戻り値型）。 */
-type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type TransactionActionState =
   | { error: string }
@@ -127,18 +127,7 @@ export async function createTransaction(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const { type, amount, date, category_id, memo } = parsed.data;
   const { error } = await supabase.from("transactions").insert({
@@ -201,18 +190,7 @@ export async function updateTransaction(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   const { type, amount, date, category_id, memo } = parsed.data;
   const { data, error } = await supabase
@@ -246,18 +224,7 @@ export async function deleteTransaction(formData: FormData): Promise<void> {
     return;
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   await supabase
     .from("transactions")
@@ -284,18 +251,7 @@ export async function reflectTransaction(
     return { error: "反映先のグループを選択してください" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   // 反映元はアクティブグループでスコープし、登録者本人のみ反映できる。
   const { data: tx } = await supabase

@@ -1,9 +1,41 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
 export const ACTIVE_HOUSEHOLD_COOKIE = "active_household_id";
+
+/** Server 用 Supabase クライアント（createClient の戻り値型）。 */
+export type ServerClient = Awaited<ReturnType<typeof createClient>>;
+
+export type DashboardContext = {
+  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+  householdId: string;
+  supabase: ServerClient;
+};
+
+/**
+ * ダッシュボード系ページ・Server Action 共通の認証ガード。
+ *
+ * 未ログインは `/login`、グループ未所属は `/households` へリダイレクトして
+ * 処理を中断する（Next.js の redirect は例外を投げる）。
+ * 内部は cache() 済みヘルパーなので、ページ内で複数回呼んでも DB 往復は増えない。
+ */
+export async function requireDashboardContext(): Promise<DashboardContext> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const householdId = await getActiveHouseholdId();
+  if (!householdId) {
+    redirect("/households");
+  }
+
+  const supabase = await createClient();
+  return { user, householdId, supabase };
+}
 
 /**
  * ログイン中ユーザーを取得する。

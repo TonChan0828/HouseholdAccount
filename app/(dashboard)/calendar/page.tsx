@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import {
@@ -19,10 +18,9 @@ import {
   shiftMonth,
   summarizeDailyTotals,
 } from "@/lib/calendar";
-import { getActiveHouseholdId, getCurrentUser } from "@/lib/household";
+import { requireDashboardContext } from "@/lib/household";
 import { refFromParam, toISODate } from "@/lib/period";
 import { ensureRecurringGenerated } from "@/lib/recurring";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type TxRow = {
@@ -42,16 +40,7 @@ export default async function CalendarPage({
 }) {
   const { ref } = await searchParams;
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { householdId, supabase } = await requireDashboardContext();
 
   // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
   await ensureRecurringGenerated(householdId);

@@ -14,8 +14,7 @@ import {
   type ValidImportRow,
 } from "@/lib/import/excel";
 import { parseWorkbook } from "@/lib/import/parse-workbook";
-import { getActiveHouseholdId } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
+import { requireDashboardContext } from "@/lib/household";
 import { CATEGORY_COLORS } from "@/lib/validations/category";
 
 /** 取り込みの上限行数（過大ファイル対策）。 */
@@ -43,10 +42,7 @@ export async function parseImportFile(
   _prev: ImportPreviewState,
   formData: FormData,
 ): Promise<ImportPreviewState> {
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  await requireDashboardContext();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -125,18 +121,7 @@ export async function confirmImport(
     return { error: "取り込む内容を確認してください" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const rows = parsed.rows as ValidImportRow[];
   const date = `${parsed.month}-01`;

@@ -27,7 +27,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/household", () => ({
-  getActiveHouseholdId: async () => state.householdId,
+  requireDashboardContext: async () => {
+    if (!state.householdId) {
+      throw new Error("NEXT_REDIRECT:/households");
+    }
+    const { createClient } = await import("@/lib/supabase/server");
+    return {
+      user: { id: "u-1" },
+      householdId: state.householdId,
+      supabase: await createClient(),
+    };
+  },
 }));
 
 vi.mock("@/lib/supabase/server", () => ({

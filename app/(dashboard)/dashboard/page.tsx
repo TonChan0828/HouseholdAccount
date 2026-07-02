@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ArrowRight, Plus, ReceiptText } from "lucide-react";
 
 import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.client";
@@ -20,9 +19,8 @@ import { Surface } from "@/components/shared/surface";
 import { buildCategoryMemberMatrix } from "@/lib/category-matrix";
 import { formatDayLabel, groupByDate } from "@/lib/format";
 import {
-  getActiveHouseholdId,
-  getCurrentUser,
   getHouseholdSettings,
+  requireDashboardContext,
 } from "@/lib/household";
 import type { MemberInfo } from "@/lib/members";
 import { buildForecast, buildForecastBudget } from "@/lib/forecast";
@@ -34,7 +32,6 @@ import {
 } from "@/lib/period";
 import { buildSavingsProgress, type SavingsProgress } from "@/lib/savings-goal";
 import { ensureRecurringGenerated } from "@/lib/recurring";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type TransactionRow = {
@@ -70,16 +67,7 @@ export default async function DashboardPage({
   const { scope: scopeParam, ref } = await searchParams;
   const scope = scopeFromParam(scopeParam);
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
   await ensureRecurringGenerated(householdId);

@@ -12,11 +12,9 @@ import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
 import {
-  getActiveHouseholdId,
-  getCurrentUser,
   getUserHouseholds,
+  requireDashboardContext,
 } from "@/lib/household";
-import { createClient } from "@/lib/supabase/server";
 import type { Category } from "@/types";
 
 export default async function EditTransactionPage({
@@ -26,16 +24,7 @@ export default async function EditTransactionPage({
 }) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const householdId = await getActiveHouseholdId();
-  if (!householdId) {
-    redirect("/households");
-  }
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const { data: transaction } = await supabase
     .from("transactions")
