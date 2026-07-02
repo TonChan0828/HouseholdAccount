@@ -25,6 +25,10 @@ import {
 import { buildForecast, buildForecastBudget } from "@/lib/forecast";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import {
+  fetchTransactionsInRange,
+  type TransactionRow,
+} from "@/lib/queries/transactions";
+import {
   formatPeriodLabel,
   getPeriodRange,
   shiftPeriod,
@@ -33,18 +37,6 @@ import {
 import { buildSavingsProgress, type SavingsProgress } from "@/lib/savings-goal";
 import { ensureRecurringGenerated } from "@/lib/recurring";
 import { cn } from "@/lib/utils";
-
-type TransactionRow = {
-  id: string;
-  amount: number;
-  type: "income" | "expense";
-  date: string;
-  memo: string | null;
-  created_by: string;
-  category_id: string | null;
-  recurring_id: string | null;
-  category: { name: string; color: string | null } | null;
-};
 
 const RECENT_LIMIT = 5;
 
@@ -76,20 +68,6 @@ export default async function DashboardPage({
 
   const range = getPeriodRange(refFromParam(ref), startDay);
   const prevRange = shiftPeriod(range, -1, startDay);
-
-  // マトリクスが全メンバー分を必要とするため scope によらず無条件で取得し、
-  // スコープ絞り込みは JS 側（byScope）で行う
-  const buildQuery = (start: Date, end: Date) =>
-    supabase
-      .from("transactions")
-      .select(
-        "id, amount, type, date, memo, created_by, category_id, recurring_id, category:categories(name, color)",
-      )
-      .eq("household_id", householdId)
-      .gte("date", toISODate(start))
-      .lt("date", toISODate(end))
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false });
 
   const fetchBudgets = async () => {
     const { data: budgetRows } = await supabase
@@ -138,10 +116,12 @@ export default async function DashboardPage({
     };
   };
 
-  const [{ data }, { data: prevData }, members, budgets, savingsGoal] =
+  // マトリクスが全メンバー分を必要とするため scope によらず無条件で取得し、
+  // スコープ絞り込みは JS 側（byScope）で行う
+  const [transactions, prevData, members, budgets, savingsGoal] =
     await Promise.all([
-      buildQuery(range.start, range.end).overrideTypes<TransactionRow[]>(),
-      buildQuery(prevRange.start, prevRange.end).overrideTypes<TransactionRow[]>(),
+      fetchTransactionsInRange(supabase, householdId, range),
+      fetchTransactionsInRange(supabase, householdId, prevRange),
       getHouseholdMemberNames(householdId),
       fetchBudgets(),
       fetchSavingsGoal(),
@@ -152,9 +132,8 @@ export default async function DashboardPage({
   const byScope = (rows: TransactionRow[]) =>
     scope === "mine" ? rows.filter((t) => t.created_by === user.id) : rows;
 
-  const transactions = data ?? [];
   const scopedTransactions = byScope(transactions);
-  const prevTransactions = byScope(prevData ?? []);
+  const prevTransactions = byScope(prevData);
   const income = sumBy(scopedTransactions, "income");
   const expense = sumBy(scopedTransactions, "expense");
   const recentGroups = groupByDate(scopedTransactions.slice(0, RECENT_LIMIT));

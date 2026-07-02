@@ -7,8 +7,9 @@ import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Surface } from "@/components/shared/surface";
-import { summarizeCategoryExpense, type TxLite } from "@/lib/analytics";
+import { summarizeCategoryExpense } from "@/lib/analytics";
 import { buildBudgetRows } from "@/lib/budget";
+import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 import {
   getHouseholdSettings,
   requireDashboardContext,
@@ -35,7 +36,7 @@ export default async function BudgetsPage({
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
   const range = getPeriodRange(refFromParam(ref), startDay);
 
-  const [{ data: categoryData }, { data: budgetData }, { data: txData }] =
+  const [{ data: categoryData }, { data: budgetData }, txData] =
     await Promise.all([
       supabase
         .from("categories")
@@ -47,15 +48,7 @@ export default async function BudgetsPage({
         .from("budgets")
         .select("category_id, amount")
         .eq("household_id", householdId),
-      supabase
-        .from("transactions")
-        .select(
-          "amount, type, date, category_id, category:categories(name, color)",
-        )
-        .eq("household_id", householdId)
-        .gte("date", toISODate(range.start))
-        .lt("date", toISODate(range.end))
-        .overrideTypes<TxLite[]>(),
+      fetchTransactionsInRange(supabase, householdId, range),
     ]);
 
   const categories = (categoryData ?? []) as Pick<
@@ -63,7 +56,7 @@ export default async function BudgetsPage({
     "id" | "name" | "color"
   >[];
   const budgets = (budgetData ?? []) as Pick<Budget, "category_id" | "amount">[];
-  const expenseSlices = summarizeCategoryExpense(txData ?? []);
+  const expenseSlices = summarizeCategoryExpense(txData);
 
   const { rows, totalBudget, totalSpent } = buildBudgetRows(
     budgets,
