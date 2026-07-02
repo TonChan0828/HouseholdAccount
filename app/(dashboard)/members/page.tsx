@@ -8,6 +8,7 @@ import {
 import { summarizeByMember } from "@/lib/members";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
+import { ensureRecurringGenerated } from "@/lib/recurring";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -30,6 +31,9 @@ export default async function MembersPage({
   const { ref } = await searchParams;
 
   const { householdId, supabase } = await requireDashboardContext();
+
+  // 当期分の定期収支を（未生成なら）生成してから集計する。冪等。
+  await ensureRecurringGenerated(householdId);
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
