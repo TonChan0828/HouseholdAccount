@@ -93,6 +93,34 @@ describe("transactionSchema", () => {
       transactionSchema.safeParse({ ...valid, memo: "あ".repeat(201) }).success,
     ).toBe(false);
   });
+
+  describe("is_shared（精算対象フラグ）", () => {
+    it("チェックボックスの 'on' / 'true' は true になる", () => {
+      expect(
+        transactionSchema.parse({ ...valid, is_shared: "on" }).is_shared,
+      ).toBe(true);
+      expect(
+        transactionSchema.parse({ ...valid, is_shared: "true" }).is_shared,
+      ).toBe(true);
+    });
+
+    it("未指定（null）・'false' は false になる", () => {
+      expect(
+        transactionSchema.parse({ ...valid, is_shared: null }).is_shared,
+      ).toBe(false);
+      expect(
+        transactionSchema.parse({ ...valid, is_shared: "false" }).is_shared,
+      ).toBe(false);
+    });
+
+    it("recurringTransactionSchema にも引き継がれる", () => {
+      const parsed = recurringTransactionSchema.parse({
+        ...validRecurring,
+        is_shared: "on",
+      });
+      expect(parsed.is_shared).toBe(true);
+    });
+  });
 });
 
 const validRecurring = {

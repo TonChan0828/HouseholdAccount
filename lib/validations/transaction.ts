@@ -27,6 +27,12 @@ export const transactionSchema = z.object({
     .string()
     .max(200, "メモは200文字以内で入力してください")
     .optional(),
+  // 精算対象（割り勘）。チェックボックス由来（"on"/"true"/未指定）を boolean に
+  // 正規化する。未指定・その他の値は false（既定で対象外）。
+  is_shared: z.preprocess(
+    (v) => v === true || v === "true" || v === "on" || v === "1",
+    z.boolean(),
+  ),
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
