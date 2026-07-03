@@ -15,6 +15,7 @@ export type Budget = Tables["budgets"]["Row"];
 export type Profile = Tables["profiles"]["Row"];
 export type Transaction = Tables["transactions"]["Row"];
 export type RecurringTransaction = Tables["recurring_transactions"]["Row"];
+export type Settlement = Tables["settlements"]["Row"];
 
 export type { CategoryType, MemberRole, TransactionType };
 
