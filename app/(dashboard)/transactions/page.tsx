@@ -265,6 +265,11 @@ export default async function TransactionsPage({
                               <div className="min-w-0 space-y-0.5">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <CategoryBadge category={t.category} />
+                                  {t.is_shared ? (
+                                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                                      精算
+                                    </span>
+                                  ) : null}
                                   {!mine ? (
                                     <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                                       他のメンバー

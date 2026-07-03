@@ -55,6 +55,7 @@ describe("addTransaction", () => {
       date: "2026-06-10",
       category_id: undefined,
       memo: "テスト",
+      is_shared: false,
     });
     expect(next.transactions).toHaveLength(before + 1);
     const added = next.transactions.find((t) => t.amount === 1234);
@@ -66,7 +67,12 @@ describe("addTransaction", () => {
   it("元の状態を破壊しない（イミュータブル）", () => {
     const s = createDemoState();
     const before = s.transactions.length;
-    addTransaction(s, { type: "income", amount: 500, date: "2026-06-01" });
+    addTransaction(s, {
+      type: "income",
+      amount: 500,
+      date: "2026-06-01",
+      is_shared: false,
+    });
     expect(s.transactions).toHaveLength(before);
   });
 });
@@ -80,6 +86,7 @@ describe("editTransaction", () => {
       amount: 99999,
       date: target.date,
       category_id: target.category_id ?? undefined,
+      is_shared: false,
     });
     expect(next.transactions.find((t) => t.id === target.id)?.amount).toBe(
       99999,
@@ -145,6 +152,7 @@ describe("removeCategory", () => {
       amount: 300,
       date: "2026-06-05",
       category_id: custom.id,
+      is_shared: false,
     });
     const next = removeCategory(s, custom.id);
     expect(next.categories.some((c) => c.id === custom.id)).toBe(false);
@@ -170,12 +178,14 @@ describe("selectTransactionRows", () => {
       amount: 700,
       date: "2026-06-07",
       category_id: cat.id,
+      is_shared: false,
     });
     s = addTransaction(s, {
       type: "expense",
       amount: 800,
       date: "2026-06-08",
       category_id: undefined,
+      is_shared: false,
     });
     const rows = selectTransactionRows(s);
     const withCat = rows.find((r) => r.amount === 700);

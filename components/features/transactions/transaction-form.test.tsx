@@ -141,6 +141,43 @@ describe("TransactionForm", () => {
     expect(screen.queryByText("計算できません")).not.toBeInTheDocument();
   });
 
+  describe("精算対象（割り勘）チェックボックス", () => {
+    it("支出のとき表示され、既定は未チェック", () => {
+      renderForm();
+
+      const checkbox = screen.getByRole("checkbox", {
+        name: /精算対象（割り勘）/,
+      });
+      expect(checkbox).not.toBeChecked();
+    });
+
+    it("収入に切り替えると表示されない", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.click(screen.getByRole("radio", { name: "収入" }));
+
+      expect(
+        screen.queryByRole("checkbox", { name: /精算対象（割り勘）/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("defaultValues.is_shared=true でチェック済みになる", () => {
+      render(
+        <TransactionForm
+          action={noop}
+          categories={categories}
+          submitLabel="更新する"
+          defaultValues={{ type: "expense", is_shared: true }}
+        />,
+      );
+
+      expect(
+        screen.getByRole("checkbox", { name: /精算対象（割り勘）/ }),
+      ).toBeChecked();
+    });
+  });
+
   it("「登録して続ける」成功後は金額・メモ・カテゴリをクリアし日付は維持する", async () => {
     const user = userEvent.setup();
     const action = async (): Promise<TransactionActionState> => ({

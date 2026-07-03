@@ -73,6 +73,7 @@ export default async function EditTransactionPage({
               date: transaction.date,
               category_id: transaction.category_id,
               memo: transaction.memo,
+              is_shared: transaction.is_shared,
             }}
           />
           {otherHouseholds.length > 0 ? (

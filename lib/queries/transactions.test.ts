@@ -79,6 +79,7 @@ describe("fetchTransactionsInRange", () => {
       "lt:date": "2026-08-01",
     });
     expect(state.captured.select).toContain("category:categories(name, color)");
+    expect(state.captured.select).toContain("is_shared");
   });
 
   it("既定では date・created_at の降順で並べる", async () => {

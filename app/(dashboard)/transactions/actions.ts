@@ -33,6 +33,7 @@ function parse(formData: FormData) {
     date: formData.get("date"),
     category_id: formData.get("category_id"),
     memo: formData.get("memo"),
+    is_shared: formData.get("is_shared"),
   });
 }
 
@@ -101,6 +102,8 @@ async function mirrorTransaction(
     byHousehold.set(c.household_id, arr);
   }
 
+  // 反映先は is_shared を引き継がない（反映先グループはメンバー構成が異なるため。spec 37）。
+  // MirrorRow に is_shared が無いので DB 既定値 false で挿入される。
   const rows = buildMirrorRows(
     source,
     userId,
@@ -129,7 +132,7 @@ export async function createTransaction(
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  const { type, amount, date, category_id, memo } = parsed.data;
+  const { type, amount, date, category_id, memo, is_shared } = parsed.data;
   const { error } = await supabase.from("transactions").insert({
     household_id: householdId,
     created_by: user.id,
@@ -138,6 +141,7 @@ export async function createTransaction(
     date,
     category_id: category_id ?? null,
     memo: memo || null,
+    is_shared,
   });
 
   if (error) {
@@ -192,7 +196,7 @@ export async function updateTransaction(
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  const { type, amount, date, category_id, memo } = parsed.data;
+  const { type, amount, date, category_id, memo, is_shared } = parsed.data;
   const { data, error } = await supabase
     .from("transactions")
     .update({
@@ -201,6 +205,7 @@ export async function updateTransaction(
       date,
       category_id: category_id ?? null,
       memo: memo || null,
+      is_shared,
     })
     .eq("id", id)
     .eq("household_id", householdId)

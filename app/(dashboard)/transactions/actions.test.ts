@@ -164,6 +164,24 @@ describe("createTransaction", () => {
       createTransaction(undefined, createFormData()),
     ).rejects.toThrow("NEXT_REDIRECT:/transactions");
   });
+
+  it("is_shared がチェックされていれば true で登録する", async () => {
+    await expect(
+      createTransaction(undefined, createFormData({ is_shared: "true" })),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    const insert = state.calls.find((c) => c.method === "insert");
+    expect(insert?.values).toMatchObject({ is_shared: true });
+  });
+
+  it("is_shared 未指定は false で登録する", async () => {
+    await expect(
+      createTransaction(undefined, createFormData()),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    const insert = state.calls.find((c) => c.method === "insert");
+    expect(insert?.values).toMatchObject({ is_shared: false });
+  });
 });
 
 describe("updateTransaction", () => {
