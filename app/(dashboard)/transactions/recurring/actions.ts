@@ -15,6 +15,7 @@ function parse(formData: FormData) {
     category_id: formData.get("category_id"),
     memo: formData.get("memo"),
     is_active: formData.get("is_active"),
+    is_shared: formData.get("is_shared"),
   });
 }
 
@@ -30,7 +31,7 @@ export async function createRecurring(
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  const { type, amount, category_id, memo, is_active } = parsed.data;
+  const { type, amount, category_id, memo, is_active, is_shared } = parsed.data;
   const { error } = await supabase.from("recurring_transactions").insert({
     household_id: householdId,
     created_by: user.id,
@@ -39,6 +40,7 @@ export async function createRecurring(
     category_id: category_id ?? null,
     memo: memo || null,
     is_active,
+    is_shared,
   });
 
   if (error) {
@@ -70,7 +72,7 @@ export async function updateRecurring(
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  const { type, amount, category_id, memo, is_active } = parsed.data;
+  const { type, amount, category_id, memo, is_active, is_shared } = parsed.data;
   const { data, error } = await supabase
     .from("recurring_transactions")
     .update({
@@ -79,6 +81,7 @@ export async function updateRecurring(
       category_id: category_id ?? null,
       memo: memo || null,
       is_active,
+      is_shared,
     })
     .eq("id", id)
     .eq("household_id", householdId)
