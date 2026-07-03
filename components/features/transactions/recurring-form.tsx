@@ -33,6 +33,7 @@ type Props = {
     category_id?: string | null;
     memo?: string | null;
     is_active?: boolean;
+    is_shared?: boolean;
   };
 };
 
@@ -55,6 +56,10 @@ export function RecurringForm({
   );
   const [isActive, setIsActive] = useState<boolean>(
     defaultValues?.is_active ?? true,
+  );
+  // 精算対象（割り勘）。支出のときのみ UI を表示・送信する。
+  const [isShared, setIsShared] = useState<boolean>(
+    defaultValues?.is_shared ?? false,
   );
   const [amountPreview, setAmountPreview] = useState<string | null>(null);
 
@@ -228,6 +233,27 @@ export function RecurringForm({
           className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </div>
+
+      {type === "expense" ? (
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
+          <span className="space-y-0.5">
+            <span className="block text-sm font-medium">
+              精算対象（割り勘）
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              自動登録される収支をメンバー間精算の均等割りに含めます
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            name="is_shared"
+            value="true"
+            checked={isShared}
+            onChange={(e) => setIsShared(e.target.checked)}
+            className="size-5 accent-primary"
+          />
+        </label>
+      ) : null}
 
       {/* 有効/無効。無効にすると当期以降の自動生成が止まる。 */}
       <label className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">

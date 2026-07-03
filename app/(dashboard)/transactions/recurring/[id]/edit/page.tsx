@@ -64,6 +64,7 @@ export default async function EditRecurringPage({
               category_id: recurring.category_id,
               memo: recurring.memo,
               is_active: recurring.is_active,
+              is_shared: recurring.is_shared,
             }}
           />
           <form action={deleteRecurring} className="border-t pt-4">

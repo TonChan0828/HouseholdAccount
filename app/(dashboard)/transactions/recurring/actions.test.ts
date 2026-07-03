@@ -130,12 +130,31 @@ describe("createRecurring", () => {
           category_id: null,
           memo: "サブスク",
           is_active: true,
+          is_shared: false,
         },
       },
     ]);
     expect(state.rpcCalls).toEqual([
       { fn: "generate_due_recurring", args: { _household_id: "h-1" } },
     ]);
+  });
+
+  it("is_shared がチェックされていれば true で作成する", async () => {
+    await expect(
+      createRecurring(
+        undefined,
+        formDataWith({
+          type: "expense",
+          amount: "9800",
+          category_id: "",
+          memo: "家賃",
+          is_active: "true",
+          is_shared: "on",
+        }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions/recurring");
+
+    expect(state.inserts[0]?.values).toMatchObject({ is_shared: true });
   });
 
   it("不正な入力ではエラーを返し、insert を呼ばない", async () => {

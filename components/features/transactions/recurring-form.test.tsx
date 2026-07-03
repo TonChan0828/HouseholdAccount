@@ -103,4 +103,33 @@ describe("RecurringForm", () => {
         .checked,
     ).toBe(false);
   });
+
+  describe("精算対象（割り勘）チェックボックス", () => {
+    it("支出のとき表示され、既定は未チェック", () => {
+      renderForm();
+
+      expect(
+        screen.getByRole("checkbox", { name: /精算対象（割り勘）/ }),
+      ).not.toBeChecked();
+    });
+
+    it("収入に切り替えると表示されない", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.click(screen.getByRole("radio", { name: "収入" }));
+
+      expect(
+        screen.queryByRole("checkbox", { name: /精算対象（割り勘）/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("defaultValues.is_shared=true でチェック済みになる", () => {
+      renderForm({ defaultValues: { is_shared: true } });
+
+      expect(
+        screen.getByRole("checkbox", { name: /精算対象（割り勘）/ }),
+      ).toBeChecked();
+    });
+  });
 });
