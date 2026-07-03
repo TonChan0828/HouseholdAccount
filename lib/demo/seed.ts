@@ -118,6 +118,7 @@ export function createSeedState(): DemoState {
         : null,
       memo: t.memo,
       recurring_id: null,
+      is_shared: false,
     };
   });
 

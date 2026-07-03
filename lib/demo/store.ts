@@ -60,6 +60,8 @@ export function addTransaction(
     category_id: input.category_id ?? null,
     memo: input.memo || null,
     recurring_id: null,
+    // デモは精算機能の対象外（spec 37）。常に精算対象外で登録する。
+    is_shared: false,
   };
   return { ...state, transactions: [tx, ...state.transactions] };
 }

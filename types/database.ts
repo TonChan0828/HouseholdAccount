@@ -265,6 +265,7 @@ export type Database = {
           household_id: string
           id: string
           is_active: boolean
+          is_shared: boolean
           memo: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
@@ -276,6 +277,7 @@ export type Database = {
           household_id: string
           id?: string
           is_active?: boolean
+          is_shared?: boolean
           memo?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
@@ -287,6 +289,7 @@ export type Database = {
           household_id?: string
           id?: string
           is_active?: boolean
+          is_shared?: boolean
           memo?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
         }
@@ -307,6 +310,41 @@ export type Database = {
           },
         ]
       }
+      settlements: {
+        Row: {
+          household_id: string
+          id: string
+          period_start: string
+          settled_at: string
+          settled_by: string
+          snapshot: Json
+        }
+        Insert: {
+          household_id: string
+          id?: string
+          period_start: string
+          settled_at?: string
+          settled_by: string
+          snapshot: Json
+        }
+        Update: {
+          household_id?: string
+          id?: string
+          period_start?: string
+          settled_at?: string
+          settled_by?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlements_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -316,6 +354,7 @@ export type Database = {
           date: string
           household_id: string
           id: string
+          is_shared: boolean
           memo: string | null
           recurring_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
@@ -328,6 +367,7 @@ export type Database = {
           date: string
           household_id: string
           id?: string
+          is_shared?: boolean
           memo?: string | null
           recurring_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
@@ -340,6 +380,7 @@ export type Database = {
           date?: string
           household_id?: string
           id?: string
+          is_shared?: boolean
           memo?: string | null
           recurring_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
