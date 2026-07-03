@@ -1,17 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { NAV_ITEMS, isNavActive } from "./nav-items";
+import { NAV_ITEMS, TAB_ITEMS, isNavActive } from "./nav-items";
 
 describe("NAV_ITEMS", () => {
-  it("主要7ページへのリンクを定義する", () => {
+  it("主要8ページへのリンクを定義する", () => {
     expect(NAV_ITEMS.map((i) => i.href)).toEqual([
       "/dashboard",
       "/transactions",
       "/calendar",
       "/analytics",
       "/budgets",
+      "/settlements",
       "/members",
       "/categories",
+    ]);
+  });
+});
+
+describe("TAB_ITEMS", () => {
+  it("モバイルタブは中央FABを挟んで左右対称の4件を維持する", () => {
+    expect(TAB_ITEMS.map((i) => i.href)).toEqual([
+      "/dashboard",
+      "/transactions",
+      "/analytics",
+      "/members",
     ]);
   });
 });
