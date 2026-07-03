@@ -15,6 +15,7 @@ export type TransactionRow = {
   created_by: string;
   category_id: string | null;
   recurring_id: string | null;
+  is_shared: boolean;
   category: { name: string; color: string | null } | null;
 };
 
@@ -36,7 +37,7 @@ export async function fetchTransactionsInRange(
   let query = supabase
     .from("transactions")
     .select(
-      "id, amount, type, date, memo, created_by, category_id, recurring_id, category:categories(name, color)",
+      "id, amount, type, date, memo, created_by, category_id, recurring_id, is_shared, category:categories(name, color)",
     )
     .eq("household_id", householdId)
     .gte("date", toISODate(range.start))

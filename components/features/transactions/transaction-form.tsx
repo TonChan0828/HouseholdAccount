@@ -41,6 +41,7 @@ type Props = {
     date?: string;
     category_id?: string | null;
     memo?: string | null;
+    is_shared?: boolean;
   };
 };
 
@@ -65,6 +66,10 @@ export function TransactionForm({
   );
   // 反映先グループの選択（チェックされた household_id 群）。
   const [reflectIds, setReflectIds] = useState<string[]>([]);
+  // 精算対象（割り勘）。支出のときのみ UI を表示・送信する。
+  const [isShared, setIsShared] = useState<boolean>(
+    defaultValues?.is_shared ?? false,
+  );
   const [savedCount, setSavedCount] = useState(0);
   // 金額欄に入力された式のプレビュー。null=非表示。
   const [amountPreview, setAmountPreview] = useState<string | null>(null);
@@ -85,6 +90,7 @@ export function TransactionForm({
     if (memoRef.current) memoRef.current.value = "";
     setCategoryId("");
     setReflectIds([]);
+    setIsShared(false);
     setAmountPreview(null);
     setSavedCount((n) => n + 1);
     amountRef.current?.focus();
@@ -301,6 +307,27 @@ export function TransactionForm({
           className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </div>
+
+      {type === "expense" ? (
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
+          <span className="space-y-0.5">
+            <span className="block text-sm font-medium">
+              精算対象（割り勘）
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              メンバー間精算の均等割りに含めます
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            name="is_shared"
+            value="true"
+            checked={isShared}
+            onChange={(e) => setIsShared(e.target.checked)}
+            className="size-5 accent-primary"
+          />
+        </label>
+      ) : null}
 
       {otherHouseholds && otherHouseholds.length > 0 ? (
         <details className="rounded-xl border border-border bg-muted/40 px-4 py-3">
