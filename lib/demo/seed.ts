@@ -93,6 +93,7 @@ export function createSeedState(): DemoState {
     type: c.type,
     icon: null,
     is_default: c.is_default,
+    reminder_enabled: false,
   }));
   const categoryIdByName = new Map(categories.map((c) => [c.name, c.id]));
 

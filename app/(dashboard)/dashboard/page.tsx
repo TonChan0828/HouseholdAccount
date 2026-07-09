@@ -5,6 +5,7 @@ import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
 import { MainSideGrid } from "@/components/shared/main-side-grid";
 import { ForecastCard } from "@/components/features/dashboard/forecast-card";
+import { UnrecordedCategoriesReminderCard } from "@/components/features/dashboard/unrecorded-categories-reminder-card";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SavingsGoalCard } from "@/components/features/dashboard/savings-goal-card";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/period";
 import { buildSavingsProgress, type SavingsProgress } from "@/lib/savings-goal";
 import { ensureRecurringGenerated } from "@/lib/recurring";
+import { getUnrecordedReminderCategories } from "@/lib/reminder";
 import { cn } from "@/lib/utils";
 
 const RECENT_LIMIT = 5;
@@ -75,6 +77,16 @@ export default async function DashboardPage({
       .select("category_id, amount")
       .eq("household_id", householdId);
     return budgetRows ?? [];
+  };
+
+  // 登録漏れ通知（reminder_enabled）ONのカテゴリ一覧。
+  const fetchReminderTargets = async () => {
+    const { data: categoryRows } = await supabase
+      .from("categories")
+      .select("id, name")
+      .eq("household_id", householdId)
+      .eq("reminder_enabled", true);
+    return categoryRows ?? [];
   };
 
   // 貯金目標（グループに1件）と、開始日以降の世帯全体の収支差額を取得する。
@@ -118,13 +130,14 @@ export default async function DashboardPage({
 
   // マトリクスが全メンバー分を必要とするため scope によらず無条件で取得し、
   // スコープ絞り込みは JS 側（byScope）で行う
-  const [transactions, prevData, members, budgets, savingsGoal] =
+  const [transactions, prevData, members, budgets, savingsGoal, reminderTargets] =
     await Promise.all([
       fetchTransactionsInRange(supabase, householdId, range),
       fetchTransactionsInRange(supabase, householdId, prevRange),
       getHouseholdMemberNames(householdId),
       fetchBudgets(),
       fetchSavingsGoal(),
+      fetchReminderTargets(),
     ]);
 
   const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
@@ -177,6 +190,19 @@ export default async function DashboardPage({
   const allTransactionsHref = viewingCurrent
     ? "/transactions"
     : `/transactions?ref=${toISODate(range.start)}`;
+
+  // カテゴリ別登録漏れリマインダー: 通知ONのカテゴリのうち当期まだ取引が無いものを列挙する。
+  const countByCategoryId: Record<string, number> = {};
+  for (const t of transactions) {
+    if (!t.category_id) continue;
+    countByCategoryId[t.category_id] = (countByCategoryId[t.category_id] ?? 0) + 1;
+  }
+  const unrecordedReminderCategories = getUnrecordedReminderCategories({
+    viewingCurrent,
+    daysRemaining: forecast.daysRemaining,
+    targets: reminderTargets,
+    countByCategoryId,
+  });
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
@@ -262,6 +288,13 @@ export default async function DashboardPage({
                 className={cn(reveal, "max-lg:order-2")}
                 style={{ animationDelay: "90ms" }}
               >
+                {unrecordedReminderCategories.length > 0 ? (
+                  <UnrecordedCategoriesReminderCard
+                    categories={unrecordedReminderCategories}
+                    newTransactionHref={newTransactionHref}
+                    className="mb-3"
+                  />
+                ) : null}
                 <ForecastCard forecast={forecast} budget={forecastBudget} />
               </div>
             ) : null}

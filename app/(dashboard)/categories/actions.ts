@@ -72,6 +72,29 @@ export async function updateCategory(
   redirect("/categories");
 }
 
+/**
+ * カテゴリの登録漏れ通知（reminder_enabled）を切り替える。
+ * デフォルト・カスタム問わず対象（is_default による制限なし）。
+ */
+export async function toggleCategoryReminder(
+  formData: FormData,
+): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) {
+    return;
+  }
+  const reminderEnabled = formData.get("reminder_enabled") === "true";
+
+  const { householdId, supabase } = await requireDashboardContext();
+  await supabase
+    .from("categories")
+    .update({ reminder_enabled: reminderEnabled })
+    .eq("id", id)
+    .eq("household_id", householdId);
+
+  revalidatePath("/categories");
+}
+
 /** カスタムカテゴリを削除する。紐づく取引は on delete set null で未分類になる。 */
 export async function deleteCategory(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
