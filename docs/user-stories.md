@@ -58,7 +58,6 @@ E2E は CI と同条件（`--workers=1`）で全通過することを基準と�
 | 35 | architecture_refactor | メンバーとして、月初に分析・予算・メンバー画面を最初に開いても定期収支が集計に含まれていてほしい（内部整理は挙動不変） | Unit + 既存E2E | `analytics/page.test.tsx`・`budgets/page.test.tsx`・`members/page.test.tsx`（閲覧時生成の呼び出し）/ 集約ヘルパーは `lib/household.test.ts`・`lib/queries/*.test.ts`。期跨ぎの実データ検証は E2E では期間境界を再現できないためユニットで代替。挙動不変の確認は既存 E2E 全53件の通過で担保 |
 | 36 | transaction_search_filter | メンバーとして、収支一覧を種別・カテゴリ・メンバー・メモ・金額で絞り込み、記録した収支を素早く見つけたい | E2E + Unit | `transactions-filter.spec.ts`（種別/カテゴリ/メモ/金額の絞り込み・クリア・0件時の空状態）/ パラメータ検証・LIKEエスケープは `lib/transaction-filter.test.ts`、クエリ組み立ては `lib/queries/transactions.test.ts`、URL更新・デバウンスは `filter-bar.test.tsx`。メンバーフィルタはセレクトのURL更新を Component で検証（複数ユーザーの実書き込みを要するため E2E は過剰と判断） |
 | 37 | member_settlement | メンバーとして、立て替えた支出に精算対象の印を付け、当期の均等割りで誰が誰にいくら払うかを知り、確認したら精算済みとして記録（誤操作は取り消し）したい | E2E + Unit | `settlements.spec.ts`（フォームのチェック→一覧バッジ→2人参加→送金案表示→確定→差異警告→取り消しの一気通貫）/ 均等割り・端数（最大剰余法）・送金案圧縮・脱退者除外は `lib/settlement.test.ts`、確定・二重精算・取り消しの Server Action は `settlements/actions.test.ts`、表示分岐・確認ダイアログは `settlement-view.test.tsx`・`settle-controls.test.tsx` |
-| 38 | month_end_reminder | グループメンバーとして、今月まだ何も記録していないまま月末が近づいたら気づきたい（記帳漏れを防ぎたい） | E2E + Unit | `dashboard.spec.ts`（開始日を今日から逆算し残り日数を閾値内へ追い込んでバナー表示→登録後に非表示を検証）/ 表示条件の判定は `lib/reminder.test.ts`、文言・CTAリンクは `no-transactions-reminder-card.test.tsx` |
 
 ---
 
