@@ -5,6 +5,7 @@ import { BalanceBarChart } from "@/components/features/charts/balance-bar-chart.
 import { CategoryMemberMatrix } from "@/components/features/dashboard/category-member-matrix";
 import { MainSideGrid } from "@/components/shared/main-side-grid";
 import { ForecastCard } from "@/components/features/dashboard/forecast-card";
+import { NoTransactionsReminderCard } from "@/components/features/dashboard/no-transactions-reminder-card";
 import { ScopeToggle, type DashboardScope } from "@/components/features/dashboard/scope-toggle";
 import { SavingsGoalCard } from "@/components/features/dashboard/savings-goal-card";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/period";
 import { buildSavingsProgress, type SavingsProgress } from "@/lib/savings-goal";
 import { ensureRecurringGenerated } from "@/lib/recurring";
+import { shouldShowNoTransactionsReminder } from "@/lib/reminder";
 import { cn } from "@/lib/utils";
 
 const RECENT_LIMIT = 5;
@@ -178,6 +180,14 @@ export default async function DashboardPage({
     ? "/transactions"
     : `/transactions?ref=${toISODate(range.start)}`;
 
+  // 月末未記録リマインダー: 当期表示中・グループ全体で登録0件・残り日数が
+  // 閾値以内のときのみ表示する（ScopeToggle の「自分のみ」フィルタ前の件数で判定）。
+  const showNoTransactionsReminder = shouldShowNoTransactionsReminder({
+    viewingCurrent,
+    transactionCount: transactions.length,
+    daysRemaining: forecast.daysRemaining,
+  });
+
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
@@ -262,6 +272,13 @@ export default async function DashboardPage({
                 className={cn(reveal, "max-lg:order-2")}
                 style={{ animationDelay: "90ms" }}
               >
+                {showNoTransactionsReminder ? (
+                  <NoTransactionsReminderCard
+                    daysRemaining={forecast.daysRemaining}
+                    newTransactionHref={newTransactionHref}
+                    className="mb-3"
+                  />
+                ) : null}
                 <ForecastCard forecast={forecast} budget={forecastBudget} />
               </div>
             ) : null}

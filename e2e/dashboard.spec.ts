@@ -196,6 +196,62 @@ test.describe("ダッシュボード", () => {
     await expect(page.getByTestId("forecast-card")).toHaveCount(0);
   });
 
+  test("当期の残り日数が3日以内で登録0件なら月末未記録リマインダーが表示され、記録すると消える", async ({
+    page,
+  }) => {
+    const group = ephemeralName("月末リマインダー");
+    const card = page
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: group });
+
+    await createHousehold(page, group);
+
+    // 「開始日」を今日から逆算し、当期の残り日数を閾値（3日）以内に追い込む。
+    // period_start_day は 1〜28 のみ許容（lib/validations/household.ts）。
+    // end（=期末＝開始日と同じ日付）が today+k（k=1..4）になるよう、
+    // 1〜28に収まる最小の k を探す。UTC の Date.UTC は月またぎを自動正規化する
+    // （lib/period.ts#shiftPeriod と同じ手法）。today+4 まで探せば必ず見つかる
+    // （31日ある月で today が28日のケースが最悪ケースで、+4 で翌月1日に繰り上がる）。
+    const today = new Date();
+    let startDay = -1;
+    for (let k = 1; k <= 4; k++) {
+      const candidate = new Date(
+        Date.UTC(
+          today.getUTCFullYear(),
+          today.getUTCMonth(),
+          today.getUTCDate() + k,
+        ),
+      ).getUTCDate();
+      if (candidate <= 28) {
+        startDay = candidate;
+        break;
+      }
+    }
+    expect(startDay).toBeGreaterThan(0);
+
+    await page.goto("/households");
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+    await card.getByLabel("開始日（1〜28）").fill(String(startDay));
+    await card.getByRole("button", { name: "保存" }).click();
+
+    // 収支を1件も記録していないため、ダッシュボードにリマインダーが表示される
+    await page.goto("/dashboard");
+    const reminder = page.getByTestId("no-transactions-reminder");
+    await expect(reminder).toBeVisible();
+    await expect(reminder).toContainText("まだ収支が登録されていません");
+    await expect(reminder).toContainText(/残り\d日/);
+
+    // 収支を1件記録すると、次のダッシュボード訪問でリマインダーが消える
+    await reminder.getByRole("link", { name: "収支を記録" }).click();
+    await page.getByLabel("金額").fill("500");
+    await page.getByRole("radio", { name: "食費" }).check();
+    await page.getByRole("button", { name: "登録する" }).click();
+    await expect(page).toHaveURL(/\/transactions$/);
+
+    await page.goto("/dashboard");
+    await expect(page.getByTestId("no-transactions-reminder")).toHaveCount(0);
+  });
+
   test("ログイン済みで / に来るとグループ選択へリダイレクトされる", async ({
     page,
   }) => {
