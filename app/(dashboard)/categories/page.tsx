@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-import { deleteCategory } from "@/app/(dashboard)/categories/actions";
+import {
+  deleteCategory,
+  toggleCategoryReminder,
+} from "@/app/(dashboard)/categories/actions";
 import { DeleteCategoryButton } from "@/components/features/categories/delete-category-button";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -76,27 +79,46 @@ export default async function CategoriesPage() {
                         />
                         <span className="truncate font-medium">{c.name}</span>
                       </span>
-                      {c.is_default ? (
-                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          デフォルト
-                        </span>
-                      ) : (
-                        <span className="flex shrink-0 items-center gap-1">
-                          <Link
-                            href={`/categories/${c.id}/edit`}
-                            className={buttonVariants({
-                              variant: "ghost",
-                              size: "sm",
-                            })}
-                          >
-                            編集
-                          </Link>
-                          <DeleteCategoryButton
-                            action={deleteCategory}
-                            categoryId={c.id}
+                      <span className="flex shrink-0 items-center gap-1">
+                        <form action={toggleCategoryReminder}>
+                          <input type="hidden" name="id" value={c.id} />
+                          <input
+                            type="hidden"
+                            name="reminder_enabled"
+                            value={c.reminder_enabled ? "false" : "true"}
                           />
-                        </span>
-                      )}
+                          <Button
+                            type="submit"
+                            variant={c.reminder_enabled ? "default" : "ghost"}
+                            size="sm"
+                            data-testid="category-reminder-toggle"
+                            className="h-8 px-2 text-xs"
+                          >
+                            {c.reminder_enabled ? "通知ON" : "通知OFF"}
+                          </Button>
+                        </form>
+                        {c.is_default ? (
+                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                            デフォルト
+                          </span>
+                        ) : (
+                          <>
+                            <Link
+                              href={`/categories/${c.id}/edit`}
+                              className={buttonVariants({
+                                variant: "ghost",
+                                size: "sm",
+                              })}
+                            >
+                              編集
+                            </Link>
+                            <DeleteCategoryButton
+                              action={deleteCategory}
+                              categoryId={c.id}
+                            />
+                          </>
+                        )}
+                      </span>
                     </CardContent>
                   </Surface>
                 </li>

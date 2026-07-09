@@ -110,6 +110,7 @@ export function addCategory(
     type: input.type,
     icon: null,
     is_default: false,
+    reminder_enabled: false,
   };
   return { ...state, categories: [...state.categories, category] };
 }
