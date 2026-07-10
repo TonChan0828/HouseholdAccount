@@ -11,6 +11,7 @@ describe("UnrecordedCategoriesReminderCard", () => {
           { id: "c1", name: "家賃" },
           { id: "c2", name: "給与" },
         ]}
+        daysRemaining={2}
         newTransactionHref="/transactions/new"
       />,
     );
@@ -25,6 +26,7 @@ describe("UnrecordedCategoriesReminderCard", () => {
     render(
       <UnrecordedCategoriesReminderCard
         categories={[{ id: "c1", name: "家賃" }]}
+        daysRemaining={2}
         newTransactionHref="/transactions/new?date=2026-07-31"
       />,
     );
@@ -32,5 +34,31 @@ describe("UnrecordedCategoriesReminderCard", () => {
       "href",
       "/transactions/new?date=2026-07-31",
     );
+  });
+
+  it("残り日数バッジを表示する", () => {
+    render(
+      <UnrecordedCategoriesReminderCard
+        categories={[{ id: "c1", name: "家賃" }]}
+        daysRemaining={2}
+        newTransactionHref="/transactions/new"
+      />,
+    );
+    expect(
+      screen.getByTestId("unrecorded-categories-reminder"),
+    ).toHaveTextContent("残り2日");
+  });
+
+  it("警告として amber 強調スタイルを持つ", () => {
+    render(
+      <UnrecordedCategoriesReminderCard
+        categories={[{ id: "c1", name: "家賃" }]}
+        daysRemaining={1}
+        newTransactionHref="/transactions/new"
+      />,
+    );
+    const card = screen.getByTestId("unrecorded-categories-reminder");
+    expect(card.className).toContain("border-amber-300");
+    expect(card.className).toContain("bg-amber-50");
   });
 });
