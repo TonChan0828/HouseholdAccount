@@ -291,6 +291,7 @@ export default async function DashboardPage({
                 {unrecordedReminderCategories.length > 0 ? (
                   <UnrecordedCategoriesReminderCard
                     categories={unrecordedReminderCategories}
+                    daysRemaining={forecast.daysRemaining}
                     newTransactionHref={newTransactionHref}
                     className="mb-3"
                   />

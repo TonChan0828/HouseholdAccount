@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 
 import {
   deleteCategory,
@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Surface } from "@/components/shared/surface";
 import { requireDashboardContext } from "@/lib/household";
+import { cn } from "@/lib/utils";
 import type { Category, CategoryType } from "@/types";
 
 const GROUPS: { type: CategoryType; label: string }[] = [
@@ -49,6 +50,21 @@ export default async function CategoriesPage() {
           </Link>
         }
       />
+
+      <p
+        data-testid="category-reminder-note"
+        className={cn(
+          reveal,
+          "flex items-start gap-2 rounded-xl bg-secondary px-3 py-2.5 text-xs leading-relaxed text-secondary-foreground",
+        )}
+        style={{ animationDelay: "30ms" }}
+      >
+        <Bell className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        <span>
+          通知ONにすると、締め日の3日前までにそのカテゴリの登録が無い場合、
+          ダッシュボードでお知らせします。
+        </span>
+      </p>
 
       {GROUPS.map((group, gi) => {
         const items = categories.filter((c) => c.type === group.type);

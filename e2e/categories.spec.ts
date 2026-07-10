@@ -79,6 +79,13 @@ test.describe("カテゴリ管理", () => {
 
     // デフォルトカテゴリ「住居費」の通知をONにする（デフォルトにもトグルが付けられる）
     await page.goto("/categories");
+
+    // トグルの意味を説明するノートが常時表示されている
+    const note = page.getByTestId("category-reminder-note");
+    await expect(note).toBeVisible();
+    await expect(note).toContainText("通知ONにすると");
+    await expect(note).toContainText("ダッシュボードでお知らせします");
+
     const housingRow = page
       .locator('[data-testid="category-row"]')
       .filter({ hasText: "住居費" });
@@ -127,6 +134,7 @@ test.describe("カテゴリ管理", () => {
     await expect(reminder).toBeVisible();
     await expect(reminder).toContainText("まだ登録がありません");
     await expect(reminder).toContainText("住居費");
+    await expect(reminder).toContainText(/残り\d+日/);
 
     // 「住居費」で収支を1件記録すると、次のダッシュボード訪問でリマインダーが消える
     await reminder.getByRole("link", { name: "収支を記録" }).click();
