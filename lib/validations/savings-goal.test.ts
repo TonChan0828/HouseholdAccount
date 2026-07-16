@@ -35,6 +35,12 @@ describe("savingsGoalSchema", () => {
     expect(savingsGoalSchema.safeParse({ ...ok, name: "  " }).success).toBe(false);
   });
 
+  it("名前が100文字を超える場合は拒否する", () => {
+    expect(
+      savingsGoalSchema.safeParse({ ...ok, name: "あ".repeat(101) }).success,
+    ).toBe(false);
+  });
+
   it("目標額が0以下なら拒否する", () => {
     expect(savingsGoalSchema.safeParse({ ...ok, target_amount: "0" }).success).toBe(false);
   });

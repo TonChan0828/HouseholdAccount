@@ -55,10 +55,11 @@ E2E は CI と同条件（`--workers=1`）で全通過することを基準と�
 | 32 | savings_goal | メンバーとして、貯金目標を設定し進捗・達成・解除を確認したい | E2E + Unit | `savings-goal.spec.ts`（期日なしの設定→進捗→達成→解除）/ 期日ありのペース表示・期日バリデーションは `lib/savings-goal.test.ts`・`lib/validations/savings-goal.test.ts` |
 | 33 | month_end_forecast | メンバーとして、当期途中で月末の着地（収支）と予算超過の見込みを知りたい | E2E + Unit | `dashboard.spec.ts`（着地予測カード・予算警告・当期のみ表示）/ `lib/forecast.test.ts`（ハイブリッド算出） |
 | 34 | dashboard_two_column_layout | デスクトップ利用者として、ダッシュボード/カレンダーを少ないスクロールで一覧したい | E2E + Component | `dashboard.spec.ts`・`demo.spec.ts`・`calendar.spec.ts`（内容・セレクタ不変のレイアウト再構成のため表示・操作は既存 E2E で担保）/ `main-side-grid.test.tsx`・`calendar-board.test.tsx`（2カラム構成・モバイル順制御） |
-| 35 | architecture_refactor | メンバーとして、月初に分析・予算・メンバー画面を最初に開いても定期収支が集計に含まれていてほしい（内部整理は挙動不変） | Unit + 既存E2E | `analytics/page.test.tsx`・`budgets/page.test.tsx`・`members/page.test.tsx`（閲覧時生成の呼び出し）/ 集約ヘルパーは `lib/household.test.ts`・`lib/queries/*.test.ts`。期跨ぎの実データ検証は E2E では期間境界を再現できないためユニットで代替。挙動不変の確認は既存 E2E 全53件の通過で担保 |
+| 35 | architecture_refactor | メンバーとして、どの集計画面でも共通の認証・期間・メンバー名解決で一貫した結果を見たい | Unit + 既存E2E | 集約ヘルパーは `lib/household.test.ts`・`lib/queries/*.test.ts`。当時の閲覧時生成モデルは spec 39 の Cron 生成へ置換済み。挙動不変の確認は既存 E2E で担保 |
 | 36 | transaction_search_filter | メンバーとして、収支一覧を種別・カテゴリ・メンバー・メモ・金額で絞り込み、記録した収支を素早く見つけたい | E2E + Unit | `transactions-filter.spec.ts`（種別/カテゴリ/メモ/金額の絞り込み・クリア・0件時の空状態）/ パラメータ検証・LIKEエスケープは `lib/transaction-filter.test.ts`、クエリ組み立ては `lib/queries/transactions.test.ts`、URL更新・デバウンスは `filter-bar.test.tsx`。メンバーフィルタはセレクトのURL更新を Component で検証（複数ユーザーの実書き込みを要するため E2E は過剰と判断） |
 | 37 | member_settlement | メンバーとして、立て替えた支出に精算対象の印を付け、当期の均等割りで誰が誰にいくら払うかを知り、確認したら精算済みとして記録（誤操作は取り消し）したい | E2E + Unit | `settlements.spec.ts`（フォームのチェック→一覧バッジ→2人参加→送金案表示→確定→差異警告→取り消しの一気通貫）/ 均等割り・端数（最大剰余法）・送金案圧縮・脱退者除外は `lib/settlement.test.ts`、確定・二重精算・取り消しの Server Action は `settlements/actions.test.ts`、表示分岐・確認ダイアログは `settlement-view.test.tsx`・`settle-controls.test.tsx` |
 | 38 | category_reminder | メンバーとして、家賃や給与など毎月必ず記録したいカテゴリを指定しておき、月末が近いのにそのカテゴリの登録が無ければ一目で気づきたい（通知トグルの意味も設定画面で分かるようにしたい） | E2E + Unit | `categories.spec.ts`（`/categories` で説明ノートの表示→通知ON→ダッシュボードで開始日を逆算し残り3日以内に追い込み、未登録カテゴリの警告カード表示（残りn日付き）→登録後に非表示を検証）/ 表示条件の判定は `lib/reminder.test.ts`、文言・残り日数バッジ・amber強調・CTAリンクは `unrecorded-categories-reminder-card.test.tsx`、トグルの Server Action は `categories/actions.test.ts` |
+| 39 | architecture_hardening | メンバーとして、大量データや一時的な障害があっても欠落や誤った空表示なく家計データを扱い、所属外データを変更できない状態で利用したい | E2E + Unit + DB | 既存全 E2E（操作互換）/ `lib/queries/*.test.ts`（取得上限・障害）/ Cron Route Handler テスト / DB 制約・RLS 統合確認 |
 
 ---
 

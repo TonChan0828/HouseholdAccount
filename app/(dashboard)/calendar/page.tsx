@@ -21,7 +21,6 @@ import {
 import { requireDashboardContext } from "@/lib/household";
 import { refFromParam, toISODate } from "@/lib/period";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
-import { ensureRecurringGenerated } from "@/lib/recurring";
 import { cn } from "@/lib/utils";
 
 export default async function CalendarPage({
@@ -32,9 +31,6 @@ export default async function CalendarPage({
   const { ref } = await searchParams;
 
   const { householdId, supabase } = await requireDashboardContext();
-
-  // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
-  await ensureRecurringGenerated(householdId);
 
   const refDate = refFromParam(ref);
   const grid = getCalendarGridRange(refDate);

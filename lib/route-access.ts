@@ -7,6 +7,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/reset-password",
   "/verify-email",
   "/demo",
+  "/api/cron/recurring",
 ];
 
 /**

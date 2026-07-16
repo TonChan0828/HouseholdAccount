@@ -11,5 +11,7 @@ export async function createHousehold(page: Page, name: string): Promise<void> {
   await page.goto("/households");
   await page.getByLabel("グループ名").fill(name);
   await page.getByRole("button", { name: "グループを作成" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  // フルスイート後半は作成済みグループが多く、再検証を含む遷移が
+  // Playwright の既定 5 秒を超えることがある。
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
 }

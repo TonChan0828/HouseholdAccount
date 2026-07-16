@@ -47,11 +47,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "budgets_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
+            foreignKeyName: "budgets_household_category_fkey"
+            columns: ["household_id", "category_id"]
+            isOneToOne: true
             referencedRelation: "categories"
-            referencedColumns: ["id"]
+            referencedColumns: ["household_id", "id"]
           },
           {
             foreignKeyName: "budgets_household_id_fkey"
@@ -298,11 +298,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "recurring_transactions_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "recurring_transactions_household_category_fkey"
+            columns: ["household_id", "category_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
+            referencedColumns: ["household_id", "id"]
           },
           {
             foreignKeyName: "recurring_transactions_household_id_fkey"
@@ -390,11 +390,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "transactions_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "transactions_household_category_fkey"
+            columns: ["household_id", "category_id"]
             isOneToOne: false
             referencedRelation: "categories"
-            referencedColumns: ["id"]
+            referencedColumns: ["household_id", "id"]
           },
           {
             foreignKeyName: "transactions_household_id_fkey"
@@ -420,6 +420,10 @@ export type Database = {
       accept_invitation: { Args: { _token: string }; Returns: string }
       delete_own_account: { Args: never; Returns: undefined }
       generate_due_recurring: { Args: { _household_id: string }; Returns: number }
+      generate_all_due_recurring: {
+        Args: { _as_of_date: string }
+        Returns: number
+      }
       invitation_preview: {
         Args: { _token: string }
         Returns: { household_name: string; status: string }[]

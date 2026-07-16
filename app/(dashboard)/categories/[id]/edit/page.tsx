@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { updateCategory } from "@/app/(dashboard)/categories/actions";
 import { CategoryForm } from "@/components/features/categories/category-form";
@@ -30,7 +30,7 @@ export default async function EditCategoryPage({
 
   // 存在しない・デフォルト・他グループのカテゴリは編集対象外
   if (!category) {
-    redirect("/categories");
+    notFound();
   }
 
   const reveal =

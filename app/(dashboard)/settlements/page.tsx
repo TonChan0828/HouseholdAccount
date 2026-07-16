@@ -22,7 +22,6 @@ import {
 } from "@/lib/period";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
-import { ensureRecurringGenerated } from "@/lib/recurring";
 import {
   buildSettlement,
   settlementsEqual,
@@ -39,8 +38,6 @@ export default async function SettlementsPage({
   const { user, householdId, supabase } = await requireDashboardContext();
 
   // 当期分の定期収支を（未生成なら）生成してから集計する。冪等。
-  await ensureRecurringGenerated(householdId);
-
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
   const range = getPeriodRange(refFromParam(ref), startDay);
   const periodStart = toISODate(range.start);

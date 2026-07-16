@@ -1,5 +1,7 @@
 import Link from "next/link";
 import {
+  ChevronLeft,
+  ChevronRight,
   Download,
   Pencil,
   Plus,
@@ -34,10 +36,11 @@ import {
 } from "@/lib/period";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import {
+  fetchTransactionPage,
   fetchTransactionsInRange,
   type TransactionRow,
 } from "@/lib/queries/transactions";
-import { ensureRecurringGenerated } from "@/lib/recurring";
+import { DataAccessError } from "@/lib/queries/errors";
 import {
   buildFilterQueryString,
   hasActiveFilter,
@@ -60,23 +63,23 @@ function daySums(items: TransactionRow[]) {
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string } & TransactionFilterParams>;
+  searchParams: Promise<
+    { ref?: string; cursor?: string } & TransactionFilterParams
+  >;
 }) {
-  const { ref, ...filterParams } = await searchParams;
+  const { ref, cursor, ...filterParams } = await searchParams;
   const filter = parseTransactionFilter(filterParams);
   const filtering = hasActiveFilter(filter);
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
-  await ensureRecurringGenerated(householdId);
-
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const range = getPeriodRange(refFromParam(ref), startDay);
 
-  const [transactions, members, { data: categoryRows }] = await Promise.all([
+  const [transactions, transactionPage, members, categoriesResult] = await Promise.all([
     fetchTransactionsInRange(supabase, householdId, range, { filter }),
+    fetchTransactionPage(supabase, householdId, range, { filter, cursor }),
     getHouseholdMemberNames(householdId),
     supabase
       .from("categories")
@@ -85,20 +88,31 @@ export default async function TransactionsPage({
       .order("type", { ascending: true })
       .order("name", { ascending: true }),
   ]);
-  const categoryOptions = categoryRows ?? [];
+  if (categoriesResult.error) {
+    throw new DataAccessError("fetchTransactionCategories", categoriesResult.error);
+  }
+  const categoryOptions = categoriesResult.data ?? [];
   const income = transactions
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + t.amount, 0);
   const expense = transactions
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + t.amount, 0);
-  const groups = groupByDate(transactions);
+  const groups = groupByDate(transactionPage.items);
 
   // 前月/翌月リンクにはフィルタ条件を引き継ぐ（期間移動で条件が消えないように）
   const filterQs = buildFilterQueryString(filter);
   const filterSuffix = filterQs ? `&${filterQs}` : "";
   const prevHref = `/transactions?ref=${toISODate(shiftPeriod(range, -1, startDay).start)}${filterSuffix}`;
   const nextHref = `/transactions?ref=${toISODate(shiftPeriod(range, 1, startDay).start)}${filterSuffix}`;
+
+  const pageHref = (pageCursor: string) => {
+    const params = new URLSearchParams(filterQs);
+    if (ref) params.set("ref", ref);
+    if (pageCursor !== "0") params.set("cursor", pageCursor);
+    const query = params.toString();
+    return `/transactions${query ? `?${query}` : ""}`;
+  };
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
@@ -328,6 +342,28 @@ export default async function TransactionsPage({
               </section>
             );
           })}
+          {transactionPage.previousCursor || transactionPage.nextCursor ? (
+            <nav className="flex items-center justify-center gap-3" aria-label="収支一覧ページ">
+              {transactionPage.previousCursor !== null ? (
+                <Link
+                  href={pageHref(transactionPage.previousCursor)}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  <ChevronLeft className="size-4" aria-hidden />
+                  前へ
+                </Link>
+              ) : null}
+              {transactionPage.nextCursor !== null ? (
+                <Link
+                  href={pageHref(transactionPage.nextCursor)}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  次へ
+                  <ChevronRight className="size-4" aria-hidden />
+                </Link>
+              ) : null}
+            </nav>
+          ) : null}
         </div>
       )}
     </main>

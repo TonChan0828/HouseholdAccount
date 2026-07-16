@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import MembersPage from "./page";
-import { ensureRecurringGenerated } from "@/lib/recurring";
 
 vi.mock("@/lib/household", () => ({
   requireDashboardContext: async () => ({
@@ -10,10 +9,6 @@ vi.mock("@/lib/household", () => ({
     supabase: {},
   }),
   getHouseholdSettings: async () => ({ periodStartDay: 1 }),
-}));
-
-vi.mock("@/lib/recurring", () => ({
-  ensureRecurringGenerated: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/queries/members", () => ({
@@ -25,9 +20,7 @@ vi.mock("@/lib/queries/transactions", () => ({
 }));
 
 describe("MembersPage", () => {
-  it("表示時に当期の定期収支を生成する（集計から漏らさない）", async () => {
+  it("メンバー画面を表示する", async () => {
     await MembersPage({ searchParams: Promise.resolve({}) });
-
-    expect(ensureRecurringGenerated).toHaveBeenCalledWith("h-1");
   });
 });

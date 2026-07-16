@@ -14,6 +14,7 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { Surface } from "@/components/shared/surface";
 import { getCurrentUser } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
+import { unwrapData } from "@/lib/queries/result";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -22,11 +23,12 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const profileResult = await supabase
     .from("profiles")
     .select("display_name")
     .eq("id", user.id)
     .maybeSingle();
+  const profile = unwrapData(profileResult, "fetchCurrentProfile");
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";

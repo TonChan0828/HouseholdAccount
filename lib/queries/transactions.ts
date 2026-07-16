@@ -1,6 +1,10 @@
 import type { ServerClient } from "@/lib/household";
 import { toISODate } from "@/lib/period";
+import { DataAccessError } from "@/lib/queries/errors";
 import { escapeLike, type TransactionFilter } from "@/lib/transaction-filter";
+
+const FETCH_BATCH_SIZE = 1000;
+export const TRANSACTION_PAGE_SIZE = 50;
 
 /**
  * 期間スコープ取得の共通行型。select カラムの最大集合で、
@@ -34,6 +38,79 @@ export async function fetchTransactionsInRange(
 ): Promise<TransactionRow[]> {
   const ascending = options?.order === "asc";
   const filter = options?.filter ?? {};
+  const rows: TransactionRow[] = [];
+
+  for (let offset = 0; ; offset += FETCH_BATCH_SIZE) {
+    const { data, error } = await buildTransactionQuery(
+      supabase,
+      householdId,
+      range,
+      filter,
+      ascending,
+    )
+      .range(offset, offset + FETCH_BATCH_SIZE - 1)
+      .overrideTypes<TransactionRow[]>();
+    if (error) {
+      throw new DataAccessError("fetchTransactionsInRange", error);
+    }
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < FETCH_BATCH_SIZE) {
+      return rows;
+    }
+  }
+}
+
+export type TransactionPage = {
+  items: TransactionRow[];
+  nextCursor: string | null;
+  previousCursor: string | null;
+};
+
+/** 一覧表示用に50件ずつ取得する。cursor は先頭からの安全な数値offset。 */
+export async function fetchTransactionPage(
+  supabase: ServerClient,
+  householdId: string,
+  range: { start: Date; end: Date },
+  options?: { cursor?: string; filter?: TransactionFilter },
+): Promise<TransactionPage> {
+  const offset = parseCursor(options?.cursor);
+  const { data, error } = await buildTransactionQuery(
+    supabase,
+    householdId,
+    range,
+    options?.filter ?? {},
+    false,
+  )
+    .range(offset, offset + TRANSACTION_PAGE_SIZE)
+    .overrideTypes<TransactionRow[]>();
+  if (error) {
+    throw new DataAccessError("fetchTransactionPage", error);
+  }
+
+  const rows = data ?? [];
+  const hasNext = rows.length > TRANSACTION_PAGE_SIZE;
+  return {
+    items: rows.slice(0, TRANSACTION_PAGE_SIZE),
+    nextCursor: hasNext ? String(offset + TRANSACTION_PAGE_SIZE) : null,
+    previousCursor:
+      offset > 0 ? String(Math.max(0, offset - TRANSACTION_PAGE_SIZE)) : null,
+  };
+}
+
+function parseCursor(cursor: string | undefined): number {
+  if (!cursor || !/^\d+$/.test(cursor)) return 0;
+  const value = Number(cursor);
+  return Number.isSafeInteger(value) ? value : 0;
+}
+
+function buildTransactionQuery(
+  supabase: ServerClient,
+  householdId: string,
+  range: { start: Date; end: Date },
+  filter: TransactionFilter,
+  ascending: boolean,
+) {
   let query = supabase
     .from("transactions")
     .select(
@@ -48,15 +125,9 @@ export async function fetchTransactionsInRange(
   if (filter.memoQuery) {
     query = query.ilike("memo", `%${escapeLike(filter.memoQuery)}%`);
   }
-  if (filter.minAmount !== undefined) {
-    query = query.gte("amount", filter.minAmount);
-  }
-  if (filter.maxAmount !== undefined) {
-    query = query.lte("amount", filter.maxAmount);
-  }
-  const { data } = await query
+  if (filter.minAmount !== undefined) query = query.gte("amount", filter.minAmount);
+  if (filter.maxAmount !== undefined) query = query.lte("amount", filter.maxAmount);
+  return query
     .order("date", { ascending })
-    .order("created_at", { ascending })
-    .overrideTypes<TransactionRow[]>();
-  return data ?? [];
+    .order("created_at", { ascending });
 }

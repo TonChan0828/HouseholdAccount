@@ -123,7 +123,7 @@ docs/specs/
   23_email_verification.md # メール認証（登録後の確認案内ページ・確認メール再送信）
   24_auth_email_templates.md # 認証メールテンプレート（登録確認・パスワード再設定・メール変更のShalletブランド化）
   25_amount_expression.md # 金額の四則演算入力（金額欄に式を入力し計算結果を四捨五入して登録）
-  26_recurring_transactions.md # 定期収支（固定費・固定収入をスタート日に自動登録・閲覧時に冪等生成）
+  26_recurring_transactions.md # 定期収支（固定費・固定収入を期間開始日に自動登録）
   27_receipt_ocr.md      # レシートOCR入力補助（Tesseract.jsでブラウザ内OCR・金額/日付をプリフィル）
   28_cross_group_reflection.md # 収支のグループ間反映（記帳した収支を他の所属グループにも一回限りコピー）
   29_calendar_view.md    # カレンダービュー（暦月カレンダーで収支を俯瞰・日タップで明細表示）
@@ -136,6 +136,7 @@ docs/specs/
   36_transaction_search_filter.md # 検索・絞り込み強化（収支一覧のカテゴリ/メンバー/種別フィルタ・メモ検索・金額レンジ）
   37_member_settlement.md # メンバー間精算（割り勘）（精算対象フラグの支出を均等割りし送金案を表示・期間単位で精算済み記録）
   38_category_reminder.md # カテゴリ別登録漏れリマインダー（通知ONのカテゴリが当期残り3日以内で0件ならダッシュボードに列挙表示）
+  39_architecture_hardening.md # RLS・データ整合性・Cron・障害処理・CIの強化
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）
@@ -209,6 +210,8 @@ E2E は「仕様 → ユーザーストーリー → それを検証する E2E�
 - Server Actions 優先。`/api` Route Handler は外部連携が必要な場合のみ使う
 - shadcn/ui は `npx shadcn@latest add` で追加し、`components/ui/` を直接編集しない
 - DB スキーマ変更は `supabase/migrations/` でマイグレーション管理する
+- 定期収支は Vercel Cron → `/api/cron/recurring` → service-role 専用 RPC で毎日生成する。Server Component の描画中に更新しない
+- `SUPABASE_SERVICE_ROLE_KEY` は `lib/supabase/admin.ts` 以外のアプリコードから使わず、ブラウザへ公開しない
 
 ## Database Schema
 

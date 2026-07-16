@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getHouseholdMemberNames } from "./members";
+import { DataAccessError } from "./errors";
 
 const state = vi.hoisted(() => ({
   members: [] as {
@@ -10,6 +11,8 @@ const state = vi.hoisted(() => ({
     joined_at: string;
   }[],
   profiles: [] as { id: string; display_name: string | null }[],
+  memberError: null as { message: string } | null,
+  profileError: null as { message: string } | null,
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -26,7 +29,7 @@ vi.mock("@/lib/supabase/server", () => ({
           filters.in = [column, values];
           return Promise.resolve({
             data: state.profiles.filter((p) => values.includes(p.id)),
-            error: null,
+            error: state.profileError,
           });
         },
         order: () =>
@@ -34,7 +37,7 @@ vi.mock("@/lib/supabase/server", () => ({
             data: state.members
               .filter((m) => m.household_id === filters.eq?.[1])
               .sort((a, b) => a.joined_at.localeCompare(b.joined_at)),
-            error: null,
+            error: state.memberError,
           }),
       };
       return query;
@@ -73,6 +76,8 @@ beforeEach(() => {
     { id: "u-1", display_name: "グローバル名A" },
     { id: "u-2", display_name: "グローバル名B" },
   ];
+  state.memberError = null;
+  state.profileError = null;
 });
 
 describe("getHouseholdMemberNames", () => {
@@ -108,5 +113,25 @@ describe("getHouseholdMemberNames", () => {
     const members = await getHouseholdMemberNames("h-1");
 
     expect(members.some((m) => m.user_id === "u-9")).toBe(false);
+  });
+
+  it("メンバー取得エラーを空配列にしない", async () => {
+    state.memberError = { message: "failed" };
+    await expect(getHouseholdMemberNames("h-error-members")).rejects.toBeInstanceOf(
+      DataAccessError,
+    );
+  });
+
+  it("プロフィール取得エラーを空表示名にしない", async () => {
+    state.members.push({
+      household_id: "h-error-profiles",
+      user_id: "u-error",
+      display_name: null,
+      joined_at: "2026-01-01",
+    });
+    state.profileError = { message: "failed" };
+    await expect(getHouseholdMemberNames("h-error-profiles")).rejects.toBeInstanceOf(
+      DataAccessError,
+    );
   });
 });

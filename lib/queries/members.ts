@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import type { MemberInfo } from "@/lib/members";
+import { DataAccessError } from "@/lib/queries/errors";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -15,17 +16,24 @@ export const getHouseholdMemberNames = cache(
   async (householdId: string): Promise<MemberInfo[]> => {
     const supabase = await createClient();
 
-    const { data: memberRows } = await supabase
+    const { data: memberRows, error: memberError } = await supabase
       .from("household_members")
       .select("user_id, display_name")
       .eq("household_id", householdId)
       .order("joined_at");
+    if (memberError) {
+      throw new DataAccessError("getHouseholdMembers", memberError);
+    }
     const members = memberRows ?? [];
+    if (members.length === 0) return [];
 
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profileError } = await supabase
       .from("profiles")
       .select("id, display_name")
       .in("id", members.map((m) => m.user_id));
+    if (profileError) {
+      throw new DataAccessError("getHouseholdMemberProfiles", profileError);
+    }
     const globalNameById = new Map(
       (profiles ?? []).map((p) => [p.id, p.display_name]),
     );

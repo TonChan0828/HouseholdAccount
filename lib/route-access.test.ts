@@ -28,6 +28,10 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/demo/transactions/new")).toBe(true);
   });
 
+  it("Cron endpoint は独自のBearer認証を行うためproxyでは公開", () => {
+    expect(isPublicPath("/api/cron/recurring")).toBe(true);
+  });
+
   it("ダッシュボード・保護ルートは非公開", () => {
     expect(isPublicPath("/dashboard")).toBe(false);
     expect(isPublicPath("/transactions")).toBe(false);

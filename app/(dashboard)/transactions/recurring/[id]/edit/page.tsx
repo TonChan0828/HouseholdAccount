@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import {
   deleteRecurring,
@@ -30,7 +30,7 @@ export default async function EditRecurringPage({
 
   // 存在しない、または登録者本人でなければ一覧へ戻す（編集は本人のみ）。
   if (!recurring || recurring.created_by !== user.id) {
-    redirect("/transactions/recurring");
+    notFound();
   }
 
   const { data } = await supabase

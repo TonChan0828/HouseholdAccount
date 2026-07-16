@@ -13,6 +13,7 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { Surface } from "@/components/shared/surface";
 import { requireDashboardContext } from "@/lib/household";
 import { cn } from "@/lib/utils";
+import { unwrapData } from "@/lib/queries/result";
 import type { Category, CategoryType } from "@/types";
 
 const GROUPS: { type: CategoryType; label: string }[] = [
@@ -24,11 +25,12 @@ const GROUPS: { type: CategoryType; label: string }[] = [
 export default async function CategoriesPage() {
   const { householdId, supabase } = await requireDashboardContext();
 
-  const { data } = await supabase
+  const result = await supabase
     .from("categories")
     .select("*")
     .eq("household_id", householdId)
     .order("name", { ascending: true });
+  const data = unwrapData(result, "fetchCategories");
   const categories = (data ?? []) as Category[];
 
   const reveal =

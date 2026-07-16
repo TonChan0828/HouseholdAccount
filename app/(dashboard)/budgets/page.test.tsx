@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import BudgetsPage from "./page";
-import { ensureRecurringGenerated } from "@/lib/recurring";
 
 /** 何をどう繋いでも { data: [] } を返すチェーン可能なクエリのモック。 */
 function chainableQuery() {
@@ -27,18 +26,12 @@ vi.mock("@/lib/household", () => ({
   getHouseholdSettings: async () => ({ periodStartDay: 1 }),
 }));
 
-vi.mock("@/lib/recurring", () => ({
-  ensureRecurringGenerated: vi.fn(async () => {}),
-}));
-
 vi.mock("@/lib/queries/transactions", () => ({
   fetchTransactionsInRange: async () => [],
 }));
 
 describe("BudgetsPage", () => {
-  it("表示時に当期の定期収支を生成する（実績から漏らさない）", async () => {
+  it("予算画面を表示する", async () => {
     await BudgetsPage({ searchParams: Promise.resolve({}) });
-
-    expect(ensureRecurringGenerated).toHaveBeenCalledWith("h-1");
   });
 });

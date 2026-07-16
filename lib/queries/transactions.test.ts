@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchTransactionsInRange } from "./transactions";
+import { DataAccessError } from "./errors";
+import { fetchTransactionPage, fetchTransactionsInRange } from "./transactions";
 
 type OrderCall = { column: string; ascending: boolean };
 
 const state = vi.hoisted(() => ({
   data: null as unknown[] | null,
+  error: null as { message: string } | null,
+  range: [0, 999] as [number, number],
+  ranges: [] as [number, number][],
   captured: {
     table: "",
     select: "",
@@ -47,7 +51,16 @@ function makeClient() {
       });
       return query;
     },
-    overrideTypes: () => Promise.resolve({ data: state.data, error: null }),
+    range: (from: number, to: number) => {
+      state.range = [from, to];
+      state.ranges.push([from, to]);
+      return query;
+    },
+    overrideTypes: () =>
+      Promise.resolve({
+        data: state.data?.slice(state.range[0], state.range[1] + 1) ?? null,
+        error: state.error,
+      }),
   };
   return {
     from: (table: string) => {
@@ -59,6 +72,9 @@ function makeClient() {
 
 beforeEach(() => {
   state.data = [];
+  state.error = null;
+  state.range = [0, 999];
+  state.ranges = [];
   state.captured = { table: "", select: "", filters: {}, orders: [] };
 });
 
@@ -157,5 +173,46 @@ describe("fetchTransactionsInRange", () => {
     const rows = await fetchTransactionsInRange(makeClient() as any, "h-1", range);
 
     expect(rows).toEqual([]);
+  });
+
+  it("1回の上限を超えた場合は次の範囲も取得する", async () => {
+    state.data = Array.from({ length: 1001 }, (_, id) => ({ id }));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = await fetchTransactionsInRange(makeClient() as any, "h-1", range);
+
+    expect(rows).toHaveLength(1001);
+    expect(state.ranges).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+  });
+
+  it("Supabaseエラーを空配列にせず送出する", async () => {
+    state.error = { message: "connection failed" };
+
+    await expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fetchTransactionsInRange(makeClient() as any, "h-1", range),
+    ).rejects.toBeInstanceOf(DataAccessError);
+  });
+});
+
+describe("fetchTransactionPage", () => {
+  it("50件と次カーソルを返す", async () => {
+    state.data = Array.from({ length: 101 }, (_, id) => ({ id }));
+
+    const result = await fetchTransactionPage(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      makeClient() as any,
+      "h-1",
+      range,
+      { cursor: "50" },
+    );
+
+    expect(result.items).toHaveLength(50);
+    expect(result.nextCursor).toBe("100");
+    expect(result.previousCursor).toBe("0");
+    expect(state.ranges).toEqual([[50, 100]]);
   });
 });

@@ -30,7 +30,18 @@ npm install           # 依存パッケージのインストール
 npm run dev           # 開発サーバー起動（http://localhost:3000）
 ```
 
-`.env.local` に Supabase の接続情報（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`）を設定してください。
+`.env.local` に以下を設定してください。
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=... # Cron / E2E 管理処理専用。ブラウザへ公開しない
+CRON_SECRET=...               # 16文字以上のランダム値
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+本番では `NEXT_PUBLIC_APP_URL` を公開URLへ変更してください。定期収支は
+Vercel Cron から毎日 `/api/cron/recurring` を呼び出して生成します。
 
 ## コマンド
 

@@ -24,19 +24,14 @@ import {
   requireDashboardContext,
 } from "@/lib/household";
 import { buildForecast, buildForecastBudget } from "@/lib/forecast";
-import { getHouseholdMemberNames } from "@/lib/queries/members";
-import {
-  fetchTransactionsInRange,
-  type TransactionRow,
-} from "@/lib/queries/transactions";
+import { loadDashboardData } from "@/lib/queries/dashboard";
+import type { TransactionRow } from "@/lib/queries/transactions";
 import {
   formatPeriodLabel,
   getPeriodRange,
   shiftPeriod,
   toISODate,
 } from "@/lib/period";
-import { buildSavingsProgress, type SavingsProgress } from "@/lib/savings-goal";
-import { ensureRecurringGenerated } from "@/lib/recurring";
 import { getUnrecordedReminderCategories } from "@/lib/reminder";
 import { cn } from "@/lib/utils";
 
@@ -63,82 +58,21 @@ export default async function DashboardPage({
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  // 当期分の定期収支を（未生成なら）生成してから取得する。冪等。
-  await ensureRecurringGenerated(householdId);
-
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const range = getPeriodRange(refFromParam(ref), startDay);
   const prevRange = shiftPeriod(range, -1, startDay);
-
-  const fetchBudgets = async () => {
-    const { data: budgetRows } = await supabase
-      .from("budgets")
-      .select("category_id, amount")
-      .eq("household_id", householdId);
-    return budgetRows ?? [];
-  };
-
-  // 登録漏れ通知（reminder_enabled）ONのカテゴリ一覧。
-  const fetchReminderTargets = async () => {
-    const { data: categoryRows } = await supabase
-      .from("categories")
-      .select("id, name")
-      .eq("household_id", householdId)
-      .eq("reminder_enabled", true);
-    return categoryRows ?? [];
-  };
-
-  // 貯金目標（グループに1件）と、開始日以降の世帯全体の収支差額を取得する。
-  // 上限（今日まで）は付けない。サーバの UTC 基準の「今日」とユーザーのローカル
-  // 日付がずれると当日の収支が除外されてしまうため（貯金額＝開始日以降の収支差額）。
-  const fetchSavingsGoal = async (): Promise<{
-    progress: SavingsProgress | null;
-    goal: { start_date: string; target_date: string | null } | null;
-  }> => {
-    const { data: goal } = await supabase
-      .from("savings_goals")
-      .select("name, target_amount, start_date, target_date")
-      .eq("household_id", householdId)
-      .maybeSingle();
-    if (!goal) return { progress: null, goal: null };
-
-    const { data: savedRows } = await supabase
-      .from("transactions")
-      .select("amount, type")
-      .eq("household_id", householdId)
-      .gte("date", goal.start_date);
-    const saved = (savedRows ?? []).reduce(
-      (s, t) => s + (t.type === "income" ? t.amount : -t.amount),
-      0,
-    );
-
-    return {
-      progress: buildSavingsProgress(
-        {
-          name: goal.name,
-          targetAmount: goal.target_amount,
-          startDate: goal.start_date,
-          targetDate: goal.target_date,
-        },
-        saved,
-        new Date(),
-      ),
-      goal: { start_date: goal.start_date, target_date: goal.target_date },
-    };
-  };
-
-  // マトリクスが全メンバー分を必要とするため scope によらず無条件で取得し、
-  // スコープ絞り込みは JS 側（byScope）で行う
-  const [transactions, prevData, members, budgets, savingsGoal, reminderTargets] =
-    await Promise.all([
-      fetchTransactionsInRange(supabase, householdId, range),
-      fetchTransactionsInRange(supabase, householdId, prevRange),
-      getHouseholdMemberNames(householdId),
-      fetchBudgets(),
-      fetchSavingsGoal(),
-      fetchReminderTargets(),
-    ]);
+  const {
+    transactions,
+    previousTransactions: prevData,
+    members,
+    budgets,
+    savingsGoal,
+    reminderTargets,
+  } = await loadDashboardData(supabase, householdId, {
+    current: range,
+    previous: prevRange,
+  });
 
   const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
     rows.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);

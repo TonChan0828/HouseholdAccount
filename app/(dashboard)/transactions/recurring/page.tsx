@@ -13,6 +13,7 @@ import {
   requireDashboardContext,
 } from "@/lib/household";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { unwrapData } from "@/lib/queries/result";
 import { cn } from "@/lib/utils";
 
 type RecurringRow = {
@@ -30,7 +31,7 @@ export default async function RecurringTransactionsPage() {
 
   const { periodStartDay } = await getHouseholdSettings(householdId);
 
-  const { data } = await supabase
+  const result = await supabase
     .from("recurring_transactions")
     .select(
       "id, amount, type, memo, is_active, created_by, category:categories(name, color)",
@@ -38,6 +39,7 @@ export default async function RecurringTransactionsPage() {
     .eq("household_id", householdId)
     .order("created_at", { ascending: false })
     .overrideTypes<RecurringRow[]>();
+  const data = unwrapData(result, "fetchRecurringTransactions");
   const items = data ?? [];
 
   // 登録者名の解決（グループ毎の表示名優先・未設定はグローバル名へ）。

@@ -2,6 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 import { STORAGE_STATE } from "./e2e/constants";
 
+const E2E_PORT = Number(process.env.E2E_PORT ?? 3000);
+const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
+
 export default defineConfig({
   testDir: "./e2e",
   // *.test.ts は Vitest 用のユニットテスト（例: constants.test.ts）。Playwright では実行しない。
@@ -14,7 +17,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: E2E_BASE_URL,
     trace: "on-first-retry",
   },
   projects: [
@@ -42,8 +45,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
+    command: `npm run dev -- --port ${E2E_PORT}`,
+    url: E2E_BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

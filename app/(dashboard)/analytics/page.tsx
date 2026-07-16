@@ -15,7 +15,7 @@ import {
 } from "@/lib/analytics";
 import { buildBudgetRows } from "@/lib/budget";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
-import { ensureRecurringGenerated } from "@/lib/recurring";
+import { unwrapData } from "@/lib/queries/result";
 import {
   getHouseholdSettings,
   requireDashboardContext,
@@ -45,9 +45,6 @@ export default async function AnalyticsPage({
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  // 当期分の定期収支を（未生成なら）生成してから集計する。冪等。
-  await ensureRecurringGenerated(householdId);
-
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
   const base = getPeriodRange(refFromParam(ref), startDay);
@@ -59,9 +56,9 @@ export default async function AnalyticsPage({
 
   const [
     txs,
-    { data: budgetData },
-    { data: categoryData },
-    { data: recurringData },
+    budgetResult,
+    categoryResult,
+    recurringResult,
   ] = await Promise.all([
     fetchTransactionsInRange(supabase, householdId, {
       start: ranges[0].start,
@@ -81,6 +78,9 @@ export default async function AnalyticsPage({
       .eq("household_id", householdId)
       .eq("is_active", true),
   ]);
+  const budgetData = unwrapData(budgetResult, "fetchAnalyticsBudgets");
+  const categoryData = unwrapData(categoryResult, "fetchAnalyticsCategories");
+  const recurringData = unwrapData(recurringResult, "fetchAnalyticsRecurring");
 
   const trend = summarizeTrend(txs, ranges);
   const categories = summarizeCategoryExpense(

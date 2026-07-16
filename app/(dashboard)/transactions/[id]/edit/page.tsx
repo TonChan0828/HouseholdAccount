@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import {
   deleteTransaction,
@@ -34,7 +34,7 @@ export default async function EditTransactionPage({
 
   // 存在しない、または登録者本人でなければ一覧へ戻す（編集は本人のみ）。
   if (!transaction || transaction.created_by !== user.id) {
-    redirect("/transactions");
+    notFound();
   }
 
   const { data } = await supabase

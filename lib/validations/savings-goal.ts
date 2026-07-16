@@ -11,7 +11,12 @@ export const savingsGoalSchema = z
     name: z
       .string()
       .transform((v) => v.trim())
-      .pipe(z.string().min(1, "目標名を入力してください")),
+      .pipe(
+        z
+          .string()
+          .min(1, "目標名を入力してください")
+          .max(100, "目標名は100文字以内で入力してください"),
+      ),
     // 目標額は四則演算式を受け付ける（収支・予算の金額欄と同方針）。
     target_amount: z.preprocess(
       (v) => (typeof v === "string" ? evaluateAmount(v) : v),
