@@ -25,3 +25,4 @@
 - 最終結果: E2E 58件すべて成功（`--workers=1`）。
 - 実装コミット `5219bb9` を `main` へpushし、Vercel Production が Ready になったことを確認した。
 - 初回GitHub E2Eで、Node.js 20にはSupabase Realtimeが必要とするネイティブWebSocketがないことを検出した。CI/E2EをNode.js 22へ統一し、DatabaseワークフローをSupabase変更の`main` pushでも実行するよう修正した。
+- Node.js 22でのGitHub E2Eでは、低速なrunner上で2件が既定30秒を超過した。CI時のみテスト上限60秒・expect上限15秒へ調整し、失敗した2 specをCI条件で再実行して4件すべて成功した。

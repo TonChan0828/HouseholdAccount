@@ -4,6 +4,7 @@ import { STORAGE_STATE } from "./e2e/constants";
 
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3000);
 const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
+const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -12,9 +13,13 @@ export default defineConfig({
   // 実行開始時に前回までの一時データ（接頭辞付きグループ）をクリーンアップする。
   globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 1 : undefined,
+  timeout: isCI ? 60_000 : 30_000,
+  expect: {
+    timeout: isCI ? 15_000 : 5_000,
+  },
   reporter: "html",
   use: {
     baseURL: E2E_BASE_URL,
