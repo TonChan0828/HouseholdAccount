@@ -23,4 +23,5 @@
 - GitHub Actions に E2E 用の Supabase シークレット3項目を設定した。
 - リモート移行後の全E2Eを再実行した。フルスイート後半でグループ作成の遷移が既定5秒を超えたため、対象待機を15秒へ限定して安定化した。
 - 最終結果: E2E 58件すべて成功（`--workers=1`）。
-- コミット・デプロイ結果は反映後に追記する。
+- 実装コミット `5219bb9` を `main` へpushし、Vercel Production が Ready になったことを確認した。
+- 初回GitHub E2Eで、Node.js 20にはSupabase Realtimeが必要とするネイティブWebSocketがないことを検出した。CI/E2EをNode.js 22へ統一し、DatabaseワークフローをSupabase変更の`main` pushでも実行するよう修正した。
