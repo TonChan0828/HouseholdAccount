@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
-import { createHousehold } from "./helpers";
+import { createHousehold, openTransactionDialog } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // カレンダーは当月の収支をグリッド表示し、日タップでその日の明細を出す。
@@ -41,5 +41,42 @@ test.describe("カレンダービュー", () => {
     await page.getByRole("link", { name: "次の期間" }).click();
     await expect(page).toHaveURL(/\/calendar\?ref=/);
     await expect(page.getByText("この日の収支はありません。")).toBeVisible();
+  });
+
+  test("明細をタップするとカレンダーを離れずに編集できる", async ({ page }) => {
+    const stamp = Date.now();
+    // グループ名に「編集」を含めない（ヘッダーのグループ切替ボタンの
+    // アクセシブル名に含まれ、編集トリガーの getByRole と衝突するため）。
+    const group = ephemeralName("カレンダー明細");
+    const memo = `カレンダー明細-${stamp}`;
+
+    await createHousehold(page, group);
+
+    // 当日付で登録（カレンダーの初期選択が今日のため明細に出る）
+    await page.goto("/transactions/new");
+    await page.getByLabel("金額").fill("1200");
+    await page.getByLabel("メモ").fill(memo);
+    await page.getByRole("button", { name: "登録する" }).click();
+    await expect(page).toHaveURL(/\/transactions$/);
+
+    await page.goto("/calendar");
+    const dialog = await openTransactionDialog(
+      page,
+      page.getByRole("main").getByRole("button", { name: "編集" }),
+    );
+
+    // モーダルで開き、URL はカレンダーのまま
+    await expect(page).toHaveURL(/\/calendar$/);
+    await expect(dialog.getByLabel("金額")).toHaveValue("1200");
+
+    await dialog.getByLabel("金額").fill("4800");
+    await dialog.getByRole("button", { name: "更新する" }).click();
+
+    // 閉じた後、カレンダーの明細が更新されている
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/calendar$/);
+    await expect(
+      page.getByRole("main").getByRole("button", { name: "編集" }),
+    ).toContainText("¥4,800");
   });
 });

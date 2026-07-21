@@ -137,6 +137,7 @@ docs/specs/
   37_member_settlement.md # メンバー間精算（割り勘）（精算対象フラグの支出を均等割りし送金案を表示・期間単位で精算済み記録）
   38_category_reminder.md # カテゴリ別登録漏れリマインダー（通知ONのカテゴリが当期残り3日以内で0件ならダッシュボードに列挙表示）
   39_architecture_hardening.md # RLS・データ整合性・Cron・障害処理・CIの強化
+  40_transaction_modal_editing.md # 収支のモーダル編集・追加（一覧/カレンダー/ダッシュボードから遷移せず編集）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
-import { createHousehold } from "./helpers";
+import { createHousehold, openTransactionDialog } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // ダッシュボードは当期間のサマリーと最近の取引を表示する。各テストでグループを作成する。
@@ -194,6 +194,38 @@ test.describe("ダッシュボード", () => {
     await page.getByRole("link", { name: "前の期間" }).click();
     await expect(page).toHaveURL(/\/dashboard\?ref=/);
     await expect(page.getByTestId("forecast-card")).toHaveCount(0);
+  });
+
+  test("最近の取引からダッシュボードを離れずに編集できる", async ({ page }) => {
+    const stamp = Date.now();
+    const group = ephemeralName("ダッシュボード編集");
+    const memo = `ダッシュボード編集-${stamp}`;
+
+    await createHousehold(page, group);
+
+    await page.goto("/transactions/new");
+    await page.getByLabel("金額").fill("1200");
+    await page.getByLabel("メモ").fill(memo);
+    await page.getByRole("button", { name: "登録する" }).click();
+    await expect(page).toHaveURL(/\/transactions$/);
+
+    await page.goto("/dashboard");
+    const row = page
+      .locator('[data-testid="dashboard-transaction-row"]')
+      .filter({ hasText: memo });
+    const dialog = await openTransactionDialog(
+      page,
+      row.getByRole("button", { name: "編集" }),
+    );
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await dialog.getByLabel("金額").fill("5600");
+    await dialog.getByRole("button", { name: "更新する" }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(row).toContainText("¥5,600");
+    await expect(page.getByTestId("summary-cards")).toContainText("¥5,600");
   });
 
   test("ログイン済みで / に来るとグループ選択へリダイレクトされる", async ({

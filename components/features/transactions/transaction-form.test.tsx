@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { TransactionActionState } from "@/app/(dashboard)/transactions/actions";
 import type { Category } from "@/types";
@@ -208,5 +208,118 @@ describe("TransactionForm", () => {
       (screen.getByRole("radio", { name: "未選択" }) as HTMLInputElement)
         .checked,
     ).toBe(true);
+  });
+
+  it("保存に失敗しても入力値を保持する", async () => {
+    const user = userEvent.setup();
+    const action = async (): Promise<TransactionActionState> => ({
+      error: "収支の登録に失敗しました",
+    });
+    renderForm({ action });
+
+    const amount = screen.getByLabelText("金額") as HTMLInputElement;
+    const memo = screen.getByLabelText("メモ") as HTMLTextAreaElement;
+    await user.type(amount, "1500");
+    await user.type(memo, "ランチ");
+
+    await user.click(screen.getByRole("button", { name: "登録する" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "収支の登録に失敗しました",
+      );
+    });
+    expect(amount.value).toBe("1500");
+    expect(memo.value).toBe("ランチ");
+  });
+
+  describe("ダイアログからの利用（spec 40）", () => {
+    const okAction = async (): Promise<TransactionActionState> => ({
+      ok: true,
+      key: Math.random().toString(),
+    });
+
+    it("dialog 指定時は _dialog=1 の hidden input を送る", () => {
+      const { container } = render(
+        <TransactionForm
+          action={noop}
+          categories={categories}
+          submitLabel="更新する"
+          dialog
+        />,
+      );
+
+      expect(
+        container.querySelector('input[name="_dialog"]'),
+      ).toHaveValue("1");
+    });
+
+    it("dialog 未指定なら _dialog は送らない", () => {
+      const { container } = renderForm();
+
+      expect(container.querySelector('input[name="_dialog"]')).toBeNull();
+    });
+
+    it("成功したら onSuccess を呼ぶ", async () => {
+      const user = userEvent.setup();
+      const onSuccess = vi.fn();
+      render(
+        <TransactionForm
+          action={okAction}
+          categories={categories}
+          submitLabel="更新する"
+          dialog
+          onSuccess={onSuccess}
+        />,
+      );
+
+      await user.type(screen.getByLabelText("金額"), "1500");
+      await user.click(screen.getByRole("button", { name: "更新する" }));
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("成功しても入力欄はクリアしない（ダイアログは閉じるため）", async () => {
+      const user = userEvent.setup();
+      render(
+        <TransactionForm
+          action={okAction}
+          categories={categories}
+          submitLabel="更新する"
+          dialog
+          onSuccess={() => {}}
+        />,
+      );
+
+      const amount = screen.getByLabelText("金額") as HTMLInputElement;
+      await user.type(amount, "1500");
+      await user.click(screen.getByRole("button", { name: "更新する" }));
+
+      await waitFor(() => {
+        expect(amount.value).toBe("1500");
+      });
+    });
+
+    it("showReceiptScan=false でレシート読み取りの案内を出さない", () => {
+      render(
+        <TransactionForm
+          action={noop}
+          categories={categories}
+          submitLabel="更新する"
+          dialog
+          showReceiptScan={false}
+        />,
+      );
+
+      expect(screen.queryByText(/レシート画像から/)).not.toBeInTheDocument();
+    });
+
+    it("既定ではレシート読み取りの案内を出す", () => {
+      renderForm();
+
+      expect(screen.getByText(/レシート画像から/)).toBeInTheDocument();
+    });
   });
 });

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
-import { createHousehold } from "./helpers";
+import { createHousehold, openTransactionDialog } from "./helpers";
 
 // ログイン済み（storageState）で実行される。
 // 収支操作にはアクティブな household が必要なため、各テストでグループを作成する。
@@ -30,12 +30,19 @@ test.describe("収支記録", () => {
     await expect(row).toBeVisible();
     await expect(row).toContainText("¥1,200");
 
-    // 編集して金額を変更
-    await row.getByRole("link", { name: "編集" }).click();
-    await expect(page).toHaveURL(/\/transactions\/.+\/edit$/);
-    await page.getByLabel("金額").fill("3500");
-    await page.getByRole("button", { name: "更新する" }).click();
+    // 編集はモーダルで開き、ページ遷移しない（spec 40）
+    const dialog = await openTransactionDialog(
+      page,
+      row.getByRole("button", { name: "編集" }),
+    );
+    await expect(page).toHaveURL(/\/transactions$/);
+    await expect(dialog.getByLabel("金額")).toHaveValue("1200");
 
+    await dialog.getByLabel("金額").fill("3500");
+    await dialog.getByRole("button", { name: "更新する" }).click();
+
+    // 保存するとモーダルが閉じ、一覧の金額がその場で更新される
+    await expect(dialog).toBeHidden();
     await expect(page).toHaveURL(/\/transactions$/);
     const editedRow = page
       .locator('[data-testid="transaction-row"]')
@@ -84,5 +91,31 @@ test.describe("収支記録", () => {
     await expect(
       page.locator('[data-testid="transaction-row"]').filter({ hasText: memo2 }),
     ).toContainText("¥2,000");
+  });
+
+  test("一覧を離れずにモーダルで収支を追加できる", async ({ page }) => {
+    const stamp = Date.now();
+    const group = ephemeralName("モーダル追加");
+    const memo = `モーダル追加-${stamp}`;
+
+    await createHousehold(page, group);
+
+    await page.goto("/transactions");
+    const dialog = await openTransactionDialog(
+      page,
+      page.getByRole("button", { name: "収支を追加" }),
+    );
+    // モーダルを開いてもURLは一覧のまま
+    await expect(page).toHaveURL(/\/transactions$/);
+
+    await dialog.getByLabel("金額").fill("2400");
+    await dialog.getByRole("radio", { name: "食費" }).check();
+    await dialog.getByLabel("メモ").fill(memo);
+    await dialog.getByRole("button", { name: "登録する" }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(
+      page.locator('[data-testid="transaction-row"]').filter({ hasText: memo }),
+    ).toContainText("¥2,400");
   });
 });

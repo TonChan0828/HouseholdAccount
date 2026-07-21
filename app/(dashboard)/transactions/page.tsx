@@ -3,8 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Pencil,
-  Plus,
   ReceiptText,
   Repeat,
   Trash2,
@@ -16,6 +14,11 @@ import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { FilterBar } from "@/components/features/transactions/filter-bar";
 import { MonthNav } from "@/components/features/transactions/month-nav";
+import {
+  EditTransactionButton,
+  NewTransactionButton,
+  TransactionDialogProvider,
+} from "@/components/features/transactions/transaction-dialog";
 import { ViewToggle } from "@/components/features/transactions/view-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -25,8 +28,10 @@ import { Surface } from "@/components/shared/surface";
 import { formatDayLabel, groupByDate } from "@/lib/format";
 import {
   getHouseholdSettings,
+  getUserHouseholds,
   requireDashboardContext,
 } from "@/lib/household";
+import { fetchHouseholdCategories } from "@/lib/queries/categories";
 import {
   formatPeriodLabel,
   getPeriodRange,
@@ -40,7 +45,6 @@ import {
   fetchTransactionsInRange,
   type TransactionRow,
 } from "@/lib/queries/transactions";
-import { DataAccessError } from "@/lib/queries/errors";
 import {
   buildFilterQueryString,
   hasActiveFilter,
@@ -77,21 +81,17 @@ export default async function TransactionsPage({
 
   const range = getPeriodRange(refFromParam(ref), startDay);
 
-  const [transactions, transactionPage, members, categoriesResult] = await Promise.all([
-    fetchTransactionsInRange(supabase, householdId, range, { filter }),
-    fetchTransactionPage(supabase, householdId, range, { filter, cursor }),
-    getHouseholdMemberNames(householdId),
-    supabase
-      .from("categories")
-      .select("id, name, color")
-      .eq("household_id", householdId)
-      .order("type", { ascending: true })
-      .order("name", { ascending: true }),
-  ]);
-  if (categoriesResult.error) {
-    throw new DataAccessError("fetchTransactionCategories", categoriesResult.error);
-  }
-  const categoryOptions = categoriesResult.data ?? [];
+  // 編集ダイアログ（spec 40）に必要な値もここで揃える。カテゴリは絞り込みバーと共用し、
+  // 所属グループ一覧は layout で cache() 済みのため追加の DB 往復は発生しない。
+  const [transactions, transactionPage, members, categoryOptions, households] =
+    await Promise.all([
+      fetchTransactionsInRange(supabase, householdId, range, { filter }),
+      fetchTransactionPage(supabase, householdId, range, { filter, cursor }),
+      getHouseholdMemberNames(householdId),
+      fetchHouseholdCategories(supabase, householdId),
+      getUserHouseholds(),
+    ]);
+  const otherHouseholds = households.filter((h) => h.id !== householdId);
   const income = transactions
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + t.amount, 0);
@@ -118,254 +118,251 @@ export default async function TransactionsPage({
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
-      <PageHeader
-        eyebrow="記録"
-        title="収支"
-        meta={`${transactions.length}件の記録`}
-        className={reveal}
-        actions={
-          <>
-            {/* Route Handler（CSV）へは素の <a> を使う。<Link> だと RSC を
-                プリフェッチしようとして "unexpected response" エラーになる。 */}
-            <a
-              href={`/transactions/export?ref=${toISODate(range.start)}`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Download className="size-4" aria-hidden />
-              <span className="max-sm:sr-only">CSV出力</span>
-            </a>
-            <Link
-              href="/transactions/import"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Upload className="size-4" aria-hidden />
-              <span className="max-sm:sr-only">インポート</span>
-            </Link>
-            <Link
-              href="/transactions/recurring"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Repeat className="size-4" aria-hidden />
-              <span className="max-sm:sr-only">定期項目</span>
-            </Link>
-            <Link
-              href="/transactions/new"
-              className={buttonVariants({ variant: "default", size: "sm" })}
-            >
-              <Plus className="size-4" aria-hidden />
-              収支を追加
-            </Link>
-          </>
-        }
-      />
-
-      <div
-        className={cn("flex flex-col items-center gap-3", reveal)}
-        style={{ animationDelay: "60ms" }}
-      >
-        <ViewToggle active="list" />
-        <MonthNav
-          label={formatPeriodLabel(range)}
-          prevHref={prevHref}
-          nextHref={nextHref}
+    <TransactionDialogProvider
+      categories={categoryOptions}
+      otherHouseholds={otherHouseholds}
+    >
+      <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
+        <PageHeader
+          eyebrow="記録"
+          title="収支"
+          meta={`${transactions.length}件の記録`}
+          className={reveal}
+          actions={
+            <>
+              {/* Route Handler（CSV）へは素の <a> を使う。<Link> だと RSC を
+                  プリフェッチしようとして "unexpected response" エラーになる。 */}
+              <a
+                href={`/transactions/export?ref=${toISODate(range.start)}`}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Download className="size-4" aria-hidden />
+                <span className="max-sm:sr-only">CSV出力</span>
+              </a>
+              <Link
+                href="/transactions/import"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Upload className="size-4" aria-hidden />
+                <span className="max-sm:sr-only">インポート</span>
+              </Link>
+              <Link
+                href="/transactions/recurring"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Repeat className="size-4" aria-hidden />
+                <span className="max-sm:sr-only">定期項目</span>
+              </Link>
+              <NewTransactionButton />
+            </>
+          }
         />
-      </div>
 
-      <div className={reveal} style={{ animationDelay: "90ms" }}>
-        <FilterBar
-          filter={filter}
-          currentRef={ref}
-          categories={categoryOptions}
-          members={members}
-        />
-      </div>
-
-      <div className={reveal} style={{ animationDelay: "120ms" }}>
-        <SummaryCards income={income} expense={expense} />
-      </div>
-
-      {groups.length === 0 ? (
-        <Surface
-          variant="raised"
-          className={cn("", reveal)}
-          style={{ animationDelay: "180ms" }}
-        >
-          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-              <ReceiptText className="size-6" aria-hidden />
-            </span>
-            {filtering ? (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  条件に一致する収支がありません。
-                </p>
-                <Link
-                  href={`/transactions${ref ? `?ref=${ref}` : ""}`}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  条件をクリア
-                </Link>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  この期間の収支はまだありません。
-                </p>
-                <Link
-                  href="/transactions/new"
-                  className={buttonVariants({ size: "sm" })}
-                >
-                  収支を記録
-                </Link>
-              </>
-            )}
-          </CardContent>
-        </Surface>
-      ) : (
         <div
-          className={cn("space-y-6", reveal)}
-          style={{ animationDelay: "180ms" }}
+          className={cn("flex flex-col items-center gap-3", reveal)}
+          style={{ animationDelay: "60ms" }}
         >
-          {groups.map((group) => {
-            const sums = daySums(group.items);
-            return (
-              <section key={group.date} className="space-y-2">
-                {/* 台帳の日付見出し。スクロール時はヘッダー直下に貼り付く。 */}
-                <div className="sticky top-16 z-20 flex items-center justify-between gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full border bg-card/85 px-3 py-1 font-heading text-xs font-semibold tabular-nums shadow-soft ring-1 ring-foreground/5 backdrop-blur-md">
-                    {formatDayLabel(group.date)}
-                  </span>
-                  <span className="flex items-center gap-2 text-[11px] font-medium tabular-nums">
-                    {sums.income > 0 ? (
-                      <Amount
-                        value={sums.income}
-                        type="income"
-                        className="text-[11px] font-medium"
-                      />
-                    ) : null}
-                    {sums.expense > 0 ? (
-                      <Amount
-                        value={sums.expense}
-                        type="expense"
-                        className="text-[11px] font-medium"
-                      />
-                    ) : null}
-                  </span>
-                </div>
+          <ViewToggle active="list" />
+          <MonthNav
+            label={formatPeriodLabel(range)}
+            prevHref={prevHref}
+            nextHref={nextHref}
+          />
+        </div>
 
-                <ul className="space-y-2">
-                  {group.items.map((t) => {
-                    const mine = t.created_by === user.id;
-                    return (
-                      <li key={t.id}>
-                        <Surface
-                          variant="raised"
-                          data-testid="transaction-row"
-                          className="group/row overflow-hidden p-0 transition-shadow hover:shadow-lifted"
-                        >
-                          <CardContent className="flex items-stretch gap-0 p-0">
-                            {/* タイプ色のレジャーエッジ */}
-                            <span
-                              aria-hidden
-                              className={cn(
-                                "w-1.5 shrink-0",
-                                t.type === "income"
-                                  ? "bg-income"
-                                  : "bg-expense",
-                              )}
-                            />
-                            <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3">
-                              <div className="min-w-0 space-y-0.5">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <CategoryBadge category={t.category} />
-                                  {t.is_shared ? (
-                                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                                      精算
-                                    </span>
-                                  ) : null}
-                                  {!mine ? (
-                                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                                      他のメンバー
-                                    </span>
+        <div className={reveal} style={{ animationDelay: "90ms" }}>
+          <FilterBar
+            filter={filter}
+            currentRef={ref}
+            categories={categoryOptions}
+            members={members}
+          />
+        </div>
+
+        <div className={reveal} style={{ animationDelay: "120ms" }}>
+          <SummaryCards income={income} expense={expense} />
+        </div>
+
+        {groups.length === 0 ? (
+          <Surface
+            variant="raised"
+            className={cn("", reveal)}
+            style={{ animationDelay: "180ms" }}
+          >
+            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+              <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                <ReceiptText className="size-6" aria-hidden />
+              </span>
+              {filtering ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    条件に一致する収支がありません。
+                  </p>
+                  <Link
+                    href={`/transactions${ref ? `?ref=${ref}` : ""}`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    条件をクリア
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    この期間の収支はまだありません。
+                  </p>
+                  <Link
+                    href="/transactions/new"
+                    className={buttonVariants({ size: "sm" })}
+                  >
+                    収支を記録
+                  </Link>
+                </>
+              )}
+            </CardContent>
+          </Surface>
+        ) : (
+          <div
+            className={cn("space-y-6", reveal)}
+            style={{ animationDelay: "180ms" }}
+          >
+            {groups.map((group) => {
+              const sums = daySums(group.items);
+              return (
+                <section key={group.date} className="space-y-2">
+                  {/* 台帳の日付見出し。スクロール時はヘッダー直下に貼り付く。 */}
+                  <div className="sticky top-16 z-20 flex items-center justify-between gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-full border bg-card/85 px-3 py-1 font-heading text-xs font-semibold tabular-nums shadow-soft ring-1 ring-foreground/5 backdrop-blur-md">
+                      {formatDayLabel(group.date)}
+                    </span>
+                    <span className="flex items-center gap-2 text-[11px] font-medium tabular-nums">
+                      {sums.income > 0 ? (
+                        <Amount
+                          value={sums.income}
+                          type="income"
+                          className="text-[11px] font-medium"
+                        />
+                      ) : null}
+                      {sums.expense > 0 ? (
+                        <Amount
+                          value={sums.expense}
+                          type="expense"
+                          className="text-[11px] font-medium"
+                        />
+                      ) : null}
+                    </span>
+                  </div>
+
+                  <ul className="space-y-2">
+                    {group.items.map((t) => {
+                      const mine = t.created_by === user.id;
+                      return (
+                        <li key={t.id}>
+                          <Surface
+                            variant="raised"
+                            data-testid="transaction-row"
+                            className="group/row overflow-hidden p-0 transition-shadow hover:shadow-lifted"
+                          >
+                            <CardContent className="flex items-stretch gap-0 p-0">
+                              {/* タイプ色のレジャーエッジ */}
+                              <span
+                                aria-hidden
+                                className={cn(
+                                  "w-1.5 shrink-0",
+                                  t.type === "income"
+                                    ? "bg-income"
+                                    : "bg-expense",
+                                )}
+                              />
+                              <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3">
+                                <div className="min-w-0 space-y-0.5">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <CategoryBadge category={t.category} />
+                                    {t.is_shared ? (
+                                      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                                        精算
+                                      </span>
+                                    ) : null}
+                                    {!mine ? (
+                                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                        他のメンバー
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  {t.memo ? (
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {t.memo}
+                                    </p>
                                   ) : null}
                                 </div>
-                                {t.memo ? (
-                                  <p className="truncate text-xs text-muted-foreground">
-                                    {t.memo}
-                                  </p>
-                                ) : null}
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1">
-                                <Amount value={t.amount} type={t.type} />
-                                {mine ? (
-                                  <div className="flex items-center transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100">
-                                    <Link
-                                      href={`/transactions/${t.id}/edit`}
-                                      aria-label="編集"
-                                      className={cn(
-                                        buttonVariants({
-                                          variant: "ghost",
-                                          size: "icon",
-                                        }),
-                                        "size-8 text-muted-foreground hover:text-foreground",
-                                      )}
-                                    >
-                                      <Pencil className="size-4" aria-hidden />
-                                    </Link>
-                                    <form action={deleteTransaction}>
-                                      <input
-                                        type="hidden"
-                                        name="id"
-                                        value={t.id}
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <Amount value={t.amount} type={t.type} />
+                                  {mine ? (
+                                    <div className="flex items-center transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100">
+                                      <EditTransactionButton
+                                        transaction={{
+                                          id: t.id,
+                                          type: t.type,
+                                          amount: t.amount,
+                                          date: t.date,
+                                          category_id: t.category_id,
+                                          memo: t.memo,
+                                          is_shared: t.is_shared,
+                                        }}
                                       />
-                                      <Button
-                                        type="submit"
-                                        variant="ghost"
-                                        size="icon"
-                                        aria-label="削除"
-                                        className="size-8 text-muted-foreground hover:text-destructive"
-                                      >
-                                        <Trash2 className="size-4" aria-hidden />
-                                      </Button>
-                                    </form>
-                                  </div>
-                                ) : null}
+                                      <form action={deleteTransaction}>
+                                        <input
+                                          type="hidden"
+                                          name="id"
+                                          value={t.id}
+                                        />
+                                        <Button
+                                          type="submit"
+                                          variant="ghost"
+                                          size="icon"
+                                          aria-label="削除"
+                                          className="size-8 text-muted-foreground hover:text-destructive"
+                                        >
+                                          <Trash2 className="size-4" aria-hidden />
+                                        </Button>
+                                      </form>
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Surface>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
-          {transactionPage.previousCursor || transactionPage.nextCursor ? (
-            <nav className="flex items-center justify-center gap-3" aria-label="収支一覧ページ">
-              {transactionPage.previousCursor !== null ? (
-                <Link
-                  href={pageHref(transactionPage.previousCursor)}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  <ChevronLeft className="size-4" aria-hidden />
-                  前へ
-                </Link>
-              ) : null}
-              {transactionPage.nextCursor !== null ? (
-                <Link
-                  href={pageHref(transactionPage.nextCursor)}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  次へ
-                  <ChevronRight className="size-4" aria-hidden />
-                </Link>
-              ) : null}
-            </nav>
-          ) : null}
-        </div>
-      )}
-    </main>
+                            </CardContent>
+                          </Surface>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              );
+            })}
+            {transactionPage.previousCursor || transactionPage.nextCursor ? (
+              <nav className="flex items-center justify-center gap-3" aria-label="収支一覧ページ">
+                {transactionPage.previousCursor !== null ? (
+                  <Link
+                    href={pageHref(transactionPage.previousCursor)}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    <ChevronLeft className="size-4" aria-hidden />
+                    前へ
+                  </Link>
+                ) : null}
+                {transactionPage.nextCursor !== null ? (
+                  <Link
+                    href={pageHref(transactionPage.nextCursor)}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    次へ
+                    <ChevronRight className="size-4" aria-hidden />
+                  </Link>
+                ) : null}
+              </nav>
+            ) : null}
+          </div>
+        )}
+      </main>
+    </TransactionDialogProvider>
   );
 }

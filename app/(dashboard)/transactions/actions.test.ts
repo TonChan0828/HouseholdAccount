@@ -107,7 +107,7 @@ function createFormData(overrides: Record<string, string> = {}) {
   return formData;
 }
 
-function updateFormData() {
+function updateFormData(overrides: Record<string, string> = {}) {
   const formData = new FormData();
   formData.set("id", "t-1");
   formData.set("type", "expense");
@@ -115,6 +115,9 @@ function updateFormData() {
   formData.set("date", "2026-06-13");
   formData.set("category_id", "");
   formData.set("memo", "ランチ");
+  for (const [key, value] of Object.entries(overrides)) {
+    formData.set(key, value);
+  }
   return formData;
 }
 
@@ -123,6 +126,7 @@ beforeEach(() => {
   state.householdId = "h-1";
   state.matchedRows = [{ id: "t-1" }];
   state.calls = [];
+  vi.clearAllMocks();
 });
 
 describe("createTransaction", () => {
@@ -182,6 +186,16 @@ describe("createTransaction", () => {
     const insert = state.calls.find((c) => c.method === "insert");
     expect(insert?.values).toMatchObject({ is_shared: false });
   });
+
+  it("_dialog=1 の場合は redirect せず成功状態を返す", async () => {
+    const result = await createTransaction(
+      undefined,
+      createFormData({ _dialog: "1" }),
+    );
+
+    expect(result).toEqual({ ok: true, key: expect.any(String) });
+    expect(state.calls.find((c) => c.method === "insert")).toBeDefined();
+  });
 });
 
 describe("updateTransaction", () => {
@@ -219,6 +233,38 @@ describe("updateTransaction", () => {
     const result = await updateTransaction(undefined, updateFormData());
 
     expect(result).toEqual({ error: "対象の収支が見つかりません" });
+  });
+
+  it("_dialog=1 の場合は redirect せず成功状態を返す", async () => {
+    const result = await updateTransaction(
+      undefined,
+      updateFormData({ _dialog: "1" }),
+    );
+
+    expect(result).toEqual({ ok: true, key: expect.any(String) });
+    expect(state.calls.find((c) => c.method === "update")).toBeDefined();
+  });
+
+  it("_dialog=1 でも対象が見つからなければエラーを返す", async () => {
+    state.matchedRows = [];
+
+    const result = await updateTransaction(
+      undefined,
+      updateFormData({ _dialog: "1" }),
+    );
+
+    expect(result).toEqual({ error: "対象の収支が見つかりません" });
+  });
+
+  // 未訪問ルートまで無効化すると開発サーバの再コンパイルが多発して極端に遅くなるため、
+  // revalidate は収支一覧に限定する（呼び出し元ルートは Server Action が自動で再描画する）。
+  it("revalidate の対象を収支一覧に限定する", async () => {
+    const { revalidatePath } = await import("next/cache");
+
+    await updateTransaction(undefined, updateFormData({ _dialog: "1" }));
+
+    const paths = vi.mocked(revalidatePath).mock.calls.map(([path]) => path);
+    expect(paths).toEqual(["/transactions"]);
   });
 });
 

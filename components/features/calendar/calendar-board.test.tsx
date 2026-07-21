@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { TransactionDialogProvider } from "@/components/features/transactions/transaction-dialog";
 import type { CalendarDay } from "@/lib/calendar";
 import { CalendarBoard, type CalendarTx } from "./calendar-board";
 
@@ -28,8 +29,23 @@ const txByDate: Record<string, CalendarTx[]> = {
       id: "t1",
       amount: 500,
       type: "expense",
+      date: "2026-06-02",
       memo: "ランチ",
       category: { name: "食費", color: "#ef4444" },
+      category_id: "c-1",
+      created_by: "u-1",
+      is_shared: false,
+    },
+    {
+      id: "t2",
+      amount: 300,
+      type: "expense",
+      date: "2026-06-02",
+      memo: "他人のおやつ",
+      category: { name: "食費", color: "#ef4444" },
+      category_id: "c-1",
+      created_by: "u-2",
+      is_shared: false,
     },
   ],
 };
@@ -74,7 +90,57 @@ describe("CalendarBoard", () => {
     const cell = container.querySelector('[data-date="2026-06-02"]');
     fireEvent.click(cell as Element);
     expect(screen.getByText("ランチ")).toBeInTheDocument();
-    expect(screen.getByText("食費")).toBeInTheDocument();
+    expect(screen.getAllByText("食費")).not.toHaveLength(0);
+  });
+});
+
+describe("CalendarBoard: 明細からの編集（spec 40）", () => {
+  const renderWithUser = () =>
+    render(
+      <TransactionDialogProvider categories={[]} otherHouseholds={[]}>
+        <CalendarBoard
+          weeks={[week]}
+          transactionsByDate={txByDate}
+          initialSelected="2026-06-01"
+          currentUserId="u-1"
+        />
+      </TransactionDialogProvider>,
+    );
+
+  it("自分が登録した明細だけを編集トリガーにする", () => {
+    const { container } = renderWithUser();
+    fireEvent.click(container.querySelector('[data-date="2026-06-02"]')!);
+
+    const triggers = screen.getAllByRole("button", { name: "編集" });
+    expect(triggers).toHaveLength(1);
+    expect(triggers[0]).toHaveTextContent("ランチ");
+  });
+
+  it("明細をタップすると編集ダイアログが開く", () => {
+    const { container } = renderWithUser();
+    fireEvent.click(container.querySelector('[data-date="2026-06-02"]')!);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+
+    expect(screen.getByTestId("transaction-dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("金額")).toHaveValue("500");
+  });
+
+  it("編集ページへのリンクは張らない（ダイアログで完結する）", () => {
+    const { container } = renderWithUser();
+    fireEvent.click(container.querySelector('[data-date="2026-06-02"]')!);
+
+    expect(
+      container.querySelector('a[href^="/transactions/"]'),
+    ).toBeNull();
+  });
+
+  it("currentUserId 未指定なら編集トリガーを出さない", () => {
+    const { container } = renderBoard();
+    fireEvent.click(container.querySelector('[data-date="2026-06-02"]')!);
+
+    expect(
+      screen.queryByRole("button", { name: "編集" }),
+    ).not.toBeInTheDocument();
   });
 });
 
