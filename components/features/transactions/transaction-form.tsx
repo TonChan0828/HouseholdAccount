@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { evaluateExpression } from "@/lib/amount-expression";
 import { yen } from "@/lib/format";
 import { localToday } from "@/lib/period";
+import type { CategoryOption } from "@/lib/queries/categories";
 import type { ParsedReceipt } from "@/lib/receipt/parse-receipt";
 import { cn } from "@/lib/utils";
-import type { Category, TransactionType } from "@/types";
+import type { TransactionType } from "@/types";
 
 import { ReceiptScanButton } from "./receipt-scan-button.client";
 
@@ -28,10 +29,16 @@ type TransactionAction = (
 
 type Props = {
   action: TransactionAction;
-  categories: Category[];
+  categories: CategoryOption[];
   submitLabel: string;
   /** 「登録して続ける」ボタンを表示し、登録後もフォームに留まれるようにする（新規登録のみ） */
   enableContinue?: boolean;
+  /** ダイアログ内での利用（spec 40）。Server Action がページ遷移せず成功状態を返す */
+  dialog?: boolean;
+  /** 保存に成功したときに呼ばれる（ダイアログを閉じるのに使う） */
+  onSuccess?: () => void;
+  /** レシートOCRの導線を出すか。編集ダイアログでは不要なので false にできる */
+  showReceiptScan?: boolean;
   /** 反映先候補（反映元を除く自分の所属グループ）。渡すと「他のグループにも反映」UI を表示 */
   otherHouseholds?: { id: string; name: string }[];
   defaultValues?: {
@@ -50,6 +57,9 @@ export function TransactionForm({
   categories,
   submitLabel,
   enableContinue,
+  dialog,
+  onSuccess,
+  showReceiptScan = true,
   otherHouseholds,
   defaultValues,
 }: Props) {
@@ -74,27 +84,41 @@ export function TransactionForm({
   // 金額欄に入力された式のプレビュー。null=非表示。
   const [amountPreview, setAmountPreview] = useState<string | null>(null);
 
-  const amountRef = useRef<HTMLInputElement>(null);
-  const dateRef = useRef<HTMLInputElement>(null);
-  const memoRef = useRef<HTMLTextAreaElement>(null);
-  const lastOkKey = useRef<string | null>(null);
+  // 金額・日付・メモは制御入力にする。React は Server Action 送信後にフォームを
+  // 自動リセットするため、uncontrolled のままだと保存に失敗したときに入力が消える。
+  const [amount, setAmount] = useState<string>(
+    defaultValues?.amount !== undefined ? String(defaultValues.amount) : "",
+  );
+  const [date, setDate] = useState<string>(defaultValues?.date ?? localToday());
+  const [memo, setMemo] = useState<string>(defaultValues?.memo ?? "");
 
-  // 「登録して続ける」成功のたびに、金額・メモ・カテゴリをクリアし金額欄へフォーカスする。
-  // 日付・種別は維持（日付/メモ/金額は uncontrolled のため DOM から直接クリアする）。
+  const amountRef = useRef<HTMLInputElement>(null);
+  const lastOkKey = useRef<string | null>(null);
+  // 直前に押された送信ボタンが「登録して続ける」だったか。
+  // 成功後にフォームをリセットするか、ダイアログを閉じるかの分岐に使う。
+  const continueSubmit = useRef(false);
+  // 成功のたびに、「登録して続ける」なら金額・メモ・カテゴリをクリアし金額欄へフォーカス、
+  // そうでなければ onSuccess（ダイアログを閉じる）を呼ぶ。日付・種別は維持する。
   useEffect(() => {
     if (!state || !("ok" in state)) return;
     if (lastOkKey.current === state.key) return;
     lastOkKey.current = state.key;
 
-    if (amountRef.current) amountRef.current.value = "";
-    if (memoRef.current) memoRef.current.value = "";
+    if (!continueSubmit.current) {
+      onSuccess?.();
+      return;
+    }
+
+    setAmount("");
+    setMemo("");
     setCategoryId("");
     setReflectIds([]);
     setIsShared(false);
     setAmountPreview(null);
     setSavedCount((n) => n + 1);
     amountRef.current?.focus();
-  }, [state]);
+    // onSuccess が毎レンダー変わっても、lastOkKey で二重発火は防がれる。
+  }, [state, onSuccess]);
 
   const toggleReflect = (id: string) => {
     setReflectIds((prev) =>
@@ -115,14 +139,19 @@ export function TransactionForm({
     );
   };
 
-  // レシートOCRの抽出結果をフォームへ反映する（抽出できた項目のみ・uncontrolled な入力に直接設定）。
+  // 金額欄の変更を state とプレビューに反映する（OCR からの自動入力にも使う）。
+  const changeAmount = (value: string) => {
+    setAmount(value);
+    updateAmountPreview(value);
+  };
+
+  // レシートOCRの抽出結果をフォームへ反映する（抽出できた項目のみ）。
   const applyScanResult = (result: ParsedReceipt) => {
-    if (result.amount !== null && amountRef.current) {
-      amountRef.current.value = String(result.amount);
-      updateAmountPreview(amountRef.current.value);
+    if (result.amount !== null) {
+      changeAmount(String(result.amount));
     }
-    if (result.date !== null && dateRef.current) {
-      dateRef.current.value = result.date;
+    if (result.date !== null) {
+      setDate(result.date);
     }
   };
 
@@ -146,13 +175,16 @@ export function TransactionForm({
       {defaultValues?.id ? (
         <input type="hidden" name="id" value={defaultValues.id} />
       ) : null}
+      {dialog ? <input type="hidden" name="_dialog" value="1" /> : null}
 
-      <div className="space-y-1.5">
-        <ReceiptScanButton onResult={applyScanResult} />
-        <p className="text-center text-xs text-muted-foreground">
-          レシート画像から金額・日付を自動入力します（内容をご確認ください）
-        </p>
-      </div>
+      {showReceiptScan ? (
+        <div className="space-y-1.5">
+          <ReceiptScanButton onResult={applyScanResult} />
+          <p className="text-center text-xs text-muted-foreground">
+            レシート画像から金額・日付を自動入力します（内容をご確認ください）
+          </p>
+        </div>
+      ) : null}
 
       <fieldset className="grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1.5">
         {(["expense", "income"] as const).map((t) => {
@@ -206,9 +238,9 @@ export function TransactionForm({
             type="text"
             inputMode="text"
             placeholder="1000"
-            defaultValue={defaultValues?.amount ?? ""}
+            value={amount}
             required
-            onChange={(e) => updateAmountPreview(e.target.value)}
+            onChange={(e) => changeAmount(e.target.value)}
             className="h-14 pl-10 font-heading text-2xl font-bold tabular-nums md:text-2xl"
           />
         </div>
@@ -231,11 +263,11 @@ export function TransactionForm({
       <div className="space-y-2">
         <Label htmlFor="date">日付</Label>
         <Input
-          ref={dateRef}
           id="date"
           name="date"
           type="date"
-          defaultValue={defaultValues?.date ?? localToday()}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
           required
         />
       </div>
@@ -298,12 +330,12 @@ export function TransactionForm({
       <div className="space-y-2">
         <Label htmlFor="memo">メモ</Label>
         <textarea
-          ref={memoRef}
           id="memo"
           name="memo"
           rows={2}
           maxLength={200}
-          defaultValue={defaultValues?.memo ?? ""}
+          value={memo}
+          onChange={(e) => setMemo(e.target.value)}
           className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </div>
@@ -380,6 +412,9 @@ export function TransactionForm({
           type="submit"
           className="h-11 w-full text-base shadow-soft"
           disabled={pending}
+          onClick={() => {
+            continueSubmit.current = false;
+          }}
         >
           {pending ? "処理中..." : submitLabel}
         </Button>
@@ -391,6 +426,9 @@ export function TransactionForm({
             variant="outline"
             className="h-11 w-full text-base"
             disabled={pending}
+            onClick={() => {
+              continueSubmit.current = true;
+            }}
           >
             登録して続ける
           </Button>

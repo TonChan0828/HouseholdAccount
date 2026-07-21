@@ -26,6 +26,23 @@ export type ReflectActionState =
   | { error: string }
   | undefined;
 
+/**
+ * 収支を表示する画面を再検証する。
+ *
+ * モーダル編集（spec 40）はカレンダー・ダッシュボードからも開けるが、Server Action は
+ * 呼び出し元のルートを自動で再描画するため、閉じた直後の表示はそれで最新になる。
+ * `/dashboard`・`/calendar` を明示的に足すと、収支を書き込むたびに未訪問ルートまで
+ * 無効化されて開発サーバの再コンパイルが多発し、極端に遅くなるため対象にしない。
+ */
+function revalidateTransactionViews(): void {
+  revalidatePath("/transactions");
+}
+
+/** ダイアログからの送信か（true ならページ遷移せず成功状態を返す）。 */
+function isDialogSubmit(formData: FormData): boolean {
+  return formData.get("_dialog") === "1";
+}
+
 function parse(formData: FormData) {
   return transactionSchema.safeParse({
     type: formData.get("type"),
@@ -168,11 +185,12 @@ export async function createTransaction(
     }
   }
 
-  revalidatePath("/transactions");
+  revalidateTransactionViews();
 
-  // 「登録して続ける」場合はフォームに留まれるよう成功状態を返す。
-  // key は連続成功のたびに変わり、クライアント側のフォームリセットを毎回トリガーする。
-  if (formData.get("_continue") === "1") {
+  // 「登録して続ける」やダイアログからの送信は、フォーム／ダイアログに留まれるよう
+  // 成功状態を返す。key は成功のたびに変わり、クライアント側のリセット・クローズを毎回
+  // トリガーする。
+  if (formData.get("_continue") === "1" || isDialogSubmit(formData)) {
     return { ok: true, key: crypto.randomUUID() };
   }
 
@@ -218,7 +236,13 @@ export async function updateTransaction(
     return { error: "対象の収支が見つかりません" };
   }
 
-  revalidatePath("/transactions");
+  revalidateTransactionViews();
+
+  // ダイアログからの更新はページ遷移せず、成功状態を返してダイアログを閉じさせる。
+  if (isDialogSubmit(formData)) {
+    return { ok: true, key: crypto.randomUUID() };
+  }
+
   redirect("/transactions");
 }
 
@@ -237,7 +261,7 @@ export async function deleteTransaction(formData: FormData): Promise<void> {
     .eq("id", id)
     .eq("household_id", householdId);
 
-  revalidatePath("/transactions");
+  revalidateTransactionViews();
   redirect("/transactions");
 }
 
@@ -287,7 +311,7 @@ export async function reflectTransaction(
     if (count === 0) {
       return { error: "反映先のグループが見つかりません" };
     }
-    revalidatePath("/transactions");
+    revalidateTransactionViews();
     return { ok: true, count };
   } catch {
     return { error: "反映に失敗しました" };

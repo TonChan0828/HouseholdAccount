@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
-import Link from "next/link";
 
 import { Amount } from "@/components/shared/amount";
 import { MainSideGrid } from "@/components/shared/main-side-grid";
 import { Surface } from "@/components/shared/surface";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
+import { EditTransactionArea } from "@/components/features/transactions/transaction-dialog";
 import { CardContent } from "@/components/ui/card";
 import type { CalendarDay } from "@/lib/calendar";
 import { compactAmount, formatDayLabel } from "@/lib/format";
@@ -17,14 +17,20 @@ export type CalendarTx = {
   id: string;
   amount: number;
   type: "income" | "expense";
+  date: string;
   memo: string | null;
   category: { name: string; color: string | null } | null;
+  category_id: string | null;
+  created_by: string;
+  is_shared: boolean;
 };
 
 type Props = {
   weeks: CalendarDay[][];
   transactionsByDate: Record<string, CalendarTx[]>;
   initialSelected: string;
+  /** ログイン中ユーザー。自分が登録した明細だけ編集ダイアログを開けるようにする。 */
+  currentUserId?: string;
   /** サイドレール上部に置く内容（当月サマリー等）。lg 未満ではグリッドの上に出る。 */
   side?: ReactNode;
 };
@@ -51,6 +57,7 @@ export function CalendarBoard({
   weeks,
   transactionsByDate,
   initialSelected,
+  currentUserId,
   side,
 }: Props) {
   // ユーザーが明示的に選択した日。未操作の間は「今日 or 初期値」を導出する。
@@ -151,37 +158,60 @@ export function CalendarBoard({
           </Surface>
         ) : (
           <ul className="space-y-2">
-            {items.map((t) => (
-              <li key={t.id}>
-                <Link href={`/transactions/${t.id}/edit`} className="block">
-                  <Surface
-                    variant="raised"
-                    className="overflow-hidden p-0 transition-shadow hover:shadow-lifted"
-                  >
-                    <CardContent className="flex items-stretch gap-0 p-0">
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "w-1.5 shrink-0",
-                          t.type === "income" ? "bg-income" : "bg-expense",
-                        )}
-                      />
-                      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3">
-                        <div className="min-w-0 space-y-0.5">
-                          <CategoryBadge category={t.category} />
-                          {t.memo ? (
-                            <p className="truncate text-xs text-muted-foreground">
-                              {t.memo}
-                            </p>
-                          ) : null}
-                        </div>
-                        <Amount value={t.amount} type={t.type} />
+            {items.map((t) => {
+              const row = (
+                <Surface
+                  variant="raised"
+                  className="overflow-hidden p-0 transition-shadow hover:shadow-lifted"
+                >
+                  <CardContent className="flex items-stretch gap-0 p-0">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "w-1.5 shrink-0",
+                        t.type === "income" ? "bg-income" : "bg-expense",
+                      )}
+                    />
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0 space-y-0.5">
+                        <CategoryBadge category={t.category} />
+                        {t.memo ? (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {t.memo}
+                          </p>
+                        ) : null}
                       </div>
-                    </CardContent>
-                  </Surface>
-                </Link>
-              </li>
-            ))}
+                      <Amount value={t.amount} type={t.type} />
+                    </div>
+                  </CardContent>
+                </Surface>
+              );
+
+              // 編集できるのは自分が登録した収支のみ。行そのものをタップ領域にする。
+              const editable = currentUserId !== undefined && t.created_by === currentUserId;
+
+              return (
+                <li key={t.id}>
+                  {editable ? (
+                    <EditTransactionArea
+                      transaction={{
+                        id: t.id,
+                        type: t.type,
+                        amount: t.amount,
+                        date: t.date,
+                        category_id: t.category_id,
+                        memo: t.memo,
+                        is_shared: t.is_shared,
+                      }}
+                    >
+                      {row}
+                    </EditTransactionArea>
+                  ) : (
+                    row
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
     </section>

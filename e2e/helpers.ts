@@ -1,4 +1,22 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
+
+/**
+ * 収支の追加・編集ダイアログ（spec 40）を開き、開いたロケータを返す。
+ *
+ * ダイアログはクライアント側の onClick で開くため、ページ遷移直後に押すと
+ * ハイドレーション前でクリックが空振りすることがある。開くまでクリックを再試行する。
+ */
+export async function openTransactionDialog(
+  page: Page,
+  trigger: Locator,
+): Promise<Locator> {
+  const dialog = page.getByTestId("transaction-dialog");
+  await expect(async () => {
+    await trigger.click();
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  return dialog;
+}
 
 /**
  * グループ選択画面からグループを作成する（作成者=オーナー、デフォルトカテゴリ付与、

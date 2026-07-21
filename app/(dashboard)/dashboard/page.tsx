@@ -11,6 +11,10 @@ import { SavingsGoalCard } from "@/components/features/dashboard/savings-goal-ca
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
 import { MonthNav } from "@/components/features/transactions/month-nav";
+import {
+  EditTransactionButton,
+  TransactionDialogProvider,
+} from "@/components/features/transactions/transaction-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Amount } from "@/components/shared/amount";
@@ -21,9 +25,11 @@ import { buildCategoryMemberMatrix } from "@/lib/category-matrix";
 import { formatDayLabel, groupByDate } from "@/lib/format";
 import {
   getHouseholdSettings,
+  getUserHouseholds,
   requireDashboardContext,
 } from "@/lib/household";
 import { buildForecast, buildForecastBudget } from "@/lib/forecast";
+import { fetchHouseholdCategories } from "@/lib/queries/categories";
 import { loadDashboardData } from "@/lib/queries/dashboard";
 import type { TransactionRow } from "@/lib/queries/transactions";
 import {
@@ -73,6 +79,13 @@ export default async function DashboardPage({
     current: range,
     previous: prevRange,
   });
+
+  // 「最近の取引」から編集ダイアログ（spec 40）を開くための材料。
+  const [categoryOptions, households] = await Promise.all([
+    fetchHouseholdCategories(supabase, householdId),
+    getUserHouseholds(),
+  ]);
+  const otherHouseholds = households.filter((h) => h.id !== householdId);
 
   const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
     rows.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
@@ -142,195 +155,211 @@ export default async function DashboardPage({
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8 lg:max-w-6xl">
-      <PageHeader
-        eyebrow="ホーム"
-        title="ダッシュボード"
-        className={reveal}
-        actions={
-          <>
-            <MonthNav
-              label={formatPeriodLabel(range)}
-              prevHref={prevHref}
-              nextHref={nextHref}
-            />
-            <ScopeToggle
-              scope={scope}
-              currentRef={ref}
-              className="w-full justify-center sm:w-auto"
-            />
-            <Link
-              href={newTransactionHref}
-              className={cn(
-                buttonVariants({ size: "sm" }),
-                "hidden sm:inline-flex",
-              )}
-            >
-              <Plus className="size-4" aria-hidden />
-              記録する
-            </Link>
-          </>
-        }
-      />
-
-      {/*
-        デスクトップ（lg 以上）はメイン7:サイド5の2カラム、モバイルは
-        max-lg:order-* で従来の縦積み順（ヒーロー→予測→目標→チャート→
-        マトリクス→最近の取引）を維持する。
-      */}
-      <MainSideGrid
-        main={
-          <>
-            <div
-              className={cn(reveal, "max-lg:order-1")}
-              style={{ animationDelay: "60ms" }}
-            >
-              <SummaryCards
-                income={income}
-                expense={expense}
-                prevIncome={sumBy(prevTransactions, "income")}
-                prevExpense={sumBy(prevTransactions, "expense")}
-                budgetTotal={budgetTotal}
-                budgetSpent={budgetSpent}
+    <TransactionDialogProvider
+      categories={categoryOptions}
+      otherHouseholds={otherHouseholds}
+    >
+      <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8 lg:max-w-6xl">
+        <PageHeader
+          eyebrow="ホーム"
+          title="ダッシュボード"
+          className={reveal}
+          actions={
+            <>
+              <MonthNav
+                label={formatPeriodLabel(range)}
+                prevHref={prevHref}
+                nextHref={nextHref}
               />
-            </div>
-
-            <div
-              className={cn(reveal, "max-lg:order-4")}
-              style={{ animationDelay: "150ms" }}
-            >
-              <SectionHeading>当期の収支</SectionHeading>
-              <Surface variant="raised">
-                <CardContent>
-                  <BalanceBarChart income={income} expense={expense} />
-                </CardContent>
-              </Surface>
-            </div>
-
-            <div
-              className={cn(reveal, "max-lg:order-5")}
-              style={{ animationDelay: "180ms" }}
-            >
-              <CategoryMemberMatrix matrix={matrix} />
-            </div>
-          </>
-        }
-        side={
-          <>
-            {viewingCurrent ? (
-              <div
-                className={cn(reveal, "max-lg:order-2")}
-                style={{ animationDelay: "90ms" }}
+              <ScopeToggle
+                scope={scope}
+                currentRef={ref}
+                className="w-full justify-center sm:w-auto"
+              />
+              <Link
+                href={newTransactionHref}
+                className={cn(
+                  buttonVariants({ size: "sm" }),
+                  "hidden sm:inline-flex",
+                )}
               >
-                {unrecordedReminderCategories.length > 0 ? (
-                  <UnrecordedCategoriesReminderCard
-                    categories={unrecordedReminderCategories}
-                    daysRemaining={forecast.daysRemaining}
-                    newTransactionHref={newTransactionHref}
-                    className="mb-3"
-                  />
-                ) : null}
-                <ForecastCard forecast={forecast} budget={forecastBudget} />
-              </div>
-            ) : null}
+                <Plus className="size-4" aria-hidden />
+                記録する
+              </Link>
+            </>
+          }
+        />
 
-            <div
-              className={cn(reveal, "max-lg:order-3")}
-              style={{ animationDelay: "120ms" }}
-            >
-              <SavingsGoalCard
-                progress={savingsGoal.progress}
-                goal={savingsGoal.goal}
-              />
-            </div>
-
-            <div
-              className={cn(reveal, "max-lg:order-6")}
-              style={{ animationDelay: "240ms" }}
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading text-base font-bold">最近の取引</h2>
-                <Link
-                  href={allTransactionsHref}
-                  className={buttonVariants({ variant: "link", size: "sm" })}
-                >
-                  すべて見る
-                  <ArrowRight className="size-4" aria-hidden />
-                </Link>
+        {/*
+          デスクトップ（lg 以上）はメイン7:サイド5の2カラム、モバイルは
+          max-lg:order-* で従来の縦積み順（ヒーロー→予測→目標→チャート→
+          マトリクス→最近の取引）を維持する。
+        */}
+        <MainSideGrid
+          main={
+            <>
+              <div
+                className={cn(reveal, "max-lg:order-1")}
+                style={{ animationDelay: "60ms" }}
+              >
+                <SummaryCards
+                  income={income}
+                  expense={expense}
+                  prevIncome={sumBy(prevTransactions, "income")}
+                  prevExpense={sumBy(prevTransactions, "expense")}
+                  budgetTotal={budgetTotal}
+                  budgetSpent={budgetSpent}
+                />
               </div>
 
-              {recentGroups.length === 0 ? (
-                <Surface variant="raised" className="mt-2">
-                  <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-                    <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                      <ReceiptText className="size-6" aria-hidden />
-                    </span>
-                    <p className="text-sm text-muted-foreground">
-                      この期間の収支はまだありません。
-                      <br />
-                      最初の一件を記録してみましょう。
-                    </p>
-                    <Link
-                      href={newTransactionHref}
-                      className={buttonVariants({ size: "sm" })}
-                    >
-                      収支を記録
-                    </Link>
+              <div
+                className={cn(reveal, "max-lg:order-4")}
+                style={{ animationDelay: "150ms" }}
+              >
+                <SectionHeading>当期の収支</SectionHeading>
+                <Surface variant="raised">
+                  <CardContent>
+                    <BalanceBarChart income={income} expense={expense} />
                   </CardContent>
                 </Surface>
-              ) : (
-                <div className="mt-2 space-y-4">
-                  {recentGroups.map((group) => (
-                    <section key={group.date} className="space-y-2">
-                      <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
-                        {formatDayLabel(group.date)}
-                      </h3>
-                      <ul className="space-y-2">
-                        {group.items.map((t) => (
-                          <li key={t.id}>
-                            <Surface
-                              variant="raised"
-                              data-testid="dashboard-transaction-row"
-                              className="transition-shadow hover:shadow-lifted"
-                            >
-                              <CardContent className="flex items-center justify-between gap-3 py-3">
-                                <div className="flex min-w-0 items-center gap-3">
-                                  <span
-                                    aria-hidden
-                                    className={cn(
-                                      "h-9 w-1 shrink-0 rounded-full",
-                                      t.type === "income"
-                                        ? "bg-income"
-                                        : "bg-expense",
-                                    )}
-                                  />
-                                  <div className="min-w-0 space-y-0.5">
-                                    <CategoryBadge category={t.category} />
-                                    {t.memo ? (
-                                      <p className="truncate text-xs text-muted-foreground">
-                                        {t.memo}
-                                      </p>
+              </div>
+
+              <div
+                className={cn(reveal, "max-lg:order-5")}
+                style={{ animationDelay: "180ms" }}
+              >
+                <CategoryMemberMatrix matrix={matrix} />
+              </div>
+            </>
+          }
+          side={
+            <>
+              {viewingCurrent ? (
+                <div
+                  className={cn(reveal, "max-lg:order-2")}
+                  style={{ animationDelay: "90ms" }}
+                >
+                  {unrecordedReminderCategories.length > 0 ? (
+                    <UnrecordedCategoriesReminderCard
+                      categories={unrecordedReminderCategories}
+                      daysRemaining={forecast.daysRemaining}
+                      newTransactionHref={newTransactionHref}
+                      className="mb-3"
+                    />
+                  ) : null}
+                  <ForecastCard forecast={forecast} budget={forecastBudget} />
+                </div>
+              ) : null}
+
+              <div
+                className={cn(reveal, "max-lg:order-3")}
+                style={{ animationDelay: "120ms" }}
+              >
+                <SavingsGoalCard
+                  progress={savingsGoal.progress}
+                  goal={savingsGoal.goal}
+                />
+              </div>
+
+              <div
+                className={cn(reveal, "max-lg:order-6")}
+                style={{ animationDelay: "240ms" }}
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-base font-bold">最近の取引</h2>
+                  <Link
+                    href={allTransactionsHref}
+                    className={buttonVariants({ variant: "link", size: "sm" })}
+                  >
+                    すべて見る
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                </div>
+
+                {recentGroups.length === 0 ? (
+                  <Surface variant="raised" className="mt-2">
+                    <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                      <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                        <ReceiptText className="size-6" aria-hidden />
+                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        この期間の収支はまだありません。
+                        <br />
+                        最初の一件を記録してみましょう。
+                      </p>
+                      <Link
+                        href={newTransactionHref}
+                        className={buttonVariants({ size: "sm" })}
+                      >
+                        収支を記録
+                      </Link>
+                    </CardContent>
+                  </Surface>
+                ) : (
+                  <div className="mt-2 space-y-4">
+                    {recentGroups.map((group) => (
+                      <section key={group.date} className="space-y-2">
+                        <h3 className="text-xs font-semibold text-muted-foreground tabular-nums">
+                          {formatDayLabel(group.date)}
+                        </h3>
+                        <ul className="space-y-2">
+                          {group.items.map((t) => (
+                            <li key={t.id}>
+                              <Surface
+                                variant="raised"
+                                data-testid="dashboard-transaction-row"
+                                className="transition-shadow hover:shadow-lifted"
+                              >
+                                <CardContent className="flex items-center justify-between gap-3 py-3">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <span
+                                      aria-hidden
+                                      className={cn(
+                                        "h-9 w-1 shrink-0 rounded-full",
+                                        t.type === "income"
+                                          ? "bg-income"
+                                          : "bg-expense",
+                                      )}
+                                    />
+                                    <div className="min-w-0 space-y-0.5">
+                                      <CategoryBadge category={t.category} />
+                                      {t.memo ? (
+                                        <p className="truncate text-xs text-muted-foreground">
+                                          {t.memo}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    <Amount value={t.amount} type={t.type} />
+                                    {t.created_by === user.id ? (
+                                      <EditTransactionButton
+                                        transaction={{
+                                          id: t.id,
+                                          type: t.type,
+                                          amount: t.amount,
+                                          date: t.date,
+                                          category_id: t.category_id,
+                                          memo: t.memo,
+                                          is_shared: t.is_shared,
+                                        }}
+                                      />
                                     ) : null}
                                   </div>
-                                </div>
-                                <Amount
-                                  value={t.amount}
-                                  type={t.type}
-                                  className="shrink-0"
-                                />
-                              </CardContent>
-                            </Surface>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        }
-      />
-    </main>
+                                </CardContent>
+                              </Surface>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          }
+        />
+      </main>
+    </TransactionDialogProvider>
   );
 }
