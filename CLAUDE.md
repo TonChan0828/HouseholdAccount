@@ -28,6 +28,8 @@ npm run test:run      # Vitest（CI向け1回実行）
 npm run test:ui       # Vitest UI
 npm run test:e2e      # Playwright E2E
 npm run test:e2e:ui   # Playwright UI モード
+
+npm run test:mutation # ミューテーションテスト（Stryker、lib/ の主要ロジック9ファイルが対象）
 ```
 
 ## Repository Structure
