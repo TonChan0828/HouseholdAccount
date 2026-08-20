@@ -32,6 +32,10 @@ test-results/
 /.playwright
 .playwright-mcp/
 
+# mutation testing (Stryker)
+reports/mutation/
+.stryker-tmp/
+
 # typescript / next
 *.tsbuildinfo
 next-env.d.ts
