@@ -52,6 +52,16 @@ describe("buildBudgetRows", () => {
     expect(daily).toMatchObject({ budget: 10000, spent: 12500, pct: 125, over: true });
   });
 
+  it("実績が予算とちょうど一致するときは over=false", () => {
+    const { rows } = buildBudgetRows(
+      [{ category_id: "c2", amount: 10000 }],
+      [slice("c2", "日用品", 10000)],
+      cats,
+    );
+    const daily = rows.find((r) => r.categoryId === "c2");
+    expect(daily).toMatchObject({ budget: 10000, spent: 10000, pct: 100, over: false });
+  });
+
   it("行はカテゴリ一覧の順序を保つ", () => {
     const { rows } = buildBudgetRows([], [], cats);
     expect(rows.map((r) => r.categoryId)).toEqual(["c1", "c2", "c3"]);

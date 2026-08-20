@@ -156,6 +156,18 @@ describe("buildForecastBudget", () => {
     expect(r?.overBy).toBe(0);
   });
 
+  it("着地支出が予算とちょうど一致するときは willOverrun=false", () => {
+    const forecast = fc("2026-06-10"); // factor 3
+    const r = buildForecastBudget(
+      [{ category_id: "food", amount: 60_000 }],
+      [tx("expense", 20_000, null, "food")], // 20000*3 = 60000
+      forecast,
+    );
+    expect(r?.projectedSpent).toBe(60_000);
+    expect(r?.willOverrun).toBe(false);
+    expect(r?.overBy).toBe(0);
+  });
+
   it("着地が予算を超えると willOverrun=true・overBy を出す", () => {
     const forecast = fc("2026-06-10"); // factor 3
     const r = buildForecastBudget(

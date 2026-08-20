@@ -40,8 +40,38 @@ describe("evaluateExpression", () => {
     expect(evaluateExpression("２００×３")).toBe(600);
   });
 
+  it("全角の数字4,6,7,8,9も正規化する", () => {
+    expect(evaluateExpression("４＋６＋７＋８＋９")).toBe(34);
+  });
+
+  it("全角の括弧・マイナス・小数点も正規化する", () => {
+    expect(evaluateExpression("（－１．５）×２")).toBe(-3);
+  });
+
   it("空白を無視する", () => {
     expect(evaluateExpression(" 1000 + 500 ")).toBe(1500);
+  });
+
+  it("タブ・全角スペースも空白として無視する", () => {
+    expect(evaluateExpression("1000\t+\t500")).toBe(1500);
+    expect(evaluateExpression("1000　+　500")).toBe(1500);
+  });
+
+  it("先頭が0や.から始まる数値も解釈する", () => {
+    expect(evaluateExpression("0")).toBe(0);
+    expect(evaluateExpression(".5")).toBeCloseTo(0.5, 10);
+  });
+
+  it("複数の小数点を含む数値は無効", () => {
+    expect(evaluateExpression("1.2.3")).toBeNull();
+  });
+
+  it("単項プラスを許可する", () => {
+    expect(evaluateExpression("+500")).toBe(500);
+  });
+
+  it("文字列でない入力は null", () => {
+    expect(evaluateExpression(null as unknown as string)).toBeNull();
   });
 
   it("小数を含む計算もそのまま返す（丸めは呼び出し側）", () => {

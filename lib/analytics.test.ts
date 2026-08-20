@@ -50,6 +50,18 @@ describe("summarizeTrend", () => {
     const result = summarizeTrend([], [range("2026-06-01", "2026-07-01")]);
     expect(result[0]).toMatchObject({ income: 0, expense: 0 });
   });
+
+  it("半開区間の境界: start ちょうどは含み、end ちょうどは含まない", () => {
+    const ranges = [range("2026-06-01", "2026-07-01")];
+    const txs = [
+      tx({ date: "2026-06-01", type: "expense", amount: 100 }), // start ちょうど→含む
+      tx({ date: "2026-07-01", type: "expense", amount: 200 }), // end ちょうど→含まない
+    ];
+
+    const result = summarizeTrend(txs, ranges);
+
+    expect(result[0].expense).toBe(100);
+  });
 });
 
 describe("buildBalanceBars", () => {
@@ -95,7 +107,12 @@ describe("summarizeCategoryExpense", () => {
     const result = summarizeCategoryExpense(txs);
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ categoryId: null, name: "未分類", amount: 300 });
+    expect(result[0]).toMatchObject({
+      categoryId: null,
+      name: "未分類",
+      color: "#999",
+      amount: 300,
+    });
   });
 
   it("支出が無ければ空配列を返す", () => {
@@ -130,5 +147,38 @@ describe("summarizeCategoryTrend", () => {
     ];
 
     expect(summarizeCategoryTrend(txs, ranges)).toEqual([]);
+  });
+
+  it("半開区間の境界: start ちょうどは含み、end ちょうどは含まない", () => {
+    const txs = [
+      tx({ date: "2026-06-01", amount: 100, category_id: "c1", category: { name: "食費", color: "#f00" } }), // start ちょうど→含む
+      tx({ date: "2026-07-01", amount: 200, category_id: "c1", category: { name: "食費", color: "#f00" } }), // end ちょうど→含まない
+    ];
+
+    const result = summarizeCategoryTrend(txs, ranges);
+
+    expect(result[0].amounts).toEqual([0, 100]);
+  });
+
+  it("複数カテゴリはそれぞれ別の行に集計する（同一キーへの誤集約を検出）", () => {
+    const txs = [
+      tx({ date: "2026-06-05", amount: 300, category_id: "c1", category: { name: "食費", color: "#f00" } }),
+      tx({ date: "2026-06-05", amount: 700, category_id: "c2", category: { name: "交通費", color: "#0f0" } }),
+    ];
+
+    const result = summarizeCategoryTrend(txs, ranges);
+
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.name).sort()).toEqual(["交通費", "食費"]);
+  });
+
+  it("category が null でもクラッシュせず未分類にフォールバックする", () => {
+    const txs = [
+      tx({ date: "2026-06-05", amount: 300, category_id: "c1", category: null }),
+    ];
+
+    const result = summarizeCategoryTrend(txs, ranges);
+
+    expect(result[0]).toMatchObject({ categoryId: "c1", name: "未分類" });
   });
 });

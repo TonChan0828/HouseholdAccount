@@ -68,4 +68,18 @@ describe("buildSavingsProgress", () => {
     expect(r.pace?.overdue).toBe(true);
     expect(r.remaining).toBe(220_000);
   });
+
+  it("目標額0円でもゼロ除算せず pct は0", () => {
+    const r = buildSavingsProgress({ ...base, targetAmount: 0 }, 1_000, today);
+    expect(r.pct).toBe(0);
+  });
+
+  it("期日がちょうど今日なら overdue=true（境界値）", () => {
+    const r = buildSavingsProgress(
+      { ...base, targetDate: "2026-06-29" }, // today と同日
+      80_000,
+      today,
+    );
+    expect(r.pace?.overdue).toBe(true);
+  });
 });
