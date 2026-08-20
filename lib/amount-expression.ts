@@ -16,7 +16,7 @@ function normalize(raw: string): string {
   for (const ch of raw) {
     if (ch === " " || ch === "\t" || ch === "　") continue;
     const mapped = FULLWIDTH_MAP[ch];
-    out += mapped ?? (ch === "×" ? "*" : ch === "÷" ? "/" : ch);
+    out += mapped ?? ch;
   }
   return out;
 }

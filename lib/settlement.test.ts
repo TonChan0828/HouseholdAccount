@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSettlement, settlementsEqual } from "./settlement";
+import {
+  buildSettlement,
+  settlementsEqual,
+  type SettlementResult,
+} from "./settlement";
 
 const members = [
   { user_id: "u-1", display_name: "太郎" },
@@ -90,6 +94,38 @@ describe("buildSettlement", () => {
     expect(result.transfers).toEqual([]);
     expect(result.rows[0].balance).toBe(0); // 3000 - 3000/1
   });
+
+  it("同一人物からの複数取引は合算される", () => {
+    const result = buildSettlement(
+      [tx(1000, "u-1"), tx(2000, "u-1"), tx(500, "u-2")],
+      members,
+    );
+
+    const taro = result.rows.find((r) => r.userId === "u-1");
+    expect(taro?.paid).toBe(3000);
+  });
+
+  it("債権者1人が複数の債務者からgreedyに回収する（複数ラウンド）", () => {
+    const three = [...members, { user_id: "u-3", display_name: "次郎" }];
+    const result = buildSettlement([tx(3000, "u-1")], three);
+
+    expect(result.rows).toEqual([
+      { userId: "u-1", displayName: "太郎", paid: 3000, balance: 2000 },
+      { userId: "u-2", displayName: "花子", paid: 0, balance: -1000 },
+      { userId: "u-3", displayName: "次郎", paid: 0, balance: -1000 },
+    ]);
+    expect(result.transfers).toEqual([
+      { fromUserId: "u-2", toUserId: "u-1", amount: 1000 },
+      { fromUserId: "u-3", toUserId: "u-1", amount: 1000 },
+    ]);
+  });
+
+  it("最大剰余法の端数配分は決定的である（同じ入力なら常に同じ結果）", () => {
+    const three = [...members, { user_id: "u-3", display_name: "次郎" }];
+    const result = buildSettlement([tx(100, "u-1")], three);
+
+    expect(result.rows.map((r) => r.balance)).toEqual([66, -33, -33]);
+  });
 });
 
 describe("settlementsEqual", () => {
@@ -117,5 +153,26 @@ describe("settlementsEqual", () => {
       members,
     );
     expect(settlementsEqual(base(), changed)).toBe(false);
+  });
+
+  it("rows の paid/balance が変わると false（displayName 以外の内訳変化を検出する）", () => {
+    const resultA: SettlementResult = {
+      total: 4000,
+      perMember: 2000,
+      rows: [
+        { userId: "u-1", displayName: "太郎", paid: 3000, balance: 1000 },
+        { userId: "u-2", displayName: "花子", paid: 1000, balance: -1000 },
+      ],
+      transfers: [{ fromUserId: "u-2", toUserId: "u-1", amount: 1000 }],
+    };
+    const resultB: SettlementResult = {
+      ...resultA,
+      rows: [
+        { userId: "u-1", displayName: "太郎", paid: 2500, balance: 500 },
+        { userId: "u-2", displayName: "花子", paid: 1500, balance: -500 },
+      ],
+    };
+
+    expect(settlementsEqual(resultA, resultB)).toBe(false);
   });
 });

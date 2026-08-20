@@ -4,6 +4,7 @@ import {
   formatPeriodLabel,
   getPeriodRange,
   localToday,
+  refFromParam,
   shiftPeriod,
   toISODate,
 } from "./period";
@@ -40,6 +41,31 @@ describe("getPeriodRange", () => {
     const { start, end } = getPeriodRange(utc(2024, 2, 10), 1);
     expect(toISODate(start)).toBe("2024-02-01");
     expect(toISODate(end)).toBe("2024-03-01");
+  });
+});
+
+describe("refFromParam", () => {
+  it("YYYY-MM-DD 形式の文字列をその日の UTC 真夜中として解釈する", () => {
+    expect(toISODate(refFromParam("2026-06-15"))).toBe("2026-06-15");
+  });
+
+  it("不正な形式の文字列は現在時刻へフォールバックする（Invalid Date にしない）", () => {
+    expect(Number.isNaN(refFromParam("invalid-date-string").getTime())).toBe(
+      false,
+    );
+  });
+
+  it("前後に余計な文字が付く場合はフォールバックする（アンカー境界）", () => {
+    expect(
+      Number.isNaN(refFromParam("2026-06-15suffix").getTime()),
+    ).toBe(false);
+    expect(
+      Number.isNaN(refFromParam("prefix2026-06-15").getTime()),
+    ).toBe(false);
+  });
+
+  it("未指定は現在時刻へフォールバックする", () => {
+    expect(Number.isNaN(refFromParam(undefined).getTime())).toBe(false);
   });
 });
 
