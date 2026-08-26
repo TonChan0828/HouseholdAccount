@@ -20,6 +20,9 @@ import { CATEGORY_COLORS } from "@/lib/validations/category";
 /** 取り込みの上限行数（過大ファイル対策）。 */
 const MAX_ROWS = 500;
 
+/** アップロードファイルのサイズ上限（過大ファイルによるメモリ消費対策）。 */
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
 /** 1シート分のプレビュー（シート名・推定対象月・分類結果）。 */
 export type SheetPreview = { sheet: string; month: string; result: ClassifyResult };
 
@@ -47,6 +50,9 @@ export async function parseImportFile(
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "ファイルを選択してください" };
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return { ok: false, error: "ファイルサイズが大きすぎます（5MB以内）" };
   }
   if (!file.name.toLowerCase().endsWith(".xlsx")) {
     return { ok: false, error: "Excel ファイル（.xlsx）を選択してください" };
