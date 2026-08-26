@@ -121,6 +121,7 @@ export function InvitationManager({
                   </span>
                   <form action={revokeAction}>
                     <input type="hidden" name="invitation_id" value={inv.id} />
+                    <input type="hidden" name="household_id" value={householdId} />
                     <Button type="submit" variant="ghost" size="sm">
                       失効
                     </Button>
@@ -132,6 +133,7 @@ export function InvitationManager({
                   className="mt-2 flex items-end gap-2"
                 >
                   <input type="hidden" name="invitation_id" value={inv.id} />
+                  <input type="hidden" name="household_id" value={householdId} />
                   <div className="space-y-1">
                     <Label htmlFor={`update-${inv.id}`} className="text-xs">
                       人数を変更

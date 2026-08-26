@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   ACTIVE_HOUSEHOLD_COOKIE,
+  isHouseholdOwner,
   setActiveHouseholdCookie,
 } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
@@ -141,7 +142,8 @@ export async function createInvitation(
 /** owner が発行済み招待リンクの人数上限を変更する。 */
 export async function updateInvitation(formData: FormData): Promise<void> {
   const invitationId = String(formData.get("invitation_id") ?? "");
-  if (!invitationId) {
+  const householdId = String(formData.get("household_id") ?? "");
+  if (!invitationId || !householdId) {
     return;
   }
 
@@ -153,7 +155,18 @@ export async function updateInvitation(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  // RLS の update ポリシーで owner 以外は弾かれる。
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return;
+  }
+
+  // 防御的に owner であることを確認する（RLS の update ポリシーでも owner 以外は 0 行）。
+  if (!(await isHouseholdOwner(supabase, householdId, user.id))) {
+    return;
+  }
+
   await supabase
     .from("household_invitations")
     .update({ max_uses: parsed.data.maxUses })
@@ -177,7 +190,18 @@ export async function setPeriodStartDay(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
-  // RLS の update ポリシーで owner 以外は弾かれる。
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return;
+  }
+
+  // 防御的に owner であることを確認する（RLS の update ポリシーでも owner 以外は 0 行）。
+  if (!(await isHouseholdOwner(supabase, householdId, user.id))) {
+    return;
+  }
+
   await supabase
     .from("households")
     .update({ period_start_day: parsed.data.periodStartDay })
@@ -190,12 +214,24 @@ export async function setPeriodStartDay(formData: FormData): Promise<void> {
 /** owner が招待リンクを失効（削除）する。 */
 export async function revokeInvitation(formData: FormData): Promise<void> {
   const invitationId = String(formData.get("invitation_id") ?? "");
-  if (!invitationId) {
+  const householdId = String(formData.get("household_id") ?? "");
+  if (!invitationId || !householdId) {
     return;
   }
 
   const supabase = await createClient();
-  // RLS の delete ポリシーで owner 以外は弾かれる。
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return;
+  }
+
+  // 防御的に owner であることを確認する（RLS の delete ポリシーでも owner 以外は 0 行）。
+  if (!(await isHouseholdOwner(supabase, householdId, user.id))) {
+    return;
+  }
+
   await supabase.from("household_invitations").delete().eq("id", invitationId);
 
   revalidatePath("/households");
@@ -328,8 +364,19 @@ export async function transferOwnership(formData: FormData): Promise<void> {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return;
+  }
+
+  // 防御的に owner であることを確認する（RPC 内でも owner 判定・後継者の所属確認を行う）。
+  if (!(await isHouseholdOwner(supabase, householdId, user.id))) {
+    return;
+  }
+
   // 複数行の更新を原子的に行うため SECURITY DEFINER の RPC を使う。
-  // owner 判定・後継者の所属確認は関数内で行う。
   await supabase.rpc("transfer_ownership", {
     _household_id: householdId,
     _new_owner: newOwnerId,
@@ -354,13 +401,7 @@ export async function deleteHousehold(formData: FormData): Promise<void> {
   }
 
   // 防御的に owner であることを確認する（RLS の delete ポリシーでも owner 以外は 0 行）。
-  const { data: membership } = await supabase
-    .from("household_members")
-    .select("role")
-    .eq("household_id", householdId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (membership?.role !== "owner") {
+  if (!(await isHouseholdOwner(supabase, householdId, user.id))) {
     return;
   }
 

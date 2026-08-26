@@ -4,16 +4,27 @@ import {
   getActiveHouseholdId,
   getCurrentUser,
   getHouseholdSettings,
+  isHouseholdOwner,
   requireDashboardContext,
   setActiveHouseholdCookie,
 } from "./household";
 
-type MemberRow = { user_id: string; household_id: string; joined_at: string };
+type MemberRow = {
+  user_id: string;
+  household_id: string;
+  joined_at: string;
+  role: "owner" | "member";
+};
 
 const state = vi.hoisted(() => ({
   cookieValue: undefined as string | undefined,
   user: null as { id: string } | null,
-  members: [] as { user_id: string; household_id: string; joined_at: string }[],
+  members: [] as {
+    user_id: string;
+    household_id: string;
+    joined_at: string;
+    role: "owner" | "member";
+  }[],
   households: [] as { id: string; period_start_day: number }[],
   setCalls: [] as { name: string; value: string; options: Record<string, unknown> }[],
 }));
@@ -77,9 +88,24 @@ beforeEach(() => {
   state.cookieValue = undefined;
   state.user = { id: "user-1" };
   state.members = [
-    { user_id: "user-1", household_id: "h-old", joined_at: "2026-01-01" },
-    { user_id: "user-1", household_id: "h-new", joined_at: "2026-06-01" },
-    { user_id: "user-2", household_id: "h-other", joined_at: "2026-03-01" },
+    {
+      user_id: "user-1",
+      household_id: "h-old",
+      joined_at: "2026-01-01",
+      role: "owner",
+    },
+    {
+      user_id: "user-1",
+      household_id: "h-new",
+      joined_at: "2026-06-01",
+      role: "member",
+    },
+    {
+      user_id: "user-2",
+      household_id: "h-other",
+      joined_at: "2026-03-01",
+      role: "owner",
+    },
   ];
   state.households = [
     { id: "h-old", period_start_day: 1 },
@@ -173,6 +199,26 @@ describe("requireDashboardContext", () => {
     await expect(requireDashboardContext()).rejects.toThrow(
       "NEXT_REDIRECT:/households",
     );
+  });
+});
+
+describe("isHouseholdOwner", () => {
+  it("owner の場合は true を返す", async () => {
+    const supabase = await (await import("@/lib/supabase/server")).createClient();
+
+    expect(await isHouseholdOwner(supabase, "h-old", "user-1")).toBe(true);
+  });
+
+  it("member（owner以外）の場合は false を返す", async () => {
+    const supabase = await (await import("@/lib/supabase/server")).createClient();
+
+    expect(await isHouseholdOwner(supabase, "h-new", "user-1")).toBe(false);
+  });
+
+  it("所属していないグループの場合は false を返す", async () => {
+    const supabase = await (await import("@/lib/supabase/server")).createClient();
+
+    expect(await isHouseholdOwner(supabase, "h-other", "user-1")).toBe(false);
   });
 });
 
