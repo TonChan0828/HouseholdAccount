@@ -69,6 +69,26 @@ export const getHouseholdSettings = cache(
   },
 );
 
+/**
+ * 指定ユーザーが指定グループの owner かどうかを判定する。
+ *
+ * RLS は認可の要（唯一の防壁）だが、Server Action 側でも呼び出し前に確認することで
+ * 多層防御にする（`deleteHousehold` 等と同じパターン）。
+ */
+export async function isHouseholdOwner(
+  supabase: ServerClient,
+  householdId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("household_members")
+    .select("role")
+    .eq("household_id", householdId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data?.role === "owner";
+}
+
 /** アクティブグループの Cookie を設定する（グループ作成・切り替え・招待参加時に使う）。 */
 export async function setActiveHouseholdCookie(householdId: string): Promise<void> {
   const cookieStore = await cookies();
