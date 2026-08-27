@@ -20,7 +20,7 @@
 
 ## 次にやること
 
-- 変更内容をコミットする
+- なし（コミット・PR作成まで完了。PR: https://github.com/TonChan0828/HouseholdAccount/pull/72）
 
 ## 未解決の課題
 
