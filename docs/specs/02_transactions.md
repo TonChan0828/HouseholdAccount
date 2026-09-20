@@ -9,7 +9,7 @@
 
 - ログイン済みかつアクティブな household を選択しているメンバーが対象
 - 収支の追加・閲覧は household の全メンバーが可能
-- 収支の編集・削除は **登録者本人（`created_by = auth.uid()`）のみ**
+- 収支の編集・削除は **入力者本人（`created_by`）と名義人（`on_behalf_of`）のみ**（spec 41 で名義人に拡張）
 - すべての取得・更新は `household_id` でスコープ（`lib/household.ts#getActiveHouseholdId`）。未選択なら `/households` へ誘導
 - 金額（`amount`）は円建てのため整数（小数なし）
 
@@ -112,7 +112,7 @@ households(... , period_start_day:int default 1 check 1..28)  -- 0008 で追加
 
 - `transactions` select: `is_household_member(household_id)`
 - `transactions` insert: メンバー かつ `created_by = auth.uid()`
-- `transactions` update/delete: `created_by = auth.uid()` のみ
+- `transactions` update/delete: `created_by = auth.uid() or on_behalf_of = auth.uid()`（spec 41 / 0024）
 - `households` update（period_start_day の変更）: owner のみ
 
 ### クエリ / Server Action
@@ -127,7 +127,7 @@ supabase.from("transactions")
   .order("created_at", { ascending: false });
 
 // actions
-createTransaction(formData)   // household_id + created_by を付与して insert
+createTransaction(formData)   // household_id + created_by（+ 名義人 on_behalf_of。spec 41）を付与して insert
 updateTransaction(formData)   // 本人の行のみ（RLS）
 deleteTransaction(formData)   // 本人の行のみ（RLS）
 setPeriodStartDay(formData)   // owner のみ。households.period_start_day を更新

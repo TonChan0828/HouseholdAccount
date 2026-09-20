@@ -207,7 +207,7 @@ export function FilterBar({
 
         {members.length > 1 ? (
           <select
-            aria-label="メンバー"
+            aria-label="メンバー（名義人）"
             value={filter.createdBy ?? ""}
             onChange={(e) => applyNow({ member: e.target.value })}
             className={selectClass}

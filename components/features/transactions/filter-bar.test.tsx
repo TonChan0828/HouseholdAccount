@@ -100,7 +100,7 @@ describe("FilterBar", () => {
       <FilterBar filter={{}} categories={categories} members={members} />,
     );
 
-    fireEvent.change(screen.getByLabelText("メンバー"), {
+    fireEvent.change(screen.getByLabelText("メンバー（名義人）"), {
       target: { value: members[1].user_id },
     });
 
@@ -116,7 +116,7 @@ describe("FilterBar", () => {
       />,
     );
 
-    expect(screen.queryByLabelText("メンバー")).toBeNull();
+    expect(screen.queryByLabelText("メンバー（名義人）")).toBeNull();
   });
 
   it("メモ検索は 300ms デバウンスして q クエリを更新する", () => {

@@ -118,6 +118,8 @@ export function createSeedState(): DemoState {
         ? (categoryIdByName.get(t.categoryName) ?? null)
         : null,
       memo: t.memo,
+      // デモモードは代理入力（spec 41）の対象外。
+      on_behalf_of: null,
       recurring_id: null,
       is_shared: false,
     };

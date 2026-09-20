@@ -23,6 +23,31 @@ const tx = (
 });
 
 describe("buildSettlement", () => {
+  it("代理入力の支出は名義人が支払ったものとして扱う（spec 41）", () => {
+    // 太郎が花子の代理で 3000 円の精算対象支出を入力した
+    const result = buildSettlement(
+      [{ amount: 3000, created_by: "u-1", on_behalf_of: "u-2", type: "expense", is_shared: true }],
+      members,
+    );
+
+    expect(result.rows).toEqual([
+      { userId: "u-1", displayName: "太郎", paid: 0, balance: -1500 },
+      { userId: "u-2", displayName: "花子", paid: 3000, balance: 1500 },
+    ]);
+    expect(result.transfers).toEqual([
+      { fromUserId: "u-1", toUserId: "u-2", amount: 1500 },
+    ]);
+  });
+
+  it("名義人が非メンバー（脱退者）なら対象外", () => {
+    const result = buildSettlement(
+      [{ amount: 3000, created_by: "u-1", on_behalf_of: "gone", type: "expense", is_shared: true }],
+      members,
+    );
+
+    expect(result.total).toBe(0);
+  });
+
   it("2人の立替を均等割りし、差額と送金案を返す", () => {
     const result = buildSettlement([tx(3000, "u-1"), tx(1000, "u-2")], members);
 

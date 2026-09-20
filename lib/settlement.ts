@@ -1,10 +1,10 @@
 import type { MemberInfo } from "@/lib/members";
+import { attributedTo, type Attributable } from "@/lib/transactions/attribution";
 
 /** 精算計算に使う取引の最小形（fetchTransactionsInRange の行と構造互換）。 */
-export type SettlementTx = {
+export type SettlementTx = Attributable & {
   amount: number;
   type: "income" | "expense";
-  created_by: string;
   is_shared: boolean;
 };
 
@@ -31,8 +31,8 @@ export type SettlementResult = {
 /**
  * 当期の精算対象支出を全メンバーで均等割りする（spec 37）。
  *
- * - 対象は `is_shared = true` かつ `type = "expense"`、登録者が現メンバーの取引のみ
- *   （脱退者の取引は対象外。spec 07 と同じ扱い）
+ * - 対象は `is_shared = true` かつ `type = "expense"`、帰属ユーザー（名義人。spec 41）が
+ *   現メンバーの取引のみ（脱退者の取引は対象外。spec 07 と同じ扱い）
  * - balance は最大剰余法で整数円に丸め、全員の合計が必ず 0 になることを保証する
  * - 送金案は greedy（最大の債務者 → 最大の債権者）で最大 N−1 件に圧縮する
  */
@@ -43,8 +43,9 @@ export function buildSettlement(
   const paidBy = new Map(members.map((m) => [m.user_id, 0]));
   for (const t of txs) {
     if (t.type !== "expense" || !t.is_shared) continue;
-    if (!paidBy.has(t.created_by)) continue;
-    paidBy.set(t.created_by, (paidBy.get(t.created_by) ?? 0) + t.amount);
+    const payer = attributedTo(t);
+    if (!paidBy.has(payer)) continue;
+    paidBy.set(payer, (paidBy.get(payer) ?? 0) + t.amount);
   }
 
   const total = [...paidBy.values()].reduce((s, v) => s + v, 0);

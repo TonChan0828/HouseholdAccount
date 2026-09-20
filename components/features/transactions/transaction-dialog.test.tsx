@@ -28,6 +28,13 @@ const categories: CategoryOption[] = [
   { id: "c-2", name: "給与", color: "#10b981", type: "income" },
 ];
 
+const TARO = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const HANAKO = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const members = [
+  { user_id: TARO, display_name: "太郎" },
+  { user_id: HANAKO, display_name: "花子" },
+];
+
 const transaction: DialogTransaction = {
   id: "t-1",
   type: "expense",
@@ -35,17 +42,25 @@ const transaction: DialogTransaction = {
   date: "2026-06-13",
   category_id: "c-1",
   memo: "ランチ",
+  created_by: TARO,
+  on_behalf_of: null,
   is_shared: false,
 };
 
 function renderWithProvider(
   children: React.ReactNode,
   otherHouseholds: { id: string; name: string }[] = [],
+  options: {
+    members?: { user_id: string; display_name: string }[];
+    currentUserId?: string;
+  } = {},
 ) {
   return render(
     <TransactionDialogProvider
       categories={categories}
       otherHouseholds={otherHouseholds}
+      members={options.members ?? []}
+      currentUserId={options.currentUserId ?? TARO}
     >
       {children}
     </TransactionDialogProvider>,
@@ -254,5 +269,43 @@ describe("TransactionDialogProvider", () => {
 
     expect(screen.getAllByTestId("transaction-dialog")).toHaveLength(1);
     expect(screen.getByLabelText("メモ")).toHaveValue("夕食");
+  });
+});
+
+describe("TransactionDialogProvider の名義人（spec 41）", () => {
+  it("メンバーが2人以上なら追加ダイアログに名義人セレクトを出す", async () => {
+    const user = userEvent.setup();
+    renderWithProvider(<NewTransactionButton />, [], {
+      members,
+      currentUserId: TARO,
+    });
+
+    await user.click(screen.getByRole("button", { name: "収支を追加" }));
+
+    expect(screen.getByLabelText("名義人")).toHaveValue(TARO);
+  });
+
+  it("編集ダイアログには現在の名義人がプリフィルされる", async () => {
+    const user = userEvent.setup();
+    renderWithProvider(
+      <EditTransactionButton
+        transaction={{ ...transaction, on_behalf_of: HANAKO }}
+      />,
+      [],
+      { members, currentUserId: TARO },
+    );
+
+    await user.click(screen.getByRole("button", { name: "編集" }));
+
+    expect(screen.getByLabelText("名義人")).toHaveValue(HANAKO);
+  });
+
+  it("メンバーが渡されなければ名義人セレクトを出さない", async () => {
+    const user = userEvent.setup();
+    renderWithProvider(<NewTransactionButton />);
+
+    await user.click(screen.getByRole("button", { name: "収支を追加" }));
+
+    expect(screen.queryByLabelText("名義人")).not.toBeInTheDocument();
   });
 });

@@ -140,6 +140,7 @@ docs/specs/
   38_category_reminder.md # カテゴリ別登録漏れリマインダー（通知ONのカテゴリが当期残り3日以内で0件ならダッシュボードに列挙表示）
   39_architecture_hardening.md # RLS・データ整合性・Cron・障害処理・CIの強化
   40_transaction_modal_editing.md # 収支のモーダル編集・追加（一覧/カレンダー/ダッシュボードから遷移せず編集）
+  41_transaction_on_behalf_of.md # 収支の代理入力（名義人を選んで他メンバーの記録として登録・集計）
 ```
 
 ### Rule 3 — セッションログ（セッション開始時に必須）

@@ -6,11 +6,11 @@
  */
 
 import type { MemberInfo } from "@/lib/members";
+import { attributedTo, type Attributable } from "@/lib/transactions/attribution";
 
-export type MatrixTx = {
+export type MatrixTx = Attributable & {
   amount: number;
   type: "income" | "expense";
-  created_by: string;
   category_id: string | null;
   category: { name: string; color: string | null } | null;
 };
@@ -43,6 +43,7 @@ const UNCATEGORIZED_COLOR = "#999";
 /**
  * 取引をカテゴリ×メンバーへ集計する。members の並び順を列順として維持し、
  * members にいないユーザー（脱退者など）の取引は無視する。
+ * 列の振り分けは入力者ではなく帰属ユーザー（名義人。spec 41）で行う。
  * セクションの振り分けは取引の type で行う（both 型カテゴリは両方に現れ得る）。
  */
 export function buildCategoryMemberMatrix(
@@ -58,7 +59,7 @@ export function buildCategoryMemberMatrix(
 
     for (const t of txs) {
       if (t.type !== type) continue;
-      const index = memberIndex.get(t.created_by);
+      const index = memberIndex.get(attributedTo(t));
       if (index === undefined) continue;
 
       const key = t.category_id ?? "__none__";

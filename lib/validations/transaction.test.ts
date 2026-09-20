@@ -187,3 +187,41 @@ describe("recurringTransactionSchema", () => {
     ).toBe(false);
   });
 });
+
+describe("on_behalf_of（名義人・spec 41）", () => {
+  const UUID = "22222222-2222-4222-8222-222222222222";
+
+  it("UUID を受け付ける", () => {
+    const result = transactionSchema.safeParse({ ...valid, on_behalf_of: UUID });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.on_behalf_of).toBe(UUID);
+    }
+  });
+
+  it("未指定・空文字は undefined にする", () => {
+    expect(transactionSchema.parse(valid).on_behalf_of).toBeUndefined();
+    expect(
+      transactionSchema.parse({ ...valid, on_behalf_of: "" }).on_behalf_of,
+    ).toBeUndefined();
+  });
+
+  it("UUID でない値を拒否する", () => {
+    const result = transactionSchema.safeParse({
+      ...valid,
+      on_behalf_of: "not-a-uuid",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe("名義人が不正です");
+    }
+  });
+
+  it("recurringTransactionSchema には引き継がれない（定期収支は対象外）", () => {
+    const parsed = recurringTransactionSchema.parse({
+      ...validRecurring,
+      on_behalf_of: UUID,
+    });
+    expect("on_behalf_of" in parsed).toBe(false);
+  });
+});

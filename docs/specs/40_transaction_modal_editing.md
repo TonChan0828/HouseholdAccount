@@ -14,7 +14,7 @@
 ## 対象ユーザー・前提条件
 
 - 家計簿グループに所属する認証済みユーザー
-- 編集できるのは自分が登録した収支のみ（既存仕様どおり `created_by = auth.uid()`）
+- 編集できるのは入力者本人と名義人の収支のみ（`created_by = auth.uid() or on_behalf_of = auth.uid()`。spec 41 で名義人に拡張）
 - JavaScript 無効時・ディープリンク用に `/transactions/[id]/edit` ページは従来どおり残す
 
 ## 画面・UI

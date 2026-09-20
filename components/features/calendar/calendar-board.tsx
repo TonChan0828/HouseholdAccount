@@ -11,6 +11,10 @@ import { CardContent } from "@/components/ui/card";
 import type { CalendarDay } from "@/lib/calendar";
 import { compactAmount, formatDayLabel } from "@/lib/format";
 import { localToday } from "@/lib/period";
+import {
+  canEditTransaction,
+  proxyLabel,
+} from "@/lib/transactions/attribution";
 import { cn } from "@/lib/utils";
 
 export type CalendarTx = {
@@ -22,6 +26,8 @@ export type CalendarTx = {
   category: { name: string; color: string | null } | null;
   category_id: string | null;
   created_by: string;
+  /** 名義人（代理入力。spec 41）。null なら入力者本人が名義人。 */
+  on_behalf_of: string | null;
   is_shared: boolean;
 };
 
@@ -29,8 +35,10 @@ type Props = {
   weeks: CalendarDay[][];
   transactionsByDate: Record<string, CalendarTx[]>;
   initialSelected: string;
-  /** ログイン中ユーザー。自分が登録した明細だけ編集ダイアログを開けるようにする。 */
+  /** ログイン中ユーザー。入力者か名義人の明細だけ編集ダイアログを開けるようにする。 */
   currentUserId?: string;
+  /** user_id → 表示名。代理入力（spec 41）の補助ラベルに使う。 */
+  memberNames?: Record<string, string>;
   /** サイドレール上部に置く内容（当月サマリー等）。lg 未満ではグリッドの上に出る。 */
   side?: ReactNode;
 };
@@ -58,8 +66,11 @@ export function CalendarBoard({
   transactionsByDate,
   initialSelected,
   currentUserId,
+  memberNames,
   side,
 }: Props) {
+  // 代理入力（spec 41）の補助ラベル用。
+  const nameById = new Map(Object.entries(memberNames ?? {}));
   // ユーザーが明示的に選択した日。未操作の間は「今日 or 初期値」を導出する。
   const [userSelected, setUserSelected] = useState<string | null>(null);
   // 「今日」はブラウザのローカル日付基準。サーバ描画時に確定するとローカルと
@@ -174,7 +185,17 @@ export function CalendarBoard({
                     />
                     <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0 space-y-0.5">
-                        <CategoryBadge category={t.category} />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CategoryBadge category={t.category} />
+                          {proxyLabel(t, nameById) ? (
+                            <span
+                              data-testid="proxy-badge"
+                              className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                            >
+                              {proxyLabel(t, nameById)}
+                            </span>
+                          ) : null}
+                        </div>
                         {t.memo ? (
                           <p className="truncate text-xs text-muted-foreground">
                             {t.memo}
@@ -187,8 +208,9 @@ export function CalendarBoard({
                 </Surface>
               );
 
-              // 編集できるのは自分が登録した収支のみ。行そのものをタップ領域にする。
-              const editable = currentUserId !== undefined && t.created_by === currentUserId;
+              // 編集できるのは入力者本人と名義人（spec 41）。行そのものをタップ領域にする。
+              const editable =
+                currentUserId !== undefined && canEditTransaction(t, currentUserId);
 
               return (
                 <li key={t.id}>
@@ -201,6 +223,8 @@ export function CalendarBoard({
                         date: t.date,
                         category_id: t.category_id,
                         memo: t.memo,
+                        created_by: t.created_by,
+                        on_behalf_of: t.on_behalf_of,
                         is_shared: t.is_shared,
                       }}
                     >

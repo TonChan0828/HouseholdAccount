@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { evaluateExpression } from "@/lib/amount-expression";
 import { yen } from "@/lib/format";
+import type { MemberInfo } from "@/lib/members";
 import { localToday } from "@/lib/period";
 import type { CategoryOption } from "@/lib/queries/categories";
 import type { ParsedReceipt } from "@/lib/receipt/parse-receipt";
@@ -41,6 +42,10 @@ type Props = {
   showReceiptScan?: boolean;
   /** 反映先候補（反映元を除く自分の所属グループ）。渡すと「他のグループにも反映」UI を表示 */
   otherHouseholds?: { id: string; name: string }[];
+  /** グループの全メンバー。2人以上のときだけ名義人セレクトを表示する（spec 41） */
+  members?: MemberInfo[];
+  /** ログイン中ユーザー。名義人セレクトの既定値に使う */
+  currentUserId?: string;
   defaultValues?: {
     id?: string;
     type?: TransactionType;
@@ -48,6 +53,7 @@ type Props = {
     date?: string;
     category_id?: string | null;
     memo?: string | null;
+    on_behalf_of?: string | null;
     is_shared?: boolean;
   };
 };
@@ -61,6 +67,8 @@ export function TransactionForm({
   onSuccess,
   showReceiptScan = true,
   otherHouseholds,
+  members,
+  currentUserId,
   defaultValues,
 }: Props) {
   const [state, formAction, pending] = useActionState<
@@ -76,6 +84,10 @@ export function TransactionForm({
   );
   // 反映先グループの選択（チェックされた household_id 群）。
   const [reflectIds, setReflectIds] = useState<string[]>([]);
+  // 名義人（代理入力。spec 41）。既定は自分で、他メンバーを選ぶと代理入力になる。
+  const [onBehalfOf, setOnBehalfOf] = useState<string>(
+    defaultValues?.on_behalf_of ?? currentUserId ?? "",
+  );
   // 精算対象（割り勘）。支出のときのみ UI を表示・送信する。
   const [isShared, setIsShared] = useState<boolean>(
     defaultValues?.is_shared ?? false,
@@ -99,6 +111,7 @@ export function TransactionForm({
   const continueSubmit = useRef(false);
   // 成功のたびに、「登録して続ける」なら金額・メモ・カテゴリをクリアし金額欄へフォーカス、
   // そうでなければ onSuccess（ダイアログを閉じる）を呼ぶ。日付・種別は維持する。
+  // 名義人も維持する（他人の分をまとめて入力するのが代理入力の主用途のため。spec 41）。
   useEffect(() => {
     if (!state || !("ok" in state)) return;
     if (lastOkKey.current === state.key) return;
@@ -339,6 +352,30 @@ export function TransactionForm({
           className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />
       </div>
+
+      {members && members.length > 1 && currentUserId ? (
+        <div className="space-y-2">
+          <Label htmlFor="on_behalf_of">名義人</Label>
+          <select
+            id="on_behalf_of"
+            name="on_behalf_of"
+            value={onBehalfOf}
+            onChange={(e) => setOnBehalfOf(e.target.value)}
+            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {members.map((m) => (
+              <option key={m.user_id} value={m.user_id}>
+                {m.user_id === currentUserId
+                  ? `${m.display_name}（自分）`
+                  : m.display_name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            この収支を誰の記録として集計するかを選べます。自分以外を選ぶと代理入力になります。
+          </p>
+        </div>
+      ) : null}
 
       {type === "expense" ? (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">

@@ -21,6 +21,18 @@ const members: MemberInfo[] = [
 ];
 
 describe("buildCategoryMemberMatrix", () => {
+  it("代理入力は名義人の列に集計する（spec 41）", () => {
+    const txs = [
+      tx({ created_by: "user-1", on_behalf_of: "user-2", amount: 1200 }),
+      tx({ created_by: "user-1", amount: 800 }),
+    ];
+
+    const matrix = buildCategoryMemberMatrix(txs, members);
+
+    expect(matrix.expense.memberTotals).toEqual([800, 1200]);
+    expect(matrix.expense.rows[0].cells).toEqual([800, 1200]);
+  });
+
   it("支出・収入をセクション別にカテゴリ行×メンバーセルへ集計する", () => {
     const txs = [
       tx({ created_by: "user-1", amount: 40000 }),

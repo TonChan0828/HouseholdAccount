@@ -18,6 +18,9 @@
 
 - `transactions` / `recurring_transactions` の UPDATE・DELETE は、登録者本人かつ
   対象グループの現メンバーだけを許可する。
+  - `transactions` は spec 41（0024）で名義人（`on_behalf_of`）にも許可を広げた。
+    条件を OR に緩めた副作用で入力者を詐称できるようになるため、BEFORE UPDATE トリガー
+    `private.freeze_transaction_identity()` で `created_by` と `household_id` を不変にしている。
 - `transactions` / `recurring_transactions` / `budgets` のカテゴリは、行と同じ
   `household_id` のカテゴリだけを参照できる複合外部キーで保証する。
 - 既存の異常なカテゴリ参照は、取引・定期収支では NULL、予算では行削除に正規化する。

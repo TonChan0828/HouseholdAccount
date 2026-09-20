@@ -13,6 +13,10 @@ const state = vi.hoisted(() => ({
   user: null as { id: string } | null,
   householdId: null as string | null,
   matchedRows: [] as { id: string }[],
+  existingRow: null as
+    | { created_by: string; on_behalf_of: string | null }
+    | null,
+  members: [] as { user_id: string; display_name: string }[],
   calls: [] as {
     table: string;
     method: string;
@@ -50,6 +54,10 @@ vi.mock("@/lib/household", () => ({
   },
 }));
 
+vi.mock("@/lib/queries/members", () => ({
+  getHouseholdMemberNames: async () => state.members,
+}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: {
@@ -80,7 +88,10 @@ vi.mock("@/lib/supabase/server", () => ({
           return query;
         },
         select() {
-          return resolve();
+          return query;
+        },
+        maybeSingle() {
+          return Promise.resolve({ data: state.existingRow, error: null });
         },
         then(
           onFulfilled: (value: unknown) => unknown,
@@ -93,6 +104,9 @@ vi.mock("@/lib/supabase/server", () => ({
     },
   }),
 }));
+
+/** グループの別メンバー（名義人テスト用）。 */
+const HANAKO = "22222222-2222-4222-8222-222222222222";
 
 function createFormData(overrides: Record<string, string> = {}) {
   const formData = new FormData();
@@ -125,6 +139,11 @@ beforeEach(() => {
   state.user = { id: "user-1" };
   state.householdId = "h-1";
   state.matchedRows = [{ id: "t-1" }];
+  state.existingRow = { created_by: "user-1", on_behalf_of: null };
+  state.members = [
+    { user_id: "user-1", display_name: "太郎" },
+    { user_id: HANAKO, display_name: "花子" },
+  ];
   state.calls = [];
   vi.clearAllMocks();
 });
@@ -291,5 +310,87 @@ describe("deleteTransaction", () => {
     const del = state.calls.find((c) => c.method === "delete");
     expect(del?.table).toBe("transactions");
     expect(del?.filters).toEqual({ id: "t-1", household_id: "h-1" });
+  });
+});
+
+describe("代理入力（名義人・spec 41）", () => {
+  it("名義人を指定すると on_behalf_of を付けて登録する", async () => {
+    await expect(
+      createTransaction(undefined, createFormData({ on_behalf_of: HANAKO })),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    const insert = state.calls.find((c) => c.method === "insert");
+    expect(insert?.values).toMatchObject({
+      created_by: "user-1",
+      on_behalf_of: HANAKO,
+    });
+  });
+
+  it("名義人が自分・未指定なら on_behalf_of は null にする", async () => {
+    await expect(
+      createTransaction(undefined, createFormData({ on_behalf_of: "" })),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    expect(
+      state.calls.find((c) => c.method === "insert")?.values,
+    ).toMatchObject({ on_behalf_of: null });
+  });
+
+  it("グループのメンバーでない名義人は拒否して登録しない", async () => {
+    const outsider = "99999999-9999-4999-8999-999999999999";
+
+    const result = await createTransaction(
+      undefined,
+      createFormData({ on_behalf_of: outsider }),
+    );
+
+    expect(result).toEqual({
+      error: "名義人はグループのメンバーから選んでください",
+    });
+    expect(state.calls.find((c) => c.method === "insert")).toBeUndefined();
+  });
+
+  it("名義人本人が編集しても名義は外れない（入力者基準で正規化する）", async () => {
+    // 太郎が花子名義で入力した収支を、花子自身が編集するケース。
+    state.user = { id: HANAKO };
+    state.existingRow = { created_by: "user-1", on_behalf_of: HANAKO };
+
+    await expect(
+      updateTransaction(undefined, updateFormData({ on_behalf_of: HANAKO })),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    expect(
+      state.calls.find((c) => c.method === "update")?.values,
+    ).toMatchObject({ on_behalf_of: HANAKO });
+  });
+
+  it("入力者でも名義人でもなければ編集できない", async () => {
+    state.user = { id: "user-9" };
+    state.existingRow = { created_by: "user-1", on_behalf_of: HANAKO };
+
+    const result = await updateTransaction(undefined, updateFormData());
+
+    expect(result).toEqual({ error: "対象の収支が見つかりません" });
+    expect(state.calls.find((c) => c.method === "update")).toBeUndefined();
+  });
+
+  it("編集で名義人を付け替えられる", async () => {
+    await expect(
+      updateTransaction(undefined, updateFormData({ on_behalf_of: HANAKO })),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    expect(
+      state.calls.find((c) => c.method === "update")?.values,
+    ).toMatchObject({ on_behalf_of: HANAKO });
+  });
+
+  it("編集で名義人を解除できる", async () => {
+    await expect(
+      updateTransaction(undefined, updateFormData({ on_behalf_of: "" })),
+    ).rejects.toThrow("NEXT_REDIRECT:/transactions");
+
+    expect(
+      state.calls.find((c) => c.method === "update")?.values,
+    ).toMatchObject({ on_behalf_of: null });
   });
 });

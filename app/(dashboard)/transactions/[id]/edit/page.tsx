@@ -15,6 +15,8 @@ import {
   getUserHouseholds,
   requireDashboardContext,
 } from "@/lib/household";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { canEditTransaction } from "@/lib/transactions/attribution";
 import type { Category } from "@/types";
 
 export default async function EditTransactionPage({
@@ -32,8 +34,8 @@ export default async function EditTransactionPage({
     .eq("id", id)
     .maybeSingle();
 
-  // 存在しない、または登録者本人でなければ一覧へ戻す（編集は本人のみ）。
-  if (!transaction || transaction.created_by !== user.id) {
+  // 存在しない、または入力者本人でも名義人でもなければ一覧へ戻す（spec 41。RLS と同条件）。
+  if (!transaction || !canEditTransaction(transaction, user.id)) {
     notFound();
   }
 
@@ -49,6 +51,9 @@ export default async function EditTransactionPage({
   const otherHouseholds = (await getUserHouseholds()).filter(
     (h) => h.id !== householdId,
   );
+
+  // 名義人セレクト（代理入力。spec 41）の選択肢。
+  const members = await getHouseholdMemberNames(householdId);
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
@@ -66,6 +71,8 @@ export default async function EditTransactionPage({
             action={updateTransaction}
             categories={categories}
             submitLabel="更新する"
+            members={members}
+            currentUserId={user.id}
             defaultValues={{
               id: transaction.id,
               type: transaction.type,
@@ -73,6 +80,7 @@ export default async function EditTransactionPage({
               date: transaction.date,
               category_id: transaction.category_id,
               memo: transaction.memo,
+              on_behalf_of: transaction.on_behalf_of,
               is_shared: transaction.is_shared,
             }}
           />

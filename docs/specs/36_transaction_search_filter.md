@@ -52,7 +52,7 @@ type TransactionSearchParams = {
   ref?: string;      // 既存: 期間基準日
   type?: string;     // "income" | "expense"
   category?: string; // category_id (UUID)
-  member?: string;   // created_by の user_id (UUID)
+  member?: string;   // 帰属ユーザー（名義人。spec 41）の user_id (UUID)
   q?: string;        // メモの部分一致キーワード
   min?: string;      // 金額下限（円・整数）
   max?: string;      // 金額上限（円・整数）
@@ -106,7 +106,8 @@ export async function fetchTransactionsInRange(
 // filter の各項目を指定時のみチェーンする:
 //   type      → .eq("type", filter.type)
 //   categoryId→ .eq("category_id", filter.categoryId)
-//   createdBy → .eq("created_by", filter.createdBy)
+//   createdBy → .or("on_behalf_of.eq.X,and(on_behalf_of.is.null,created_by.eq.X)")
+//                （帰属ユーザー = coalesce(on_behalf_of, created_by)。spec 41）
 //   memoQuery → .ilike("memo", `%${escapeLike(filter.memoQuery)}%`)
 //   minAmount → .gte("amount", filter.minAmount)
 //   maxAmount → .lte("amount", filter.maxAmount)

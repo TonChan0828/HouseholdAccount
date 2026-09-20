@@ -27,6 +27,12 @@ export const transactionSchema = z.object({
     .string()
     .max(200, "メモは200文字以内で入力してください")
     .optional(),
+  // 名義人（代理入力。spec 41）。未選択・自分は空文字で送られてくるため undefined に
+  // 正規化する。実際に誰を名義人にするかの所属検証は Server Action 側で行う。
+  on_behalf_of: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.string().uuid("名義人が不正です").optional(),
+  ),
   // 精算対象（割り勘）。チェックボックス由来（"on"/"true"/未指定）を boolean に
   // 正規化する。未指定・その他の値は false（既定で対象外）。
   is_shared: z.preprocess(
@@ -39,11 +45,12 @@ export type TransactionInput = z.infer<typeof transactionSchema>;
 
 /**
  * 定期収支（recurring）の入力スキーマ。
- * 収支スキーマから日付を除き、有効/無効フラグ（is_active）を加えたもの。
+ * 収支スキーマから日付と名義人を除き、有効/無効フラグ（is_active）を加えたもの。
  * 登録日は household の period_start_day に従うため date は持たない。
+ * 代理入力（spec 41）は通常の収支のみが対象のため on_behalf_of も除く。
  */
 export const recurringTransactionSchema = transactionSchema
-  .omit({ date: true })
+  .omit({ date: true, on_behalf_of: true })
   .extend({
     // チェックボックス/hidden から "true"/"false"/"on" などで送られるため真偽値へ正規化する。
     // 未指定は既定で有効にする。

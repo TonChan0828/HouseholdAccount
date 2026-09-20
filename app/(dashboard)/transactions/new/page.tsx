@@ -10,6 +10,7 @@ import {
   getUserHouseholds,
   requireDashboardContext,
 } from "@/lib/household";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
 import type { Category } from "@/types";
 
 export default async function NewTransactionPage({
@@ -21,7 +22,7 @@ export default async function NewTransactionPage({
   // ダッシュボード等から表示中の期間を引き継ぐ。不正値は無視してフォーム側の既定（今日）に委ねる。
   const defaultDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
 
-  const { householdId, supabase } = await requireDashboardContext();
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const { data } = await supabase
     .from("categories")
@@ -35,6 +36,9 @@ export default async function NewTransactionPage({
   const otherHouseholds = (await getUserHouseholds()).filter(
     (h) => h.id !== householdId,
   );
+
+  // 名義人セレクト（代理入力。spec 41）の選択肢。
+  const members = await getHouseholdMemberNames(householdId);
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
@@ -54,6 +58,8 @@ export default async function NewTransactionPage({
             submitLabel="登録する"
             enableContinue
             otherHouseholds={otherHouseholds}
+            members={members}
+            currentUserId={user.id}
             defaultValues={defaultDate ? { date: defaultDate } : undefined}
           />
         </CardContent>

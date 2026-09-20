@@ -44,6 +44,10 @@ function makeClient() {
       state.captured.filters[`ilike:${column}`] = pattern;
       return query;
     },
+    or: (filters: string) => {
+      state.captured.filters["or"] = filters;
+      return query;
+    },
     order: (column: string, opts?: { ascending?: boolean }) => {
       state.captured.orders.push({
         column,
@@ -82,6 +86,8 @@ const range = {
   start: new Date("2026-07-01T00:00:00Z"),
   end: new Date("2026-08-01T00:00:00Z"),
 };
+
+const MEMBER_ID = "22222222-2222-4222-8222-222222222222";
 
 describe("fetchTransactionsInRange", () => {
   it("household_id と [start, end) でスコープする", async () => {
@@ -126,7 +132,7 @@ describe("fetchTransactionsInRange", () => {
       filter: {
         type: "expense",
         categoryId: "cat-1",
-        createdBy: "user-1",
+        createdBy: MEMBER_ID,
         minAmount: 100,
         maxAmount: 5000,
       },
@@ -138,10 +144,30 @@ describe("fetchTransactionsInRange", () => {
       "lt:date": "2026-08-01",
       "eq:type": "expense",
       "eq:category_id": "cat-1",
-      "eq:created_by": "user-1",
+      or: `on_behalf_of.eq.${MEMBER_ID},and(on_behalf_of.is.null,created_by.eq.${MEMBER_ID})`,
       "gte:amount": 100,
       "lte:amount": 5000,
     });
+  });
+
+  it("メンバー絞り込みは名義人基準の or 句にする（spec 41）", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await fetchTransactionsInRange(makeClient() as any, "h-1", range, {
+      filter: { createdBy: MEMBER_ID },
+    });
+
+    // coalesce(on_behalf_of, created_by) = MEMBER_ID 相当。created_by の完全一致では絞らない。
+    expect(state.captured.filters["or"]).toBe(
+      `on_behalf_of.eq.${MEMBER_ID},and(on_behalf_of.is.null,created_by.eq.${MEMBER_ID})`,
+    );
+    expect(state.captured.filters["eq:created_by"]).toBeUndefined();
+  });
+
+  it("select に on_behalf_of を含める（spec 41）", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await fetchTransactionsInRange(makeClient() as any, "h-1", range);
+
+    expect(state.captured.select).toContain("on_behalf_of");
   });
 
   it("memoQuery は LIKE 特殊文字をエスケープして部分一致検索する", async () => {

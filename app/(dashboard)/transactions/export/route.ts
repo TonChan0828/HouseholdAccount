@@ -8,6 +8,7 @@ import {
 } from "@/lib/household";
 import { getPeriodRange, toISODate } from "@/lib/period";
 import { createClient } from "@/lib/supabase/server";
+import { attributedTo } from "@/lib/transactions/attribution";
 
 type TransactionRow = {
   amount: number;
@@ -15,6 +16,7 @@ type TransactionRow = {
   date: string;
   memo: string | null;
   created_by: string;
+  on_behalf_of: string | null;
   category: { name: string } | null;
 };
 
@@ -51,7 +53,9 @@ export async function GET(request: NextRequest) {
 
   const { data } = await supabase
     .from("transactions")
-    .select("amount, type, date, memo, created_by, category:categories(name)")
+    .select(
+      "amount, type, date, memo, created_by, on_behalf_of, category:categories(name)",
+    )
     .eq("household_id", householdId)
     .gte("date", isoStart)
     .lt("date", isoEnd)
@@ -60,7 +64,7 @@ export async function GET(request: NextRequest) {
     .overrideTypes<TransactionRow[]>();
   const transactions = data ?? [];
 
-  // created_by → display_name のマップを作る（dashboard と同じ2段 join パターン）。
+  // user_id → display_name のマップを作る（dashboard と同じ2段 join パターン）。
   // グループ毎の名前（household_members.display_name）優先・未設定はグローバル名へ。
   const { data: memberRows } = await supabase
     .from("household_members")
@@ -88,7 +92,8 @@ export async function GET(request: NextRequest) {
     categoryName: t.category?.name ?? null,
     amount: t.amount,
     memo: t.memo,
-    memberName: nameById.get(t.created_by) ?? null,
+    // 「登録者」は帰属ユーザー（名義人。spec 41）。代理入力は名義人の名前で出す。
+    memberName: nameById.get(attributedTo(t)) ?? null,
   }));
 
   const csv = toTransactionsCsv(rows);

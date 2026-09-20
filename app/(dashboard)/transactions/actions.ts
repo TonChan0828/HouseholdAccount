@@ -9,6 +9,11 @@ import {
   requireDashboardContext,
   type ServerClient,
 } from "@/lib/household";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
+import {
+  canEditTransaction,
+  normalizeOnBehalfOf,
+} from "@/lib/transactions/attribution";
 import {
   buildMirrorRows,
   type MirrorSource,
@@ -50,8 +55,34 @@ function parse(formData: FormData) {
     date: formData.get("date"),
     category_id: formData.get("category_id"),
     memo: formData.get("memo"),
+    on_behalf_of: formData.get("on_behalf_of"),
     is_shared: formData.get("is_shared"),
   });
+}
+
+/**
+ * フォームの名義人（代理入力。spec 41）を検証して保存値に変換する。
+ *
+ * 未指定・入力者本人は代理ではないので null に倒す。他メンバーを指定した場合は、
+ * クライアントの値を信用せずサーバ側で所属を確認する（DB の複合 FK が最終防壁だが、
+ * 生の制約違反ではなく日本語のエラーを返すためアプリ層でも検証する多層防御）。
+ *
+ * @returns 保存する値（null = 代理でない）、または表示するエラー。
+ */
+async function resolveOnBehalfOf(
+  householdId: string,
+  authorId: string,
+  raw: string | undefined,
+): Promise<{ value: string | null } | { error: string }> {
+  const value = normalizeOnBehalfOf(raw, authorId);
+  if (value === null) {
+    return { value: null };
+  }
+  const members = await getHouseholdMemberNames(householdId);
+  if (!members.some((m) => m.user_id === value)) {
+    return { error: "名義人はグループのメンバーから選んでください" };
+  }
+  return { value };
 }
 
 /** FormData から反映先グループ ID 群を取り出す（空・重複を除く）。 */
@@ -119,8 +150,9 @@ async function mirrorTransaction(
     byHousehold.set(c.household_id, arr);
   }
 
-  // 反映先は is_shared を引き継がない（反映先グループはメンバー構成が異なるため。spec 37）。
-  // MirrorRow に is_shared が無いので DB 既定値 false で挿入される。
+  // 反映先は is_shared と on_behalf_of を引き継がない（反映先グループはメンバー構成が
+  // 異なるため。spec 37 / 41）。名義人を引き継ぐと反映先に居ないユーザーを指すことがあり、
+  // 複合 FK 違反で反映全体が失敗する。MirrorRow にどちらの列も無いので DB 既定値で入る。
   const rows = buildMirrorRows(
     source,
     userId,
@@ -150,9 +182,20 @@ export async function createTransaction(
   const { user, householdId, supabase } = await requireDashboardContext();
 
   const { type, amount, date, category_id, memo, is_shared } = parsed.data;
+
+  const subject = await resolveOnBehalfOf(
+    householdId,
+    user.id,
+    parsed.data.on_behalf_of,
+  );
+  if ("error" in subject) {
+    return { error: subject.error };
+  }
+
   const { error } = await supabase.from("transactions").insert({
     household_id: householdId,
     created_by: user.id,
+    on_behalf_of: subject.value,
     type,
     amount,
     date,
@@ -212,9 +255,32 @@ export async function updateTransaction(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  const { householdId, supabase } = await requireDashboardContext();
+  const { user, householdId, supabase } = await requireDashboardContext();
 
   const { type, amount, date, category_id, memo, is_shared } = parsed.data;
+
+  // 名義人の正規化は「その収支の入力者」を基準にする（操作者ではない）。
+  // 名義人が自分名義の収支を編集するとき、操作者と比べると名義が外れてしまい、
+  // RLS の WITH CHECK も満たせなくなるため、先に対象行の created_by を引く。
+  const { data: existing } = await supabase
+    .from("transactions")
+    .select("created_by, on_behalf_of")
+    .eq("id", id)
+    .eq("household_id", householdId)
+    .maybeSingle();
+  if (!existing || !canEditTransaction(existing, user.id)) {
+    return { error: "対象の収支が見つかりません" };
+  }
+
+  const subject = await resolveOnBehalfOf(
+    householdId,
+    existing.created_by,
+    parsed.data.on_behalf_of,
+  );
+  if ("error" in subject) {
+    return { error: subject.error };
+  }
+
   const { data, error } = await supabase
     .from("transactions")
     .update({
@@ -223,6 +289,7 @@ export async function updateTransaction(
       date,
       category_id: category_id ?? null,
       memo: memo || null,
+      on_behalf_of: subject.value,
       is_shared,
     })
     .eq("id", id)
@@ -282,14 +349,14 @@ export async function reflectTransaction(
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  // 反映元はアクティブグループでスコープし、登録者本人のみ反映できる。
+  // 反映元はアクティブグループでスコープし、入力者本人か名義人だけが反映できる（spec 41）。
   const { data: tx } = await supabase
     .from("transactions")
-    .select("type, amount, date, category_id, memo, created_by")
+    .select("type, amount, date, category_id, memo, created_by, on_behalf_of")
     .eq("id", id)
     .eq("household_id", householdId)
     .maybeSingle();
-  if (!tx || tx.created_by !== user.id) {
+  if (!tx || !canEditTransaction(tx, user.id)) {
     return { error: "対象の収支が見つかりません" };
   }
 

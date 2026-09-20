@@ -17,7 +17,8 @@
     "lib/savings-goal.ts",
     "lib/period.ts",
     "lib/transaction-filter.ts",
-    "lib/transactions/mirror.ts"
+    "lib/transactions/mirror.ts",
+    "lib/transactions/attribution.ts"
   ],
   "reporters": ["progress", "clear-text", "html", "json"],
   "htmlReporter": {

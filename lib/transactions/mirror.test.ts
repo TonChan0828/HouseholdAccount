@@ -117,3 +117,14 @@ describe("buildMirrorRows", () => {
     expect(buildMirrorRows(baseSource, USER, [])).toEqual([]);
   });
 });
+
+describe("反映行が持たない項目", () => {
+  it("名義人（on_behalf_of）を引き継がない（spec 41）", () => {
+    const rows = buildMirrorRows(baseSource, USER, [
+      { householdId: "hh-a", categories: [] },
+    ]);
+
+    // 反映先グループに名義人が居るとは限らないため、コピー行は反映操作者の記録にする。
+    expect(rows[0]).not.toHaveProperty("on_behalf_of");
+  });
+});

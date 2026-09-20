@@ -39,6 +39,10 @@ import {
   toISODate,
 } from "@/lib/period";
 import { getUnrecordedReminderCategories } from "@/lib/reminder";
+import {
+  attributedTo,
+  canEditTransaction,
+} from "@/lib/transactions/attribution";
 import { cn } from "@/lib/utils";
 
 const RECENT_LIMIT = 5;
@@ -89,8 +93,11 @@ export default async function DashboardPage({
 
   const sumBy = (rows: TransactionRow[], type: "income" | "expense") =>
     rows.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
+  // 「自分のみ」は帰属ユーザー（名義人。spec 41）で絞る。
   const byScope = (rows: TransactionRow[]) =>
-    scope === "mine" ? rows.filter((t) => t.created_by === user.id) : rows;
+    scope === "mine"
+      ? rows.filter((t) => attributedTo(t) === user.id)
+      : rows;
 
   const scopedTransactions = byScope(transactions);
   const prevTransactions = byScope(prevData);
@@ -158,6 +165,8 @@ export default async function DashboardPage({
     <TransactionDialogProvider
       categories={categoryOptions}
       otherHouseholds={otherHouseholds}
+      members={members}
+      currentUserId={user.id}
     >
       <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8 lg:max-w-6xl">
         <PageHeader
@@ -332,7 +341,7 @@ export default async function DashboardPage({
                                   </div>
                                   <div className="flex shrink-0 items-center gap-1">
                                     <Amount value={t.amount} type={t.type} />
-                                    {t.created_by === user.id ? (
+                                    {canEditTransaction(t, user.id) ? (
                                       <EditTransactionButton
                                         transaction={{
                                           id: t.id,
@@ -341,6 +350,8 @@ export default async function DashboardPage({
                                           date: t.date,
                                           category_id: t.category_id,
                                           memo: t.memo,
+                                          created_by: t.created_by,
+                                          on_behalf_of: t.on_behalf_of,
                                           is_shared: t.is_shared,
                                         }}
                                       />
