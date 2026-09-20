@@ -32,12 +32,22 @@ const categories: Category[] = [
   },
 ];
 
+const TARO = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const HANAKO = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const twoMembers = [
+  { user_id: TARO, display_name: "太郎" },
+  { user_id: HANAKO, display_name: "花子" },
+];
+
 function renderForm(props?: {
   action?: (
     state: TransactionActionState,
     formData: FormData,
   ) => Promise<TransactionActionState>;
   enableContinue?: boolean;
+  members?: { user_id: string; display_name: string }[];
+  currentUserId?: string;
+  defaultValues?: { on_behalf_of?: string | null };
 }) {
   return render(
     <TransactionForm
@@ -45,6 +55,9 @@ function renderForm(props?: {
       categories={categories}
       submitLabel="登録する"
       enableContinue={props?.enableContinue}
+      members={props?.members}
+      currentUserId={props?.currentUserId}
+      defaultValues={props?.defaultValues}
     />,
   );
 }
@@ -321,5 +334,79 @@ describe("TransactionForm", () => {
 
       expect(screen.getByText(/レシート画像から/)).toBeInTheDocument();
     });
+  });
+});
+
+describe("TransactionForm 名義人（代理入力・spec 41）", () => {
+  it("メンバーが渡されないときは名義人セレクトを表示しない", () => {
+    renderForm();
+
+    expect(screen.queryByLabelText("名義人")).not.toBeInTheDocument();
+  });
+
+  it("メンバーが1人だけのグループでは名義人セレクトを表示しない", () => {
+    renderForm({
+      members: [{ user_id: TARO, display_name: "太郎" }],
+      currentUserId: TARO,
+    });
+
+    expect(screen.queryByLabelText("名義人")).not.toBeInTheDocument();
+  });
+
+  it("メンバーが2人以上なら名義人セレクトを表示し、既定で自分を選ぶ", () => {
+    renderForm({ members: twoMembers, currentUserId: TARO });
+
+    const select = screen.getByLabelText("名義人");
+    expect(select).toHaveValue(TARO);
+    expect(
+      screen.getByRole("option", { name: "太郎（自分）" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "花子" })).toBeInTheDocument();
+  });
+
+  it("編集時は現在の名義人が選択された状態で開く", () => {
+    renderForm({
+      members: twoMembers,
+      currentUserId: TARO,
+      defaultValues: { on_behalf_of: HANAKO },
+    });
+
+    expect(screen.getByLabelText("名義人")).toHaveValue(HANAKO);
+  });
+
+  it("選んだ名義人を FormData の on_behalf_of として送信する", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn(async (_state: TransactionActionState, formData: FormData) => {
+      expect(formData.get("on_behalf_of")).toBe(HANAKO);
+      return undefined;
+    });
+
+    renderForm({ action, members: twoMembers, currentUserId: TARO });
+
+    await user.type(screen.getByLabelText("金額"), "1200");
+    await user.selectOptions(screen.getByLabelText("名義人"), HANAKO);
+    await user.click(screen.getByRole("button", { name: "登録する" }));
+
+    await waitFor(() => expect(action).toHaveBeenCalled());
+  });
+
+  it("「登録して続ける」で成功しても名義人は維持する", async () => {
+    const user = userEvent.setup();
+    const action = async () => ({ ok: true as const, key: "k1" });
+
+    renderForm({
+      action,
+      enableContinue: true,
+      members: twoMembers,
+      currentUserId: TARO,
+    });
+
+    await user.type(screen.getByLabelText("金額"), "1200");
+    await user.selectOptions(screen.getByLabelText("名義人"), HANAKO);
+    await user.click(screen.getByRole("button", { name: "登録して続ける" }));
+
+    // 金額はクリアされるが、続けて同じ人の分を入力できるよう名義人は残す
+    await waitFor(() => expect(screen.getByLabelText("金額")).toHaveValue(""));
+    expect(screen.getByLabelText("名義人")).toHaveValue(HANAKO);
   });
 });

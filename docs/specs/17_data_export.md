@@ -33,7 +33,7 @@
 | カテゴリ | `categories.name` | `未分類` |
 | 金額 | 数値のみ（`¥`・符号なし） | — |
 | メモ | `transactions.memo` | 空文字 |
-| 登録者 | `profiles.display_name`（`created_by` から解決） | `不明` |
+| 登録者 | `profiles.display_name`（帰属ユーザー `coalesce(on_behalf_of, created_by)` から解決。spec 41） | `不明` |
 
 - 並び順: **日付の昇順**（台帳として自然。一覧ページは降順だが出力は昇順で固定）。
 - エスケープ: 値に `,` `"` 改行 を含む場合は `"` で囲み、内部の `"` は `""` に二重化（RFC4180）。

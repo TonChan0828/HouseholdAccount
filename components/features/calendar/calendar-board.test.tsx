@@ -34,6 +34,7 @@ const txByDate: Record<string, CalendarTx[]> = {
       category: { name: "食費", color: "#ef4444" },
       category_id: "c-1",
       created_by: "u-1",
+      on_behalf_of: null,
       is_shared: false,
     },
     {
@@ -45,6 +46,7 @@ const txByDate: Record<string, CalendarTx[]> = {
       category: { name: "食費", color: "#ef4444" },
       category_id: "c-1",
       created_by: "u-2",
+      on_behalf_of: null,
       is_shared: false,
     },
   ],
@@ -228,5 +230,60 @@ describe("CalendarBoard: ローカルの今日への補正", () => {
     expect(
       container.querySelector('[data-date="2026-06-01"]'),
     ).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("CalendarBoard: 代理入力（spec 41）", () => {
+  const proxyByDate: Record<string, CalendarTx[]> = {
+    "2026-06-02": [
+      {
+        id: "t3",
+        amount: 800,
+        type: "expense",
+        date: "2026-06-02",
+        memo: "花子の買い物",
+        category: { name: "食費", color: "#ef4444" },
+        category_id: "c-1",
+        created_by: "u-2",
+        on_behalf_of: "u-1",
+        is_shared: false,
+      },
+    ],
+  };
+
+  const renderProxy = (currentUserId: string) =>
+    render(
+      <TransactionDialogProvider categories={[]} otherHouseholds={[]}>
+        <CalendarBoard
+          weeks={[week]}
+          transactionsByDate={proxyByDate}
+          initialSelected="2026-06-01"
+          currentUserId={currentUserId}
+          memberNames={{ "u-1": "太郎", "u-2": "花子" }}
+        />
+      </TransactionDialogProvider>,
+    );
+
+  it("代理入力の明細に「名義人（入力者が代理）」を表示する", () => {
+    const { container } = renderProxy("u-1");
+    fireEvent.click(container.querySelector('[data-date="2026-06-02"]')!);
+
+    expect(screen.getByTestId("proxy-badge")).toHaveTextContent(
+      "太郎（花子が代理）",
+    );
+  });
+
+  it("名義人も編集トリガーにできる", () => {
+    const { container } = renderProxy("u-1");
+    fireEvent.click(container.querySelector('[data-date="2026-06-02"]')!);
+
+    expect(screen.getAllByRole("button", { name: "編集" })).toHaveLength(1);
+  });
+
+  it("入力者でも名義人でもなければ編集トリガーを出さない", () => {
+    const { container } = renderProxy("u-9");
+    fireEvent.click(container.querySelector('[data-date="2026-06-02"]')!);
+
+    expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
   });
 });

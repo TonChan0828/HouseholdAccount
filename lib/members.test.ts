@@ -23,6 +23,27 @@ const members: MemberInfo[] = [
 ];
 
 describe("summarizeByMember", () => {
+  it("代理入力は名義人側に集計する（spec 41）", () => {
+    const txs = [
+      // 太郎が花子の代理で入力した支出
+      tx({ created_by: "user-1", on_behalf_of: "user-2", amount: 2000 }),
+      tx({ created_by: "user-1", amount: 500 }),
+    ];
+
+    const result = summarizeByMember(txs, members);
+
+    expect(result[0]).toMatchObject({ userId: "user-1", expense: 500, count: 1 });
+    expect(result[1]).toMatchObject({ userId: "user-2", expense: 2000, count: 1 });
+  });
+
+  it("名義人が非メンバー（脱退者）の取引は無視する", () => {
+    const txs = [tx({ created_by: "user-1", on_behalf_of: "gone", amount: 900 })];
+
+    const result = summarizeByMember(txs, members);
+
+    expect(result.every((r) => r.count === 0)).toBe(true);
+  });
+
   it("メンバーごとに収入・支出・件数を集計する", () => {
     const txs = [
       tx({ created_by: "user-1", type: "income", amount: 320000 }),

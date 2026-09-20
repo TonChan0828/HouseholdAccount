@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { MemberInfo } from "@/lib/members";
 import type { CategoryOption } from "@/lib/queries/categories";
 import { cn } from "@/lib/utils";
 import type { TransactionType } from "@/types";
@@ -37,6 +38,9 @@ export type DialogTransaction = {
   date: string;
   category_id: string | null;
   memo: string | null;
+  created_by: string;
+  /** 名義人（代理入力。spec 41）。null なら入力者本人が名義人。 */
+  on_behalf_of: string | null;
   is_shared: boolean;
 };
 
@@ -63,6 +67,10 @@ type ProviderProps = {
   categories: CategoryOption[];
   /** 反映先候補（現在のグループを除く自分の所属グループ）。空なら反映UIを出さない。 */
   otherHouseholds: { id: string; name: string }[];
+  /** グループの全メンバー。2人以上なら名義人セレクトを出す（spec 41）。 */
+  members?: MemberInfo[];
+  /** ログイン中ユーザー。名義人セレクトの既定値。 */
+  currentUserId?: string;
   children: ReactNode;
 };
 
@@ -77,6 +85,8 @@ type ProviderProps = {
 export function TransactionDialogProvider({
   categories,
   otherHouseholds,
+  members,
+  currentUserId,
   children,
 }: ProviderProps) {
   const [target, setTarget] = useState<Target | null>(null);
@@ -122,6 +132,8 @@ export function TransactionDialogProvider({
               // 新規登録は「登録と同時に他グループへコピー」を出す。
               // 編集は同時反映を持たないため、下の後追い反映（ReflectToGroups）に任せる。
               otherHouseholds={editing ? undefined : otherHouseholds}
+              members={members}
+              currentUserId={currentUserId}
               defaultValues={editing ?? undefined}
             />
 

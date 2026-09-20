@@ -4,12 +4,13 @@
  * DB ではなく JS 側で集計し、ユニットテストで検証する。
  */
 
-export type MemberTx = {
+import { attributedTo, type Attributable } from "@/lib/transactions/attribution";
+
+export type MemberTx = Attributable & {
   amount: number;
   type: "income" | "expense";
   date: string; // YYYY-MM-DD
   memo: string | null;
-  created_by: string;
   category: { name: string; color: string | null } | null;
 };
 
@@ -42,6 +43,7 @@ export function memberColor(index: number): string {
 /**
  * 取引をメンバーごとに集計する。members の並び順を維持し、
  * members にいないユーザー（脱退者など）の取引は無視する。
+ * 集計先は入力者ではなく帰属ユーザー（名義人。spec 41）。
  */
 export function summarizeByMember(
   txs: MemberTx[],
@@ -61,7 +63,7 @@ export function summarizeByMember(
   );
 
   for (const t of txs) {
-    const summary = byUser.get(t.created_by);
+    const summary = byUser.get(attributedTo(t));
     if (!summary) continue;
     if (t.type === "income") summary.income += t.amount;
     else summary.expense += t.amount;

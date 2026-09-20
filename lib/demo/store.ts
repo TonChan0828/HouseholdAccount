@@ -59,6 +59,8 @@ export function addTransaction(
     date: input.date,
     category_id: input.category_id ?? null,
     memo: input.memo || null,
+    // デモモードは代理入力（spec 41）の対象外。常に入力者本人の記録とする。
+    on_behalf_of: null,
     recurring_id: null,
     // デモは精算機能の対象外（spec 37）。常に精算対象外で登録する。
     is_shared: false,

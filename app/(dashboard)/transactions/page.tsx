@@ -51,6 +51,11 @@ import {
   parseTransactionFilter,
   type TransactionFilterParams,
 } from "@/lib/transaction-filter";
+import {
+  canEditTransaction,
+  isProxyEntry,
+  proxyLabel,
+} from "@/lib/transactions/attribution";
 import { cn } from "@/lib/utils";
 
 /** 1 日分の収入・支出小計を求める。 */
@@ -114,6 +119,9 @@ export default async function TransactionsPage({
     return `/transactions${query ? `?${query}` : ""}`;
   };
 
+  // 代理入力（spec 41）の補助ラベル用。メンバー名は上で取得済み。
+  const nameById = new Map(members.map((m) => [m.user_id, m.display_name]));
+
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
@@ -121,6 +129,8 @@ export default async function TransactionsPage({
     <TransactionDialogProvider
       categories={categoryOptions}
       otherHouseholds={otherHouseholds}
+      members={members}
+      currentUserId={user.id}
     >
       <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
         <PageHeader
@@ -254,7 +264,14 @@ export default async function TransactionsPage({
 
                   <ul className="space-y-2">
                     {group.items.map((t) => {
-                      const mine = t.created_by === user.id;
+                      // 編集・削除できるのは入力者と名義人（spec 41。RLS と同条件）。
+                      const editable = canEditTransaction(t, user.id);
+                      const proxy = isProxyEntry(t)
+                        ? proxyLabel(t, nameById)
+                        : null;
+                      // 代理でなく自分の記録でもない＝他メンバーが自分名義で記録したもの。
+                      const othersOwn =
+                        !proxy && t.created_by !== user.id;
                       return (
                         <li key={t.id}>
                           <Surface
@@ -282,7 +299,15 @@ export default async function TransactionsPage({
                                         精算
                                       </span>
                                     ) : null}
-                                    {!mine ? (
+                                    {proxy ? (
+                                      <span
+                                        data-testid="proxy-badge"
+                                        className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                                      >
+                                        {proxy}
+                                      </span>
+                                    ) : null}
+                                    {othersOwn ? (
                                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                                         他のメンバー
                                       </span>
@@ -296,7 +321,7 @@ export default async function TransactionsPage({
                                 </div>
                                 <div className="flex shrink-0 items-center gap-1">
                                   <Amount value={t.amount} type={t.type} />
-                                  {mine ? (
+                                  {editable ? (
                                     <div className="flex items-center transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100">
                                       <EditTransactionButton
                                         transaction={{
@@ -306,6 +331,8 @@ export default async function TransactionsPage({
                                           date: t.date,
                                           category_id: t.category_id,
                                           memo: t.memo,
+                                          created_by: t.created_by,
+                                          on_behalf_of: t.on_behalf_of,
                                           is_shared: t.is_shared,
                                         }}
                                       />

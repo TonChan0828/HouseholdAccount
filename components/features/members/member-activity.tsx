@@ -6,6 +6,7 @@ import { CategoryBadge } from "@/components/features/transactions/category-badge
 import { Card, CardContent } from "@/components/ui/card";
 import { yen } from "@/lib/format";
 import { memberColor, type MemberSummary, type MemberTx } from "@/lib/members";
+import { attributedTo } from "@/lib/transactions/attribution";
 import { cn } from "@/lib/utils";
 
 export type MemberTxRow = MemberTx & { id: string };
@@ -24,7 +25,7 @@ export function MemberActivity({ summaries, txs }: Props) {
 
   const selected = summaries.find((m) => m.userId === selectedId);
   const selectedTxs = selected
-    ? txs.filter((t) => t.created_by === selected.userId)
+    ? txs.filter((t) => attributedTo(t) === selected.userId)
     : [];
 
   // メンバーの並び順インデックスから色を生成する（人数無制限で distinct）。

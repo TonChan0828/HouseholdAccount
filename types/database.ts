@@ -359,6 +359,7 @@ export type Database = {
           id: string
           is_shared: boolean
           memo: string | null
+          on_behalf_of: string | null
           recurring_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
@@ -372,6 +373,7 @@ export type Database = {
           id?: string
           is_shared?: boolean
           memo?: string | null
+          on_behalf_of?: string | null
           recurring_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
@@ -385,6 +387,7 @@ export type Database = {
           id?: string
           is_shared?: boolean
           memo?: string | null
+          on_behalf_of?: string | null
           recurring_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
         }
@@ -395,6 +398,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "transactions_household_on_behalf_fkey"
+            columns: ["household_id", "on_behalf_of"]
+            isOneToOne: false
+            referencedRelation: "household_members"
+            referencedColumns: ["household_id", "user_id"]
           },
           {
             foreignKeyName: "transactions_household_id_fkey"

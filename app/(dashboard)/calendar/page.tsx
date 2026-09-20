@@ -21,6 +21,7 @@ import {
 import { getUserHouseholds, requireDashboardContext } from "@/lib/household";
 import { refFromParam, toISODate } from "@/lib/period";
 import { fetchHouseholdCategories } from "@/lib/queries/categories";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 
 export default async function CalendarPage({
@@ -37,11 +38,16 @@ export default async function CalendarPage({
   const month = getCalendarMonthRange(refDate);
 
   // 明細から編集ダイアログ（spec 40）を開けるよう、カテゴリと所属グループも揃える。
-  const [txs, categories, households] = await Promise.all([
+  // メンバー名は代理入力（spec 41）の補助ラベルと名義人セレクトに使う。
+  const [txs, categories, households, members] = await Promise.all([
     fetchTransactionsInRange(supabase, householdId, grid, { order: "asc" }),
     fetchHouseholdCategories(supabase, householdId),
     getUserHouseholds(),
+    getHouseholdMemberNames(householdId),
   ]);
+  const memberNames = Object.fromEntries(
+    members.map((m) => [m.user_id, m.display_name]),
+  );
   const otherHouseholds = households.filter((h) => h.id !== householdId);
 
   const weeks = buildCalendarWeeks(refDate, summarizeDailyTotals(txs));
@@ -67,6 +73,7 @@ export default async function CalendarPage({
       category: t.category,
       category_id: t.category_id,
       created_by: t.created_by,
+      on_behalf_of: t.on_behalf_of,
       is_shared: t.is_shared,
     });
   }
@@ -84,6 +91,8 @@ export default async function CalendarPage({
     <TransactionDialogProvider
       categories={categories}
       otherHouseholds={otherHouseholds}
+      members={members}
+      currentUserId={user.id}
     >
       <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8 lg:max-w-6xl">
         <PageHeader
@@ -110,6 +119,7 @@ export default async function CalendarPage({
             transactionsByDate={transactionsByDate}
             initialSelected={initialSelected}
             currentUserId={user.id}
+            memberNames={memberNames}
             side={<SummaryCards income={income} expense={expense} />}
           />
         </div>

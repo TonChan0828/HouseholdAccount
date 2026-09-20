@@ -2,6 +2,7 @@ import type { ServerClient } from "@/lib/household";
 import { toISODate } from "@/lib/period";
 import { DataAccessError } from "@/lib/queries/errors";
 import { escapeLike, type TransactionFilter } from "@/lib/transaction-filter";
+import { attributionOrFilter } from "@/lib/transactions/attribution";
 
 const FETCH_BATCH_SIZE = 1000;
 export const TRANSACTION_PAGE_SIZE = 50;
@@ -17,6 +18,8 @@ export type TransactionRow = {
   date: string;
   memo: string | null;
   created_by: string;
+  /** 名義人（代理入力。spec 41）。null なら入力者本人が名義人。 */
+  on_behalf_of: string | null;
   category_id: string | null;
   recurring_id: string | null;
   is_shared: boolean;
@@ -114,14 +117,16 @@ function buildTransactionQuery(
   let query = supabase
     .from("transactions")
     .select(
-      "id, amount, type, date, memo, created_by, category_id, recurring_id, is_shared, category:categories(name, color)",
+      "id, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, category:categories(name, color)",
     )
     .eq("household_id", householdId)
     .gte("date", toISODate(range.start))
     .lt("date", toISODate(range.end));
   if (filter.type) query = query.eq("type", filter.type);
   if (filter.categoryId) query = query.eq("category_id", filter.categoryId);
-  if (filter.createdBy) query = query.eq("created_by", filter.createdBy);
+  // メンバー絞り込みは帰属ユーザー（名義人。spec 41）基準。
+  // coalesce(on_behalf_of, created_by) = 指定ユーザー を PostgREST の or 句で表す。
+  if (filter.createdBy) query = query.or(attributionOrFilter(filter.createdBy));
   if (filter.memoQuery) {
     query = query.ilike("memo", `%${escapeLike(filter.memoQuery)}%`);
   }
