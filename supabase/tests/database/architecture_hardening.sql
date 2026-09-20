@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(23);
 
 select ok(
   to_regclass('public.transactions') is not null,
@@ -33,8 +33,9 @@ select ok(
   exists (
     select 1 from pg_policies
     where schemaname = 'public' and tablename = 'transactions'
-      and policyname = 'transactions_update_creator'
+      and policyname = 'transactions_update_creator_or_subject'
       and with_check like '%is_household_member%'
+      and with_check like '%on_behalf_of%'
   ),
   'transaction update checks current membership'
 );
@@ -61,6 +62,24 @@ select ok(
     where tgname = 'household_member_deactivate_recurring' and not tgisinternal
   ),
   'departed member recurring trigger exists'
+);
+select ok(
+  exists (select 1 from pg_constraint where conname = 'transactions_household_on_behalf_fkey'),
+  'transaction subject is household scoped'
+);
+select ok(
+  exists (
+    select 1 from pg_trigger
+    where tgname = 'transactions_freeze_identity' and not tgisinternal
+  ),
+  'transaction identity freeze trigger exists'
+);
+select ok(
+  exists (
+    select 1 from pg_trigger
+    where tgname = 'household_member_clear_on_behalf_of' and not tgisinternal
+  ),
+  'departed member subject trigger exists'
 );
 
 -- 実データを使って複合FK・RLS・脱退トリガの挙動も確認する。
@@ -111,13 +130,74 @@ exception when others then
 end;
 $$;
 
+create function pg_temp.try_outsider_subject() returns text language plpgsql as $$
+begin
+  insert into public.transactions
+    (household_id, created_by, amount, type, date, on_behalf_of)
+  values
+    ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000a1',
+     100, 'expense', '2026-07-01', '00000000-0000-0000-0000-0000000000b1');
+  return 'allowed';
+exception when others then
+  return sqlstate;
+end;
+$$;
+
 select is(pg_temp.try_cross_category(), '23503', 'cross-household category is rejected');
+select is(
+  pg_temp.try_outsider_subject(), '23503',
+  'non-member cannot be named as transaction subject'
+);
 
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 set local role authenticated;
 select is(pg_temp.try_move_transaction(), '42501', 'creator cannot move transaction outside membership');
 reset role;
+
+-- 代理入力（spec 41）: b1 を h1 のメンバーにし、a1 が b1 名義で登録した収支を用意する。
+insert into public.household_members (household_id, user_id, role) values
+  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000b1', 'member');
+insert into public.transactions
+  (id, household_id, created_by, amount, type, date, on_behalf_of) values
+  ('12000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001',
+   '00000000-0000-0000-0000-0000000000a1', 100, 'expense', '2026-07-01',
+   '00000000-0000-0000-0000-0000000000b1');
+
+-- 名義人は自分の行を更新できるため、created_by を自分に書き換えると RLS の
+-- WITH CHECK は通ってしまう。不変トリガーだけがこれを止める。
+create function pg_temp.try_forge_author() returns text language plpgsql as $$
+begin
+  update public.transactions
+  set created_by = '00000000-0000-0000-0000-0000000000b1'
+  where id = '12000000-0000-0000-0000-000000000002';
+  return 'allowed';
+exception when others then
+  return sqlstate;
+end;
+$$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000b1', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+select is(pg_temp.try_forge_author(), '42501', 'subject cannot forge transaction author');
+reset role;
+
+delete from public.household_members
+where household_id = '10000000-0000-0000-0000-000000000001'
+  and user_id = '00000000-0000-0000-0000-0000000000b1';
+select is(
+  (select on_behalf_of::text from public.transactions
+   where id = '12000000-0000-0000-0000-000000000002'),
+  null::text,
+  'departed subject falls back to the author'
+);
+select is(
+  (select created_by::text from public.transactions
+   where id = '12000000-0000-0000-0000-000000000002'),
+  '00000000-0000-0000-0000-0000000000a1',
+  'departed subject does not delete the transaction'
+);
 
 delete from public.household_members
 where household_id = '10000000-0000-0000-0000-000000000001'

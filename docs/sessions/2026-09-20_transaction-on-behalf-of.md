@@ -34,6 +34,22 @@ RLS の `WITH CHECK` を満たさず 0 行更新になっていた。
 代理入力のように入力者と操作者が別人になった瞬間に意味が変わる。
 `updateTransaction` は対象行の `created_by` を先に引いてから正規化するよう修正した。
 
+## CI で見つけた落とし（重要）
+
+PR の `test` ジョブ（`supabase test db`）が失敗。pgTAP の
+`supabase/tests/database/architecture_hardening.sql` が RLS ポリシー名
+`transactions_update_creator` を直接検査しており、0024 で
+`transactions_update_creator_or_subject` に改名したのに追従していなかった。
+
+**教訓**: ポリシー名・制約名・トリガー名を変えたら、`supabase/tests/database/` の
+pgTAP も grep して追従させる。この DB テストは Docker が要るためローカルでは実行できず
+（この環境では Docker 不可）、CI が唯一の検証手段になる。
+
+あわせて 0024 で増えた不変条件も pgTAP に追加した（16件 → 23件）:
+複合 FK・不変トリガー・脱退トリガーの存在、非メンバーを名義人にできないこと（23503）、
+名義人が `created_by` を詐称できないこと（42501）、名義人の脱退で `on_behalf_of` だけが
+NULL に戻り収支自体は残ること。
+
 ## 決めたこと・理由
 
 - `created_by` を書き換えて代理を表す案は却下。RLS の INSERT ポリシー（`created_by = auth.uid()`）
