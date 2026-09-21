@@ -6,7 +6,9 @@ import {
   getCurrentUser,
   getHouseholdSettings,
 } from "@/lib/household";
+import { logServerError } from "@/lib/observability";
 import { getPeriodRange, toISODate } from "@/lib/period";
+import { unwrapData } from "@/lib/queries/result";
 import { createClient } from "@/lib/supabase/server";
 import { attributedTo } from "@/lib/transactions/attribution";
 
@@ -44,66 +46,81 @@ export async function GET(request: NextRequest) {
     return new NextResponse("No active household", { status: 403 });
   }
 
-  const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
+  try {
+    const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
-  const ref = request.nextUrl.searchParams.get("ref");
-  const range = getPeriodRange(refFromParam(ref), startDay);
-  const isoStart = toISODate(range.start);
-  const isoEnd = toISODate(range.end);
+    const ref = request.nextUrl.searchParams.get("ref");
+    const range = getPeriodRange(refFromParam(ref), startDay);
+    const isoStart = toISODate(range.start);
+    const isoEnd = toISODate(range.end);
 
-  const { data } = await supabase
-    .from("transactions")
-    .select(
-      "amount, type, date, memo, created_by, on_behalf_of, category:categories(name)",
-    )
-    .eq("household_id", householdId)
-    .gte("date", isoStart)
-    .lt("date", isoEnd)
-    .order("date", { ascending: true })
-    .order("created_at", { ascending: true })
-    .overrideTypes<TransactionRow[]>();
-  const transactions = data ?? [];
+    const transactionResult = await supabase
+      .from("transactions")
+      .select(
+        "amount, type, date, memo, created_by, on_behalf_of, category:categories(name)",
+      )
+      .eq("household_id", householdId)
+      .gte("date", isoStart)
+      .lt("date", isoEnd)
+      .order("date", { ascending: true })
+      .order("created_at", { ascending: true })
+      .overrideTypes<TransactionRow[]>();
+    const transactions =
+      unwrapData(transactionResult, "exportTransactions") ?? [];
 
-  // user_id → display_name のマップを作る（dashboard と同じ2段 join パターン）。
-  // グループ毎の名前（household_members.display_name）優先・未設定はグローバル名へ。
-  const { data: memberRows } = await supabase
-    .from("household_members")
-    .select("user_id, display_name")
-    .eq("household_id", householdId);
-  const members = memberRows ?? [];
-  const userIds = members.map((m) => m.user_id);
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .in("id", userIds);
-  const profileNameById = new Map(
-    (profiles ?? []).map((p) => [p.id, p.display_name]),
-  );
-  const nameById = new Map(
-    members.map((m) => [
-      m.user_id,
-      m.display_name ?? profileNameById.get(m.user_id) ?? null,
-    ]),
-  );
+    // user_id → display_name のマップを作る（dashboard と同じ2段 join パターン）。
+    // グループ毎の名前（household_members.display_name）優先・未設定はグローバル名へ。
+    const memberResult = await supabase
+      .from("household_members")
+      .select("user_id, display_name")
+      .eq("household_id", householdId);
+    const members = unwrapData(memberResult, "exportHouseholdMembers") ?? [];
+    const userIds = members.map((m) => m.user_id);
+    const profileResult = userIds.length
+      ? await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", userIds)
+      : { data: [], error: null };
+    const profiles = unwrapData(profileResult, "exportMemberProfiles");
+    const profileNameById = new Map(
+      (profiles ?? []).map((p) => [p.id, p.display_name]),
+    );
+    const nameById = new Map(
+      members.map((m) => [
+        m.user_id,
+        m.display_name ?? profileNameById.get(m.user_id) ?? null,
+      ]),
+    );
 
-  const rows: ExportRow[] = transactions.map((t) => ({
-    date: t.date,
-    type: t.type,
-    categoryName: t.category?.name ?? null,
-    amount: t.amount,
-    memo: t.memo,
-    // 「登録者」は帰属ユーザー（名義人。spec 41）。代理入力は名義人の名前で出す。
-    memberName: nameById.get(attributedTo(t)) ?? null,
-  }));
+    const rows: ExportRow[] = transactions.map((t) => ({
+      date: t.date,
+      type: t.type,
+      categoryName: t.category?.name ?? null,
+      amount: t.amount,
+      memo: t.memo,
+      // 「登録者」は帰属ユーザー（名義人。spec 41）。代理入力は名義人の名前で出す。
+      memberName: nameById.get(attributedTo(t)) ?? null,
+    }));
 
-  const csv = toTransactionsCsv(rows);
-  const lastDay = toISODate(new Date(range.end.getTime() - 24 * 60 * 60 * 1000));
-  const filename = `transactions_${isoStart}_${lastDay}.csv`;
+    const csv = toTransactionsCsv(rows);
+    const lastDay = toISODate(
+      new Date(range.end.getTime() - 24 * 60 * 60 * 1000),
+    );
+    const filename = `transactions_${isoStart}_${lastDay}.csv`;
 
-  return new NextResponse(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
-  });
+    return new NextResponse(csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (error) {
+    const requestId = request.headers.get("x-vercel-id") ?? crypto.randomUUID();
+    logServerError("transactions.export.failed", error, { requestId });
+    return Response.json(
+      { error: "CSVの作成に失敗しました", requestId },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

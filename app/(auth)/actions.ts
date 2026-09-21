@@ -4,6 +4,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/observability";
+import { throwIfError } from "@/lib/queries/result";
+import { consumeRateLimit } from "@/lib/rate-limit";
 import {
   loginSchema,
   passwordUpdateSchema,
@@ -42,6 +45,17 @@ export async function signIn(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
+  if (
+    !(await consumeRateLimit({
+      bucket: "auth.login",
+      subject: parsed.data.email,
+      limit: 10,
+      windowSeconds: 15 * 60,
+    }))
+  ) {
+    return { error: "試行回数が多すぎます。しばらく待ってからお試しください" };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
@@ -63,6 +77,17 @@ export async function signUp(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
+  }
+
+  if (
+    !(await consumeRateLimit({
+      bucket: "auth.signup",
+      subject: parsed.data.email,
+      limit: 5,
+      windowSeconds: 60 * 60,
+    }))
+  ) {
+    return { error: "試行回数が多すぎます。しばらく待ってからお試しください" };
   }
 
   const origin = await resolveOrigin();
@@ -96,20 +121,35 @@ export async function resendConfirmation(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
+  if (
+    !(await consumeRateLimit({
+      bucket: "auth.confirmation_resend",
+      subject: parsed.data.email,
+      limit: 5,
+      windowSeconds: 60 * 60,
+    }))
+  ) {
+    return { success: true };
+  }
+
   const origin = await resolveOrigin();
   const supabase = await createClient();
-  await supabase.auth.resend({
+  const result = await supabase.auth.resend({
     type: "signup",
     email: parsed.data.email,
     options: { emailRedirectTo: `${origin}/auth/callback?next=/households` },
   });
+  if (result.error) {
+    logServerError("auth.confirmation_resend.failed", result.error);
+  }
 
   return { success: true };
 }
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const result = await supabase.auth.signOut();
+  throwIfError(result, "signOut");
   redirect("/?loggedout=1");
 }
 
@@ -129,11 +169,25 @@ export async function requestPasswordReset(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
+  if (
+    !(await consumeRateLimit({
+      bucket: "auth.password_reset",
+      subject: parsed.data.email,
+      limit: 5,
+      windowSeconds: 60 * 60,
+    }))
+  ) {
+    return { success: true };
+  }
+
   const origin = await resolveOrigin();
   const supabase = await createClient();
-  await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+  const result = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     redirectTo: `${origin}/auth/callback?next=/reset-password`,
   });
+  if (result.error) {
+    logServerError("auth.password_reset_request.failed", result.error);
+  }
 
   return { success: true };
 }
@@ -172,6 +226,7 @@ export async function updatePassword(
     return { error: "パスワードの更新に失敗しました" };
   }
 
-  await supabase.auth.signOut();
+  const signOutResult = await supabase.auth.signOut();
+  throwIfError(signOutResult, "signOutAfterPasswordReset");
   redirect("/login?reset=success");
 }

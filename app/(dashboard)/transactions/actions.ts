@@ -10,6 +10,7 @@ import {
   type ServerClient,
 } from "@/lib/household";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { throwIfError, unwrapData } from "@/lib/queries/result";
 import {
   canEditTransaction,
   normalizeOnBehalfOf,
@@ -102,11 +103,12 @@ async function getCategoryName(
   if (!categoryId) {
     return null;
   }
-  const { data } = await supabase
+  const result = await supabase
     .from("categories")
     .select("name")
     .eq("id", categoryId)
     .maybeSingle();
+  const data = unwrapData(result, "fetchTransactionCategoryName");
   return data?.name ?? null;
 }
 
@@ -262,12 +264,13 @@ export async function updateTransaction(
   // 名義人の正規化は「その収支の入力者」を基準にする（操作者ではない）。
   // 名義人が自分名義の収支を編集するとき、操作者と比べると名義が外れてしまい、
   // RLS の WITH CHECK も満たせなくなるため、先に対象行の created_by を引く。
-  const { data: existing } = await supabase
+  const existingResult = await supabase
     .from("transactions")
     .select("created_by, on_behalf_of")
     .eq("id", id)
     .eq("household_id", householdId)
     .maybeSingle();
+  const existing = unwrapData(existingResult, "fetchTransactionForUpdate");
   if (!existing || !canEditTransaction(existing, user.id)) {
     return { error: "対象の収支が見つかりません" };
   }
@@ -322,11 +325,12 @@ export async function deleteTransaction(formData: FormData): Promise<void> {
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  await supabase
+  const result = await supabase
     .from("transactions")
     .delete()
     .eq("id", id)
     .eq("household_id", householdId);
+  throwIfError(result, "deleteTransaction");
 
   revalidateTransactionViews();
   redirect("/transactions");
@@ -350,12 +354,13 @@ export async function reflectTransaction(
   const { user, householdId, supabase } = await requireDashboardContext();
 
   // 反映元はアクティブグループでスコープし、入力者本人か名義人だけが反映できる（spec 41）。
-  const { data: tx } = await supabase
+  const transactionResult = await supabase
     .from("transactions")
     .select("type, amount, date, category_id, memo, created_by, on_behalf_of")
     .eq("id", id)
     .eq("household_id", householdId)
     .maybeSingle();
+  const tx = unwrapData(transactionResult, "fetchTransactionForReflection");
   if (!tx || !canEditTransaction(tx, user.id)) {
     return { error: "対象の収支が見つかりません" };
   }

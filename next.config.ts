@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
+import { cspHeader } from "./lib/security-headers";
+
 // 全ルート共通のセキュリティヘッダー。
-// CSP は nonce 対応が必要なため未導入（docs/specs/11_security_hardening.md 参照）。
 const securityHeaders = [
+  cspHeader(),
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireDashboardContext } from "@/lib/household";
+import { throwIfError } from "@/lib/queries/result";
 import { savingsGoalSchema } from "@/lib/validations/savings-goal";
 
 export type SavingsGoalActionState = { error: string } | { ok: true } | undefined;
@@ -45,7 +46,11 @@ export async function upsertSavingsGoal(
 /** 貯金目標を解除（削除）する。household_id でスコープする。 */
 export async function deleteSavingsGoal(): Promise<void> {
   const { householdId, supabase } = await requireDashboardContext();
-  await supabase.from("savings_goals").delete().eq("household_id", householdId);
+  const result = await supabase
+    .from("savings_goals")
+    .delete()
+    .eq("household_id", householdId);
+  throwIfError(result, "deleteSavingsGoal");
 
   revalidatePath("/dashboard");
 }

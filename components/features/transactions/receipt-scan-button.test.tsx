@@ -6,8 +6,12 @@ import { ReceiptScanButton } from "./receipt-scan-button";
 
 // OCR 本体（Tesseract.js）は jsdom で動かさず、canned テキストに差し替える。
 const recognizeReceipt = vi.fn();
+const authorizeReceiptScan = vi.fn();
 vi.mock("@/lib/receipt/ocr", () => ({
   recognizeReceipt: (...args: unknown[]) => recognizeReceipt(...args),
+}));
+vi.mock("@/app/(dashboard)/transactions/ocr-actions", () => ({
+  authorizeReceiptScan: () => authorizeReceiptScan(),
 }));
 
 vi.mock("sonner", () => ({
@@ -31,6 +35,8 @@ function fileInput(container: HTMLElement): HTMLInputElement {
 describe("ReceiptScanButton", () => {
   beforeEach(() => {
     recognizeReceipt.mockReset();
+    authorizeReceiptScan.mockReset();
+    authorizeReceiptScan.mockResolvedValue(true);
   });
 
   it("OCRテキストから抽出した金額・日付を onResult へ渡す", async () => {
@@ -69,5 +75,15 @@ describe("ReceiptScanButton", () => {
 
     await waitFor(() => expect(recognizeReceipt).toHaveBeenCalled());
     expect(onResult).not.toHaveBeenCalled();
+  });
+
+  it("共有レート制限が拒否した場合は OCR を開始しない", async () => {
+    authorizeReceiptScan.mockResolvedValue(false);
+    const { container } = render(<ReceiptScanButton onResult={vi.fn()} />);
+
+    await userEvent.upload(fileInput(container), pickFile());
+
+    await waitFor(() => expect(authorizeReceiptScan).toHaveBeenCalled());
+    expect(recognizeReceipt).not.toHaveBeenCalled();
   });
 });

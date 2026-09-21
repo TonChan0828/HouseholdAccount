@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireDashboardContext } from "@/lib/household";
+import { throwIfError } from "@/lib/queries/result";
 import { categorySchema } from "@/lib/validations/category";
 
 export type CategoryActionState = { error: string } | undefined;
@@ -86,11 +87,12 @@ export async function toggleCategoryReminder(
   const reminderEnabled = formData.get("reminder_enabled") === "true";
 
   const { householdId, supabase } = await requireDashboardContext();
-  await supabase
+  const result = await supabase
     .from("categories")
     .update({ reminder_enabled: reminderEnabled })
     .eq("id", id)
     .eq("household_id", householdId);
+  throwIfError(result, "toggleCategoryReminder");
 
   revalidatePath("/categories");
 }
@@ -103,12 +105,13 @@ export async function deleteCategory(formData: FormData): Promise<void> {
   }
 
   const { householdId, supabase } = await requireDashboardContext();
-  await supabase
+  const result = await supabase
     .from("categories")
     .delete()
     .eq("id", id)
     .eq("household_id", householdId)
     .eq("is_default", false);
+  throwIfError(result, "deleteCategory");
 
   revalidatePath("/categories");
   redirect("/categories");

@@ -11,6 +11,7 @@ import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
 import { requireDashboardContext } from "@/lib/household";
+import { unwrapData } from "@/lib/queries/result";
 import type { Category } from "@/types";
 
 export default async function EditRecurringPage({
@@ -22,23 +23,25 @@ export default async function EditRecurringPage({
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  const { data: recurring } = await supabase
+  const recurringResult = await supabase
     .from("recurring_transactions")
     .select("*")
     .eq("id", id)
     .maybeSingle();
+  const recurring = unwrapData(recurringResult, "fetchEditableRecurring");
 
   // 存在しない、または登録者本人でなければ一覧へ戻す（編集は本人のみ）。
   if (!recurring || recurring.created_by !== user.id) {
     notFound();
   }
 
-  const { data } = await supabase
+  const categoryResult = await supabase
     .from("categories")
     .select("*")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
     .order("name", { ascending: true });
+  const data = unwrapData(categoryResult, "fetchRecurringFormCategories");
   const categories = (data ?? []) as Category[];
 
   const reveal =

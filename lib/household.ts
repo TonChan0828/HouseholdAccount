@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { unwrapData } from "@/lib/queries/result";
 
 export const ACTIVE_HOUSEHOLD_COOKIE = "active_household_id";
 
@@ -60,11 +61,12 @@ export const getCurrentUser = cache(async () => {
 export const getHouseholdSettings = cache(
   async (householdId: string): Promise<{ periodStartDay: number }> => {
     const supabase = await createClient();
-    const { data } = await supabase
+    const result = await supabase
       .from("households")
       .select("period_start_day")
       .eq("id", householdId)
       .maybeSingle();
+    const data = unwrapData(result, "getHouseholdSettings");
     return { periodStartDay: data?.period_start_day ?? 1 };
   },
 );
@@ -80,12 +82,13 @@ export async function isHouseholdOwner(
   householdId: string,
   userId: string,
 ): Promise<boolean> {
-  const { data } = await supabase
+  const result = await supabase
     .from("household_members")
     .select("role")
     .eq("household_id", householdId)
     .eq("user_id", userId)
     .maybeSingle();
+  const data = unwrapData(result, "isHouseholdOwner");
   return data?.role === "owner";
 }
 
@@ -122,25 +125,30 @@ export const getActiveHouseholdId = cache(async (): Promise<string | null> => {
   const supabase = await createClient();
 
   if (fromCookie) {
-    const { data: membership } = await supabase
+    const membershipResult = await supabase
       .from("household_members")
       .select("household_id")
       .eq("user_id", user.id)
       .eq("household_id", fromCookie)
       .maybeSingle();
+    const membership = unwrapData(
+      membershipResult,
+      "validateActiveHouseholdMembership",
+    );
     if (membership) {
       return fromCookie;
     }
   }
 
   // RLS は同居メンバー全員の行を返すため、自分の参加日時で最古のグループを選ぶ。
-  const { data } = await supabase
+  const result = await supabase
     .from("household_members")
     .select("household_id")
     .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+  const data = unwrapData(result, "getOldestHouseholdMembership");
 
   return data?.household_id ?? null;
 });
@@ -159,12 +167,13 @@ export const getUserHouseholds = cache(
     }
 
     const supabase = await createClient();
-    const { data } = await supabase
+    const result = await supabase
       .from("household_members")
       .select("household:households(id, name)")
       .eq("user_id", user.id)
       .order("joined_at", { ascending: true })
       .overrideTypes<{ household: { id: string; name: string } | null }[]>();
+    const data = unwrapData(result, "getUserHouseholds");
 
     return (data ?? [])
       .map((row) => row.household)

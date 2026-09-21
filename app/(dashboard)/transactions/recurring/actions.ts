@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireDashboardContext } from "@/lib/household";
+import { logServerError } from "@/lib/observability";
+import { throwIfError } from "@/lib/queries/result";
 import { recurringTransactionSchema } from "@/lib/validations/transaction";
 
 export type RecurringActionState = { error: string } | undefined;
@@ -48,7 +50,12 @@ export async function createRecurring(
   }
 
   // 作成直後に当期分の収支を生成する（次期を待たずに反映する）。冪等なので失敗しても致命的ではない。
-  await supabase.rpc("generate_due_recurring", { _household_id: householdId });
+  const generationResult = await supabase.rpc("generate_due_recurring", {
+    _household_id: householdId,
+  });
+  if (generationResult.error) {
+    logServerError("recurring.immediate_generation.failed", generationResult.error);
+  }
 
   revalidatePath("/transactions/recurring");
   revalidatePath("/transactions");
@@ -107,11 +114,12 @@ export async function deleteRecurring(formData: FormData): Promise<void> {
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  await supabase
+  const result = await supabase
     .from("recurring_transactions")
     .delete()
     .eq("id", id)
     .eq("household_id", householdId);
+  throwIfError(result, "deleteRecurring");
 
   revalidatePath("/transactions/recurring");
   redirect("/transactions/recurring");
@@ -127,11 +135,12 @@ export async function toggleRecurringActive(formData: FormData): Promise<void> {
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  await supabase
+  const result = await supabase
     .from("recurring_transactions")
     .update({ is_active: isActive })
     .eq("id", id)
     .eq("household_id", householdId);
+  throwIfError(result, "toggleRecurringActive");
 
   revalidatePath("/transactions/recurring");
 }

@@ -428,6 +428,15 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      consume_rate_limit: {
+        Args: {
+          _bucket: string
+          _key_hash: string
+          _limit: number
+          _window_seconds: number
+        }
+        Returns: boolean
+      }
       delete_own_account: { Args: never; Returns: undefined }
       generate_due_recurring: { Args: { _household_id: string }; Returns: number }
       generate_all_due_recurring: {
