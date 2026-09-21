@@ -8,6 +8,7 @@ import {
 } from "@/lib/household";
 import { getPeriodRange, refFromParam, toISODate } from "@/lib/period";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { throwIfError } from "@/lib/queries/result";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 import { buildSettlement } from "@/lib/settlement";
 import type { Json } from "@/types/database";
@@ -69,11 +70,12 @@ export async function deleteSettlement(formData: FormData): Promise<void> {
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  await supabase
+  const result = await supabase
     .from("settlements")
     .delete()
     .eq("id", id)
     .eq("household_id", householdId);
+  throwIfError(result, "deleteSettlement");
 
   revalidatePath("/settlements");
 }

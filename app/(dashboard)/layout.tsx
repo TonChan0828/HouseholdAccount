@@ -3,6 +3,7 @@ import { setActiveHousehold } from "@/app/households/actions";
 import { AppHeader } from "@/components/features/layout/app-header";
 import { MobileTabBar } from "@/components/features/layout/mobile-tab-bar";
 import { getUserHouseholds, requireDashboardContext } from "@/lib/household";
+import { unwrapData } from "@/lib/queries/result";
 
 export default async function DashboardLayout({
   children,
@@ -10,8 +11,7 @@ export default async function DashboardLayout({
   // proxy.ts でも保護しているが、二重防御として確認する。
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  const [{ data: profile }, { data: membership }, households] =
-    await Promise.all([
+  const [profileResult, membershipResult, households] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name")
@@ -24,7 +24,9 @@ export default async function DashboardLayout({
         .eq("user_id", user.id)
         .maybeSingle(),
       getUserHouseholds(),
-    ]);
+  ]);
+  const profile = unwrapData(profileResult, "fetchLayoutProfile");
+  const membership = unwrapData(membershipResult, "fetchLayoutMembership");
 
   // 利用中グループのニックネームを優先し、未設定ならグローバル名にフォールバックする。
   const displayName =

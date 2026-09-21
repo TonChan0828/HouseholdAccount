@@ -1,9 +1,11 @@
 import { toTokyoISODate } from "@/lib/cron/date";
+import { logServerError } from "@/lib/observability";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
+  const requestId = request.headers.get("x-vercel-id") ?? crypto.randomUUID();
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -22,10 +24,14 @@ export async function GET(request: Request): Promise<Response> {
       { ok: true, generated: data ?? 0 },
       { headers: { "Cache-Control": "no-store" } },
     );
-  } catch {
+  } catch (error) {
+    logServerError("cron.recurring.failed", error, { requestId });
     return Response.json(
-      { ok: false, error: "定期収支の生成に失敗しました" },
-      { status: 500, headers: { "Cache-Control": "no-store" } },
+      { ok: false, error: "定期収支の生成に失敗しました", requestId },
+      {
+        status: 500,
+        headers: { "Cache-Control": "no-store", "X-Request-Id": requestId },
+      },
     );
   }
 }

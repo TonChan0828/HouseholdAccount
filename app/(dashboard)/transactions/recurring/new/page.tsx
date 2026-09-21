@@ -7,17 +7,19 @@ import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
 import { requireDashboardContext } from "@/lib/household";
+import { unwrapData } from "@/lib/queries/result";
 import type { Category } from "@/types";
 
 export default async function NewRecurringPage() {
   const { householdId, supabase } = await requireDashboardContext();
 
-  const { data } = await supabase
+  const result = await supabase
     .from("categories")
     .select("*")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
     .order("name", { ascending: true });
+  const data = unwrapData(result, "fetchRecurringFormCategories");
   const categories = (data ?? []) as Category[];
 
   const reveal =

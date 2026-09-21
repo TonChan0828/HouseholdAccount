@@ -1,5 +1,54 @@
 begin;
-select plan(23);
+select plan(30);
+
+select ok(
+  to_regclass('private.rate_limits') is not null,
+  'private distributed rate-limit table exists'
+);
+select ok(
+  to_regprocedure('public.consume_rate_limit(text,text,integer,integer)') is not null,
+  'rate-limit RPC exists'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.consume_rate_limit(text,text,integer,integer)',
+    'EXECUTE'
+  ),
+  'anonymous callers cannot invoke the rate-limit RPC directly'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.consume_rate_limit(text,text,integer,integer)',
+    'EXECUTE'
+  ),
+  'server-side service role can consume a rate limit'
+);
+select ok(
+  not has_table_privilege('anon', 'private.rate_limits', 'SELECT'),
+  'anonymous callers cannot read rate-limit identifiers'
+);
+select is(
+  public.consume_rate_limit(
+    'test.atomic',
+    repeat('a', 64),
+    1,
+    60
+  ),
+  true,
+  'first rate-limit attempt is allowed'
+);
+select is(
+  public.consume_rate_limit(
+    'test.atomic',
+    repeat('a', 64),
+    1,
+    60
+  ),
+  false,
+  'attempt above the fixed-window limit is rejected'
+);
 
 select ok(
   to_regclass('public.transactions') is not null,

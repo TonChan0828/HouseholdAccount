@@ -97,7 +97,7 @@ export function AuthForm({
               <p className="text-right text-sm">
                 <Link
                   href={forgotPasswordHref}
-                  className="text-muted-foreground underline-offset-4 hover:underline"
+                  className="text-muted-foreground underline underline-offset-4"
                 >
                   パスワードをお忘れですか？
                 </Link>
@@ -118,7 +118,7 @@ export function AuthForm({
             {altText}{" "}
             <Link
               href={altHref}
-              className="text-primary underline-offset-4 hover:underline"
+              className="text-primary underline underline-offset-4"
             >
               {altLinkLabel}
             </Link>

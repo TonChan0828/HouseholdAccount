@@ -36,6 +36,9 @@ vi.mock("@/lib/supabase/server", () => ({
     },
   }),
 }));
+vi.mock("@/lib/rate-limit", () => ({
+  consumeRateLimit: async () => true,
+}));
 
 function formDataWith(entries: Record<string, string>) {
   const formData = new FormData();

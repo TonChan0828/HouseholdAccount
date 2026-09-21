@@ -7,7 +7,7 @@ export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center gap-6 p-4">
+    <main className="relative flex flex-1 flex-col items-center justify-center gap-6 p-4">
       <div className="absolute top-4 right-4">
         <ThemeToggleButton />
       </div>
@@ -27,6 +27,6 @@ export default function AuthLayout({
       <div className="w-full max-w-sm animate-in duration-700 fade-in slide-in-from-bottom-2">
         {children}
       </div>
-    </div>
+    </main>
   );
 }

@@ -21,6 +21,7 @@ import {
   toISODate,
 } from "@/lib/period";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { unwrapData } from "@/lib/queries/result";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 import {
   buildSettlement,
@@ -42,7 +43,7 @@ export default async function SettlementsPage({
   const range = getPeriodRange(refFromParam(ref), startDay);
   const periodStart = toISODate(range.start);
 
-  const [txs, members, { data: settlement }] = await Promise.all([
+  const [txs, members, settlementResult] = await Promise.all([
     fetchTransactionsInRange(supabase, householdId, range),
     getHouseholdMemberNames(householdId),
     supabase
@@ -52,6 +53,7 @@ export default async function SettlementsPage({
       .eq("period_start", periodStart)
       .maybeSingle(),
   ]);
+  const settlement = unwrapData(settlementResult, "fetchSettlement");
 
   const current = buildSettlement(txs, members);
   // 精算済みなら記録時点のスナップショットを表示する（後の取引編集に影響されない）。

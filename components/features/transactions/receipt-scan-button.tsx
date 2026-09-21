@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
+import { authorizeReceiptScan } from "@/app/(dashboard)/transactions/ocr-actions";
 import { Button } from "@/components/ui/button";
 import { yen } from "@/lib/format";
 import { recognizeReceipt } from "@/lib/receipt/ocr";
@@ -13,6 +14,8 @@ type Props = {
   /** OCR で抽出できた金額・日付（いずれか/両方が null になりうる）を受け取る。 */
   onResult: (result: ParsedReceipt) => void;
 };
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /**
  * レシート画像を選択してブラウザ内 OCR にかけ、抽出した金額・日付を親へ渡すボタン。
@@ -28,10 +31,18 @@ export function ReceiptScanButton({ onResult }: Props) {
     // 同じファイルを連続選択しても change が発火するよう値をリセットする。
     e.target.value = "";
     if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > MAX_FILE_BYTES) {
+      toast.error("10MB 以下の画像ファイルを選択してください");
+      return;
+    }
 
     setScanning(true);
     setProgress(0);
     try {
+      if (!(await authorizeReceiptScan())) {
+        toast.error("読み取り回数が多すぎます。しばらく待ってからお試しください");
+        return;
+      }
       const text = await recognizeReceipt(file, setProgress);
       const result = parseReceipt(text);
       onResult(result);

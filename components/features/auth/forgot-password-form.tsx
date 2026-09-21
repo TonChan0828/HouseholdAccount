@@ -70,7 +70,7 @@ export function ForgotPasswordForm({ action }: Props) {
           <p className="text-sm text-muted-foreground">
             <Link
               href="/login"
-              className="text-primary underline-offset-4 hover:underline"
+              className="text-primary underline underline-offset-4"
             >
               ログイン画面へ戻る
             </Link>

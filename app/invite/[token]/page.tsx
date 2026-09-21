@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { unwrapData } from "@/lib/queries/result";
 
 const STATUS_MESSAGE: Record<string, string> = {
   not_found: "この招待リンクは無効です。",
@@ -29,7 +30,8 @@ export default async function InvitePage({
 
   // 招待された本人は household_invitations を直接 SELECT できないため、
   // SECURITY DEFINER 関数でグループ名と有効性だけを取得する。
-  const { data } = await supabase.rpc("invitation_preview", { _token: token });
+  const result = await supabase.rpc("invitation_preview", { _token: token });
+  const data = unwrapData(result, "previewInvitation");
   const preview = data?.[0];
   const status = preview?.status ?? "not_found";
   const householdName = preview?.household_name ?? null;

@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.fn();
+const { logServerError } = vi.hoisted(() => ({ logServerError: vi.fn() }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({ rpc }),
 }));
+vi.mock("@/lib/observability", () => ({ logServerError }));
 
 import { GET } from "./route";
 
@@ -12,6 +14,7 @@ describe("GET /api/cron/recurring", () => {
   beforeEach(() => {
     vi.stubEnv("CRON_SECRET", "test-cron-secret");
     rpc.mockReset();
+    logServerError.mockReset();
   });
 
   afterEach(() => {
@@ -52,9 +55,18 @@ describe("GET /api/cron/recurring", () => {
     );
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({
-      ok: false,
-      error: "定期収支の生成に失敗しました",
-    });
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        error: "定期収支の生成に失敗しました",
+        requestId: expect.any(String),
+      }),
+    );
+    expect(response.headers.get("x-request-id")).toBeTruthy();
+    expect(logServerError).toHaveBeenCalledWith(
+      "cron.recurring.failed",
+      expect.any(Error),
+      expect.objectContaining({ requestId: expect.any(String) }),
+    );
   });
 });

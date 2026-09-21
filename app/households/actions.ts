@@ -11,6 +11,8 @@ import {
   setActiveHouseholdCookie,
 } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
+import { throwIfError, unwrapData } from "@/lib/queries/result";
+import { consumeRateLimit } from "@/lib/rate-limit";
 import {
   createHouseholdSchema,
   invitationLimitSchema,
@@ -79,12 +81,13 @@ export async function setActiveHousehold(formData: FormData): Promise<void> {
 
   // 自分がメンバーであることを確認する。
   // RLS は同居メンバー全員の行を返すため、user_id で絞らないと複数行になり maybeSingle が失敗する。
-  const { data } = await supabase
+  const result = await supabase
     .from("household_members")
     .select("household_id")
     .eq("household_id", householdId)
     .eq("user_id", user.id)
     .maybeSingle();
+  const data = unwrapData(result, "validateHouseholdSwitchMembership");
 
   if (data) {
     await setActiveHouseholdCookie(householdId);
@@ -117,6 +120,18 @@ export async function createInvitation(
   } = await supabase.auth.getUser();
   if (!user) {
     redirect("/login");
+  }
+
+  if (
+    !(await consumeRateLimit({
+      bucket: "invitation.create",
+      subject: user.id,
+      limit: 20,
+      windowSeconds: 60 * 60,
+      includeIp: false,
+    }))
+  ) {
+    return { error: "招待リンクの発行回数が多すぎます。しばらくお待ちください" };
   }
 
   const token = randomBytes(24).toString("base64url");
@@ -167,10 +182,11 @@ export async function updateInvitation(formData: FormData): Promise<void> {
     return;
   }
 
-  await supabase
+  const result = await supabase
     .from("household_invitations")
     .update({ max_uses: parsed.data.maxUses })
     .eq("id", invitationId);
+  throwIfError(result, "updateInvitation");
 
   revalidatePath("/households");
 }
@@ -202,10 +218,11 @@ export async function setPeriodStartDay(formData: FormData): Promise<void> {
     return;
   }
 
-  await supabase
+  const result = await supabase
     .from("households")
     .update({ period_start_day: parsed.data.periodStartDay })
     .eq("id", householdId);
+  throwIfError(result, "setPeriodStartDay");
 
   revalidatePath("/households");
   revalidatePath("/transactions");
@@ -232,7 +249,11 @@ export async function revokeInvitation(formData: FormData): Promise<void> {
     return;
   }
 
-  await supabase.from("household_invitations").delete().eq("id", invitationId);
+  const result = await supabase
+    .from("household_invitations")
+    .delete()
+    .eq("id", invitationId);
+  throwIfError(result, "revokeInvitation");
 
   revalidatePath("/households");
 }
@@ -262,11 +283,12 @@ export async function removeMember(formData: FormData): Promise<void> {
 
   // RLS の delete ポリシー（members_delete_owner_or_self）で owner 以外は弾かれる。
   // 除外されたメンバーのトランザクション等は household スコープのデータとして残す。
-  await supabase
+  const result = await supabase
     .from("household_members")
     .delete()
     .eq("household_id", householdId)
     .eq("user_id", targetUserId);
+  throwIfError(result, "removeHouseholdMember");
 
   revalidatePath("/households");
 }
@@ -293,10 +315,11 @@ export async function updateGroupDisplayName(
   }
 
   const supabase = await createClient();
-  await supabase.rpc("set_member_display_name", {
+  const result = await supabase.rpc("set_member_display_name", {
     _household_id: householdId,
     _display_name: parsed.data.displayName,
   });
+  throwIfError(result, "updateGroupDisplayName");
 
   // ヘッダー・メンバー一覧・メンバー別表示など表示名を出す全画面を再検証する。
   revalidatePath("/", "layout");
@@ -321,12 +344,13 @@ export async function leaveHousehold(
   }
 
   // 自分のロールを確認する。owner は別メンバーへ委譲してからでないと脱退できない。
-  const { data: membership } = await supabase
+  const membershipResult = await supabase
     .from("household_members")
     .select("role")
     .eq("household_id", householdId)
     .eq("user_id", user.id)
     .maybeSingle();
+  const membership = unwrapData(membershipResult, "fetchMembershipForLeave");
 
   if (!membership) {
     return { error: "このグループに参加していません" };
@@ -338,11 +362,12 @@ export async function leaveHousehold(
   }
 
   // RLS の delete ポリシーで自分の行のみ削除できる。
-  await supabase
+  const deleteResult = await supabase
     .from("household_members")
     .delete()
     .eq("household_id", householdId)
     .eq("user_id", user.id);
+  throwIfError(deleteResult, "leaveHousehold");
 
   // 脱退したグループがアクティブだった場合は Cookie を消す（getActiveHouseholdId が
   // 残りの所属グループへフォールバックする）。
@@ -377,10 +402,11 @@ export async function transferOwnership(formData: FormData): Promise<void> {
   }
 
   // 複数行の更新を原子的に行うため SECURITY DEFINER の RPC を使う。
-  await supabase.rpc("transfer_ownership", {
+  const result = await supabase.rpc("transfer_ownership", {
     _household_id: householdId,
     _new_owner: newOwnerId,
   });
+  throwIfError(result, "transferHouseholdOwnership");
 
   revalidatePath("/households");
 }
@@ -406,7 +432,8 @@ export async function deleteHousehold(formData: FormData): Promise<void> {
   }
 
   // RLS の households_delete_owner で owner を強制。子テーブルは on delete cascade。
-  await supabase.from("households").delete().eq("id", householdId);
+  const result = await supabase.from("households").delete().eq("id", householdId);
+  throwIfError(result, "deleteHousehold");
 
   // 削除グループがアクティブだった場合は Cookie を消す
   // （getActiveHouseholdId が残りの所属グループへフォールバックする）。
@@ -435,6 +462,18 @@ export async function acceptInvitation(
   } = await supabase.auth.getUser();
   if (!user) {
     redirect("/login");
+  }
+
+  if (
+    !(await consumeRateLimit({
+      bucket: "invitation.accept",
+      subject: user.id,
+      limit: 20,
+      windowSeconds: 15 * 60,
+      includeIp: false,
+    }))
+  ) {
+    return { error: "参加の試行回数が多すぎます。しばらくお待ちください" };
   }
 
   const { data, error } = await supabase.rpc("accept_invitation", {

@@ -32,6 +32,10 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+vi.mock("@/lib/rate-limit", () => ({
+  consumeRateLimit: async () => true,
+}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: {

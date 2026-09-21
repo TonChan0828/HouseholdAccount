@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireDashboardContext } from "@/lib/household";
+import { throwIfError } from "@/lib/queries/result";
 import { budgetSchema } from "@/lib/validations/budget";
 
 export type BudgetActionState = { error: string } | undefined;
@@ -47,11 +48,12 @@ export async function deleteBudget(formData: FormData): Promise<void> {
   }
 
   const { householdId, supabase } = await requireDashboardContext();
-  await supabase
+  const result = await supabase
     .from("budgets")
     .delete()
     .eq("category_id", categoryId)
     .eq("household_id", householdId);
+  throwIfError(result, "deleteBudget");
 
   revalidatePath("/budgets");
   revalidatePath("/dashboard");

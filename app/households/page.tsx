@@ -36,6 +36,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
 import { getActiveHouseholdId } from "@/lib/household";
+import { unwrapData } from "@/lib/queries/result";
 import { createClient } from "@/lib/supabase/server";
 import type { HouseholdInvitation, MemberRole } from "@/types";
 
@@ -54,43 +55,47 @@ export default async function HouseholdsPage() {
   }
 
   // RLS は同居メンバー全員の行を返すため、自分の所属行に絞る（重複表示防止）。
-  const { data: memberships } = await supabase
+  const membershipResult = await supabase
     .from("household_members")
     .select("role, household:households(id, name, period_start_day)")
     .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .overrideTypes<MembershipRow[]>();
+  const memberships = unwrapData(membershipResult, "fetchHouseholdMemberships");
 
   const groups = (memberships ?? []).filter((m) => m.household !== null);
   const activeId = await getActiveHouseholdId();
 
   // RLS により、自分が owner のグループの招待リンクのみ取得できる。
-  const { data: invitationRows } = await supabase
+  const invitationResult = await supabase
     .from("household_invitations")
     .select("*")
     .order("created_at", { ascending: false });
+  const invitationRows = unwrapData(invitationResult, "fetchHouseholdInvitations");
   const invitations = (invitationRows ?? []) as HouseholdInvitation[];
 
   // 所属グループ全員のメンバーを取得する（RLS により自分の所属グループ分のみ返る）。
   const groupIds = groups.map((m) => m.household!.id);
-  const { data: memberRows } = groupIds.length
+  const memberResult = groupIds.length
     ? await supabase
         .from("household_members")
         .select("household_id, user_id, role, joined_at, display_name")
         .in("household_id", groupIds)
         .order("joined_at", { ascending: true })
-    : { data: [] };
+    : { data: [], error: null };
+  const memberRows = unwrapData(memberResult, "fetchHouseholdMembers");
   const allMembers = memberRows ?? [];
 
   // 表示名はグループ毎の名前（household_members.display_name）を優先し、
   // 未設定ならグローバル名（profiles.display_name）にフォールバックする。
   const memberUserIds = [...new Set(allMembers.map((m) => m.user_id))];
-  const { data: profileRows } = memberUserIds.length
+  const profileResult = memberUserIds.length
     ? await supabase
         .from("profiles")
         .select("id, display_name")
         .in("id", memberUserIds)
-    : { data: [] };
+    : { data: [], error: null };
+  const profileRows = unwrapData(profileResult, "fetchHouseholdMemberProfiles");
   const nameById = new Map(
     (profileRows ?? []).map((p) => [p.id, p.display_name]),
   );

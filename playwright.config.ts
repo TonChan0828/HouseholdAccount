@@ -5,13 +5,14 @@ import { STORAGE_STATE } from "./e2e/constants";
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3000);
 const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
 const isCI = Boolean(process.env.CI);
+const skipDatabaseSetup = process.env.E2E_SKIP_DB_SETUP === "true";
 
 export default defineConfig({
   testDir: "./e2e",
   // *.test.ts は Vitest 用のユニットテスト（例: constants.test.ts）。Playwright では実行しない。
   testIgnore: /\.test\.ts$/,
   // 実行開始時に前回までの一時データ（接頭辞付きグループ）をクリーンアップする。
-  globalSetup: "./e2e/global-setup.ts",
+  globalSetup: skipDatabaseSetup ? undefined : "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
@@ -34,14 +35,19 @@ export default defineConfig({
     // 未認証で検証するテスト（認証ルーティング・デモモードなど）
     {
       name: "chromium-guest",
-      testMatch: /(auth|demo)\.spec\.ts/,
+      testMatch: /(accessibility|auth|demo)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     // ログイン済みで検証するテスト（グループ管理など）
     {
       name: "chromium-auth",
       // プロジェクト単位の testIgnore はトップレベルを上書きするため .test.ts もここで除外する。
-      testIgnore: [/auth\.(spec|setup)\.ts/, /demo\.spec\.ts/, /\.test\.ts$/],
+      testIgnore: [
+        /accessibility\.spec\.ts/,
+        /auth\.(spec|setup)\.ts/,
+        /demo\.spec\.ts/,
+        /\.test\.ts$/,
+      ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: STORAGE_STATE,

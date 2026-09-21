@@ -50,7 +50,7 @@ export default async function VerifyEmailPage({
           認証が完了したら{" "}
           <Link
             href="/login"
-            className="text-primary underline-offset-4 hover:underline"
+            className="text-primary underline underline-offset-4"
           >
             ログイン
           </Link>{" "}
