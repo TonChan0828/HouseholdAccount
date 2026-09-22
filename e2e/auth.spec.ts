@@ -76,6 +76,33 @@ test.describe("認証ルーティング", () => {
     ).toHaveAttribute("href", "/register");
   });
 
+  test("未認証でも無効な招待リンクの案内へ到達できる", async ({ page }) => {
+    await page.goto(`/invite/${"x".repeat(31)}`);
+    await expect(page).toHaveURL(new RegExp(`/invite/${"x".repeat(31)}$`));
+    await expect(page.getByText("この招待リンクは無効です。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "このグループに参加する" })).toHaveCount(0);
+  });
+
+  test("未認証の CSP report POST は受理し、GET は公開しない", async ({
+    page,
+    request,
+  }) => {
+    const report = await request.post("/api/csp-report", {
+      headers: { "content-type": "application/csp-report" },
+      data: {
+        "csp-report": {
+          "effective-directive": "production-e2e",
+          "document-uri": "http://localhost/?secret=removed",
+          "blocked-uri": "https://example.invalid/script.js?secret=removed",
+        },
+      },
+    });
+    expect(report.status()).toBe(204);
+
+    await page.goto("/api/csp-report");
+    await expect(page).toHaveURL(/\/login$/);
+  });
+
   // ユーザーストーリー（01_auth）:
   //   登録済みユーザーとして、メール/パスワードでログインし家計簿に入れる。
   // （ログアウトは共有 E2E セッションを失効させ他テストを壊すため E2E では行わず、

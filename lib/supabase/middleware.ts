@@ -48,7 +48,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 未ログインで保護ルートにアクセス → ログインへ
-  if (!user && !isPublicPath(pathname)) {
+  if (!user && !isPublicPath(pathname, request.method)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

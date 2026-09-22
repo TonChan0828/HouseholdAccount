@@ -1,8 +1,42 @@
 import { logServerError } from "@/lib/observability";
+import { consumeRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const MAX_REPORT_BYTES = 32 * 1024;
+const REPORT_CONTENT_TYPES = new Set([
+  "application/csp-report",
+  "application/json",
+  "application/reports+json",
+]);
+
+function reportContentType(request: Request): string {
+  return (
+    request.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase() ?? ""
+  );
+}
+
+function reportRecord(value: unknown): Record<string, unknown> | null {
+  const root = Array.isArray(value) ? value[0] : value;
+  if (typeof root !== "object" || root === null || Array.isArray(root)) {
+    return null;
+  }
+  const record = root as Record<string, unknown>;
+  const report = record["csp-report"] ?? record.body ?? record;
+  return typeof report === "object" && report !== null && !Array.isArray(report)
+    ? (report as Record<string, unknown>)
+    : null;
+}
+
+function safeDirective(value: unknown): string {
+  return typeof value === "string" && /^[a-z][a-z0-9-]{0,119}$/.test(value)
+    ? value
+    : "unknown";
+}
 
 function safeLocation(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -15,26 +49,41 @@ function safeLocation(value: unknown): string | undefined {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  if (!REPORT_CONTENT_TYPES.has(reportContentType(request))) {
+    return new Response(null, { status: 415 });
+  }
+
   const declaredSize = Number(request.headers.get("content-length") ?? "0");
   if (declaredSize > MAX_REPORT_BYTES) {
     return new Response(null, { status: 413 });
   }
 
+  if (
+    !(await consumeRateLimit({
+      bucket: "csp.report",
+      subject: "browser",
+      limit: 60,
+      windowSeconds: 60,
+    }))
+  ) {
+    return new Response(null, {
+      status: 429,
+      headers: { "Retry-After": "60" },
+    });
+  }
+
   const text = await request.text();
-  if (text.length > MAX_REPORT_BYTES) {
+  if (new TextEncoder().encode(text).byteLength > MAX_REPORT_BYTES) {
     return new Response(null, { status: 413 });
   }
 
   try {
-    const body = JSON.parse(text) as Record<string, unknown>;
-    const report = (body["csp-report"] ?? body.body ?? body) as Record<
-      string,
-      unknown
-    >;
+    const report = reportRecord(JSON.parse(text));
+    if (!report) return new Response(null, { status: 400 });
     logServerError("csp.violation", new Error("CspViolation"), {
-      directive: String(
-        report["effective-directive"] ?? report.effectiveDirective ?? "unknown",
-      ).slice(0, 120),
+      directive: safeDirective(
+        report["effective-directive"] ?? report.effectiveDirective,
+      ),
       document: safeLocation(
         report["document-uri"] ?? report.documentURL ?? report.url,
       ),
