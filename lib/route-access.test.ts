@@ -32,6 +32,20 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/cron/recurring")).toBe(true);
   });
 
+  it("招待ページは単一トークン階層の GET・HEAD だけを公開する", () => {
+    expect(isPublicPath("/invite/invalid-token", "GET")).toBe(true);
+    expect(isPublicPath("/invite/invalid-token", "HEAD")).toBe(true);
+    expect(isPublicPath("/invite/invalid-token", "POST")).toBe(false);
+    expect(isPublicPath("/invite", "GET")).toBe(false);
+    expect(isPublicPath("/invite/token/extra", "GET")).toBe(false);
+  });
+
+  it("CSP report endpoint は POST だけを公開する", () => {
+    expect(isPublicPath("/api/csp-report", "POST")).toBe(true);
+    expect(isPublicPath("/api/csp-report", "GET")).toBe(false);
+    expect(isPublicPath("/api/csp-report/extra", "POST")).toBe(false);
+  });
+
   it("ダッシュボード・保護ルートは非公開", () => {
     expect(isPublicPath("/dashboard")).toBe(false);
     expect(isPublicPath("/transactions")).toBe(false);

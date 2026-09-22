@@ -20,18 +20,23 @@ const STATUS_MESSAGE: Record<string, string> = {
   exhausted: "この招待リンクは参加上限に達しています。",
 };
 
+const INVITATION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32}$/;
+
 export default async function InvitePage({
   params,
 }: {
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const supabase = await createClient();
-
+  // 明らかに不正な形式は DB へ渡さず、正規トークンだけを専用 RPC で確認する。
   // 招待された本人は household_invitations を直接 SELECT できないため、
-  // SECURITY DEFINER 関数でグループ名と有効性だけを取得する。
-  const result = await supabase.rpc("invitation_preview", { _token: token });
-  const data = unwrapData(result, "previewInvitation");
+  // SECURITY DEFINER 関数がグループ名と有効性だけを返す。
+  const data = INVITATION_TOKEN_PATTERN.test(token)
+    ? unwrapData(
+        await (await createClient()).rpc("invitation_preview", { _token: token }),
+        "previewInvitation",
+      )
+    : null;
   const preview = data?.[0];
   const status = preview?.status ?? "not_found";
   const householdName = preview?.household_name ?? null;

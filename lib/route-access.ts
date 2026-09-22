@@ -10,13 +10,21 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/cron/recurring",
 ];
 
+const INVITE_PATH = /^\/invite\/[^/]+$/;
+
 /**
- * 未ログインでもアクセスできるパスかを判定する。
- * `/`（ランディングページ）は完全一致で公開、それ以外は接頭辞一致で判定する。
+ * 未ログインでもアクセスできるリクエストかを判定する。
+ * 機密性のある公開入口はパスと HTTP メソッドの両方を限定する。
  */
-export function isPublicPath(pathname: string): boolean {
+export function isPublicPath(pathname: string, method = "GET"): boolean {
   if (pathname === "/") {
     return true;
+  }
+  if (INVITE_PATH.test(pathname)) {
+    return method === "GET" || method === "HEAD";
+  }
+  if (pathname === "/api/csp-report") {
+    return method === "POST";
   }
   return PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
