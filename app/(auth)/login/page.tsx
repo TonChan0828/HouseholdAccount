@@ -10,6 +10,7 @@ export default async function LoginPage({
 }) {
   const { deleted, next } = await searchParams;
   const nextPath = safeNextPath(next, "/households");
+  const continuedNext = nextPath === "/households" ? undefined : nextPath;
 
   return (
     <AuthForm
@@ -18,11 +19,15 @@ export default async function LoginPage({
       submitLabel="ログイン"
       action={signIn}
       altText="アカウントをお持ちでない方は"
-      altHref={`/register?next=${encodeURIComponent(nextPath)}`}
+      altHref={
+        continuedNext
+          ? `/register?next=${encodeURIComponent(continuedNext)}`
+          : "/register"
+      }
       altLinkLabel="新規登録"
       forgotPasswordHref="/forgot-password"
       notice={deleted === "1" ? "アカウントを削除しました" : undefined}
-      nextPath={nextPath}
+      nextPath={continuedNext}
     />
   );
 }

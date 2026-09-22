@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { unwrapData } from "@/lib/queries/result";
 
 const STATUS_MESSAGE: Record<string, string> = {
@@ -32,15 +33,13 @@ export default async function InvitePage({
   // 明らかに不正な形式は DB へ渡さず、正規トークンだけを専用 RPC で確認する。
   // 招待された本人は household_invitations を直接 SELECT できないため、
   // SECURITY DEFINER 関数がグループ名と有効性だけを返す。
-  const supabase = INVITATION_TOKEN_PATTERN.test(token)
-    ? await createClient()
-    : null;
-  const [data, userResult] = supabase
+  const isValidToken = INVITATION_TOKEN_PATTERN.test(token);
+  const [data, userResult] = isValidToken
     ? await Promise.all([
-        supabase
+        createAdminClient()
           .rpc("invitation_preview", { _token: token })
           .then((result) => unwrapData(result, "previewInvitation")),
-        supabase.auth.getUser(),
+        (await createClient()).auth.getUser(),
       ])
     : [null, null];
   const preview = data?.[0];

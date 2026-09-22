@@ -11,6 +11,7 @@ export default async function RegisterPage({
 }) {
   const { next } = await searchParams;
   const nextPath = safeNextPath(next, "/households");
+  const continuedNext = nextPath === "/households" ? undefined : nextPath;
 
   return (
     <AuthForm
@@ -19,10 +20,14 @@ export default async function RegisterPage({
       submitLabel="登録する"
       action={signUp}
       altText="すでにアカウントをお持ちの方は"
-      altHref={`/login?next=${encodeURIComponent(nextPath)}`}
+      altHref={
+        continuedNext
+          ? `/login?next=${encodeURIComponent(continuedNext)}`
+          : "/login"
+      }
       altLinkLabel="ログイン"
       passwordHint={PASSWORD_POLICY_HINT}
-      nextPath={nextPath}
+      nextPath={continuedNext}
     />
   );
 }
