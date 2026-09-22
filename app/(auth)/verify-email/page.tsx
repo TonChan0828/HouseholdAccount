@@ -19,6 +19,7 @@ export default async function VerifyEmailPage({
 }) {
   const { email, next } = await searchParams;
   const nextPath = safeNextPath(next, "/households");
+  const continuedNext = nextPath === "/households" ? undefined : nextPath;
 
   return (
     <Surface variant="raised" className="w-full">
@@ -47,7 +48,7 @@ export default async function VerifyEmailPage({
           <ResendConfirmation
             email={email}
             action={resendConfirmation}
-            nextPath={nextPath}
+            nextPath={continuedNext}
           />
         ) : null}
       </CardContent>
@@ -55,7 +56,11 @@ export default async function VerifyEmailPage({
         <p className="text-sm text-muted-foreground">
           認証が完了したら{" "}
           <Link
-            href={`/login?next=${encodeURIComponent(nextPath)}`}
+            href={
+              continuedNext
+                ? `/login?next=${encodeURIComponent(continuedNext)}`
+                : "/login"
+            }
             className="text-primary underline underline-offset-4"
           >
             ログイン
