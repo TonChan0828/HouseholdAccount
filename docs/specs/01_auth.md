@@ -26,8 +26,8 @@ Supabase Auth（メール/パスワード）による認証。登録・ログイ
   登録はパスワードポリシー（8文字以上＋英大・英小・数字・記号）を適用し、入力欄に要件を補足表示
   （[`13_password_reset.md`](./13_password_reset.md) 参照）
 - 送信は Server Action（`useActionState`）。エラーはフォーム内に `role="alert"` で表示
-- ログイン成功 → `/households` へリダイレクト
-- 登録成功 → 確認メールを送信し `/verify-email` へ（[`23_email_verification.md`](./23_email_verification.md) 参照）
+- ログイン成功 → 検証済みの同一オリジン `next` があればその画面へ、なければ `/households` へリダイレクト
+- 登録成功 → 確認メールを送信し `/verify-email` へ。検証済みの `next` は確認メール・再送メールにも引き継ぎ、認証後に元の画面へ戻す（[`23_email_verification.md`](./23_email_verification.md) 参照）
 - ログアウト → `/login` へリダイレクト
 - ログイン済みで `/login` `/register` にアクセス → `/households` へ
 

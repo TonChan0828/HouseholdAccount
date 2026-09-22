@@ -28,18 +28,25 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const invitePath = `/invite/${token}`;
   // 明らかに不正な形式は DB へ渡さず、正規トークンだけを専用 RPC で確認する。
   // 招待された本人は household_invitations を直接 SELECT できないため、
   // SECURITY DEFINER 関数がグループ名と有効性だけを返す。
-  const data = INVITATION_TOKEN_PATTERN.test(token)
-    ? unwrapData(
-        await (await createClient()).rpc("invitation_preview", { _token: token }),
-        "previewInvitation",
-      )
+  const supabase = INVITATION_TOKEN_PATTERN.test(token)
+    ? await createClient()
     : null;
+  const [data, userResult] = supabase
+    ? await Promise.all([
+        supabase
+          .rpc("invitation_preview", { _token: token })
+          .then((result) => unwrapData(result, "previewInvitation")),
+        supabase.auth.getUser(),
+      ])
+    : [null, null];
   const preview = data?.[0];
   const status = preview?.status ?? "not_found";
   const householdName = preview?.household_name ?? null;
+  const user = userResult?.data.user ?? null;
 
   return (
     <div className="flex flex-1 items-center justify-center bg-muted/40 p-4">
@@ -53,8 +60,31 @@ export default async function InvitePage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {status === "valid" ? (
+          {status === "valid" && user ? (
             <AcceptInviteForm token={token} action={acceptInvitation} />
+          ) : status === "valid" ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                参加するにはログインが必要です。認証後、この招待画面へ戻ります。
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link
+                  href={`/login?next=${encodeURIComponent(invitePath)}`}
+                  className={buttonVariants({ className: "flex-1" })}
+                >
+                  ログインして参加
+                </Link>
+                <Link
+                  href={`/register?next=${encodeURIComponent(invitePath)}`}
+                  className={buttonVariants({
+                    variant: "outline",
+                    className: "flex-1",
+                  })}
+                >
+                  新規登録して参加
+                </Link>
+              </div>
+            </div>
           ) : (
             <p className="text-sm text-destructive" role="alert">
               {STATUS_MESSAGE[status] ?? "この招待リンクは利用できません。"}

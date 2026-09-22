@@ -13,9 +13,10 @@ type Action = (
 type Props = {
   email: string;
   action: Action;
+  nextPath?: string;
 };
 
-export function ResendConfirmation({ email, action }: Props) {
+export function ResendConfirmation({ email, action, nextPath }: Props) {
   const [state, formAction, pending] = useActionState<
     ResendConfirmationState,
     FormData
@@ -24,6 +25,7 @@ export function ResendConfirmation({ email, action }: Props) {
   return (
     <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="email" value={email} />
+      {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
       <Button
         type="submit"
         variant="outline"

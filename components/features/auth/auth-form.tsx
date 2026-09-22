@@ -34,6 +34,8 @@ type AuthFormProps = {
   passwordHint?: string;
   /** 指定するとフォーム上部に通知メッセージ（role="status"）を表示する */
   notice?: string;
+  /** 認証成功後に戻る同一オリジン内のパス */
+  nextPath?: string;
 };
 
 export function AuthForm({
@@ -47,6 +49,7 @@ export function AuthForm({
   forgotPasswordHref,
   passwordHint,
   notice,
+  nextPath,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     action,
@@ -61,6 +64,7 @@ export function AuthForm({
       </CardHeader>
       <form action={formAction}>
         <CardContent className="space-y-4">
+          {nextPath ? <input type="hidden" name="next" value={nextPath} /> : null}
           {notice ? (
             <p className="text-sm text-primary" role="status">
               {notice}

@@ -4,7 +4,7 @@
 
 新規登録（サインアップ）時に Supabase Auth のメール確認（email confirmation）を必須化し、
 登録直後に「確認メールを送信しました」と案内する専用ページを追加する。メール内リンクは
-既存の `app/auth/callback/route.ts` で着地させ、確認完了後は `/households` へ送る。
+既存の `app/auth/callback/route.ts` で着地させ、確認完了後は検証済みの `next`（既定は `/households`）へ送る。
 案内ページには確認メールの再送信ボタンを置く。
 
 これまで登録は成功直後に `/households` へリダイレクトしており、メール確認が無効である前提の
@@ -13,7 +13,7 @@
 提供する機能:
 
 1. **確認案内ページ（未ログイン）**: 登録 → `/verify-email` → メール内リンク →
-   `/auth/callback`（code 交換）→ `/households`
+   `/auth/callback`（code 交換）→ 検証済みの `next`（既定は `/households`）
 2. **確認メールの再送信**: 案内ページのボタンから `supabase.auth.resend` で再送信
 
 ## 対象ユーザー・前提条件
@@ -31,13 +31,13 @@
 
 ## 画面・UI
 
-- `/register`: 既存の登録フォーム。送信成功後は `/verify-email?email=<入力アドレス>` へリダイレクト
+- `/register`: 既存の登録フォーム。送信成功後は `/verify-email?email=<入力アドレス>&next=<戻り先>` へリダイレクト
 - `/verify-email`: 確認案内ページ。`email` クエリ宛に「確認メールを送信しました。メール内のリンクを
   クリックして登録を完了してください」と表示。**確認メールを再送信**ボタンと `/login` へ戻るリンクを置く
   - 再送信ボタンは client component（`components/features/auth/resend-confirmation.tsx`）。
     送信後は `role="status"` で「確認メールを再送信しました」を表示
 - `/auth/callback`: メール内リンクの着地点（GET ルートハンドラ、画面なし）。`code` を
-  `exchangeCodeForSession` でセッションに交換し `next`（確認は `/households`）へリダイレクト。
+  `exchangeCodeForSession` でセッションに交換し、同一オリジン相対パスに限定した `next` へリダイレクト。
   失敗時は `/login?error=reset_link_invalid` へ（パスワード再設定と共用）
 
 ### インタラクション・バリデーション
@@ -79,13 +79,13 @@ type ResendConfirmationState = { success: true } | { error: string } | undefined
 signUp: supabase.auth.signUp({
   email,
   password,
-  options: { emailRedirectTo: `${origin}/auth/callback?next=/households` },
-}) // 成功後 /verify-email?email=... へ redirect
+  options: { emailRedirectTo: `${origin}/auth/callback?next=${encodedNext}` },
+}) // 成功後 /verify-email?email=...&next=... へ redirect
 
 resendConfirmation: supabase.auth.resend({
   type: "signup",
   email,
-  options: { emailRedirectTo: `${origin}/auth/callback?next=/households` },
+  options: { emailRedirectTo: `${origin}/auth/callback?next=${encodedNext}` },
 }) // 結果に関わらず { success: true }
 
 // app/auth/callback/route.ts
