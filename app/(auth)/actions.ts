@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/observability";
 import { throwIfError } from "@/lib/queries/result";
 import { consumeRateLimit } from "@/lib/rate-limit";
+import { safeNextPath } from "@/lib/route-access";
 import {
   loginSchema,
   passwordUpdateSchema,
@@ -36,6 +37,10 @@ export async function signIn(
   _prevState: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
+  const nextPath = safeNextPath(
+    String(formData.get("next") ?? ""),
+    "/households",
+  );
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -63,13 +68,17 @@ export async function signIn(
     return { error: "メールアドレスまたはパスワードが正しくありません" };
   }
 
-  redirect("/households");
+  redirect(nextPath);
 }
 
 export async function signUp(
   _prevState: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
+  const nextPath = safeNextPath(
+    String(formData.get("next") ?? ""),
+    "/households",
+  );
   const parsed = registerSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -94,7 +103,9 @@ export async function signUp(
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     ...parsed.data,
-    options: { emailRedirectTo: `${origin}/auth/callback?next=/households` },
+    options: {
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+    },
   });
 
   if (error) {
@@ -102,7 +113,11 @@ export async function signUp(
   }
 
   // メール確認が必要なため、セッション未確立の前提で確認案内ページへ送る。
-  redirect(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
+  const verifyParams = new URLSearchParams({
+    email: parsed.data.email,
+    next: nextPath,
+  });
+  redirect(`/verify-email?${verifyParams}`);
 }
 
 /**
@@ -113,6 +128,10 @@ export async function resendConfirmation(
   _prevState: ResendConfirmationState,
   formData: FormData,
 ): Promise<ResendConfirmationState> {
+  const nextPath = safeNextPath(
+    String(formData.get("next") ?? ""),
+    "/households",
+  );
   const parsed = resetRequestSchema.safeParse({
     email: formData.get("email"),
   });
@@ -137,7 +156,9 @@ export async function resendConfirmation(
   const result = await supabase.auth.resend({
     type: "signup",
     email: parsed.data.email,
-    options: { emailRedirectTo: `${origin}/auth/callback?next=/households` },
+    options: {
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+    },
   });
   if (result.error) {
     logServerError("auth.confirmation_resend.failed", result.error);

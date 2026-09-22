@@ -3,6 +3,7 @@ import Link from "next/link";
 import { resendConfirmation } from "@/app/(auth)/actions";
 import { ResendConfirmation } from "@/components/features/auth/resend-confirmation";
 import { Surface } from "@/components/shared/surface";
+import { safeNextPath } from "@/lib/route-access";
 import {
   CardContent,
   CardDescription,
@@ -14,9 +15,10 @@ import {
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  searchParams: Promise<{ email?: string; next?: string }>;
 }) {
-  const { email } = await searchParams;
+  const { email, next } = await searchParams;
+  const nextPath = safeNextPath(next, "/households");
 
   return (
     <Surface variant="raised" className="w-full">
@@ -42,14 +44,18 @@ export default async function VerifyEmailPage({
           メールが届かない場合は、迷惑メールフォルダをご確認のうえ、下のボタンから再送信してください。
         </p>
         {email ? (
-          <ResendConfirmation email={email} action={resendConfirmation} />
+          <ResendConfirmation
+            email={email}
+            action={resendConfirmation}
+            nextPath={nextPath}
+          />
         ) : null}
       </CardContent>
       <CardFooter className="mt-6 flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">
           認証が完了したら{" "}
           <Link
-            href="/login"
+            href={`/login?next=${encodeURIComponent(nextPath)}`}
             className="text-primary underline underline-offset-4"
           >
             ログイン

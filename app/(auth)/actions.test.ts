@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resendConfirmation, signOut, signUp } from "./actions";
+import { resendConfirmation, signIn, signOut, signUp } from "./actions";
 
 const state = vi.hoisted(() => ({
   signUpError: null as { message: string } | null,
   signUpArgs: null as unknown,
+  signInArgs: null as unknown,
   resendArgs: null as unknown,
 }));
 
@@ -27,6 +28,10 @@ vi.mock("@/lib/supabase/server", () => ({
       signUp: async (args: unknown) => {
         state.signUpArgs = args;
         return { error: state.signUpError };
+      },
+      signInWithPassword: async (args: unknown) => {
+        state.signInArgs = args;
+        return { error: null };
       },
       resend: async (args: unknown) => {
         state.resendArgs = args;
@@ -53,20 +58,63 @@ const validForm = { email: "new@example.com", password: "Password1!" };
 beforeEach(() => {
   state.signUpError = null;
   state.signUpArgs = null;
+  state.signInArgs = null;
   state.resendArgs = null;
+});
+
+describe("signIn", () => {
+  it("安全な next パスへリダイレクトする", async () => {
+    await expect(
+      signIn(
+        undefined,
+        formDataWith({ ...validForm, next: "/invite/abc_123" }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT:/invite/abc_123");
+
+    expect(state.signInArgs).toEqual(validForm);
+  });
+
+  it("外部 URL の next は拒否してグループ一覧へ戻す", async () => {
+    await expect(
+      signIn(
+        undefined,
+        formDataWith({ ...validForm, next: "https://evil.example" }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT:/households");
+  });
 });
 
 describe("signUp", () => {
   it("成功時は emailRedirectTo 付きで signUp を呼び、/verify-email へリダイレクトする", async () => {
     await expect(signUp(undefined, formDataWith(validForm))).rejects.toThrow(
-      "NEXT_REDIRECT:/verify-email?email=new%40example.com",
+      "NEXT_REDIRECT:/verify-email?email=new%40example.com&next=%2Fhouseholds",
     );
 
     expect(state.signUpArgs).toEqual({
       email: "new@example.com",
       password: "Password1!",
       options: {
-        emailRedirectTo: "http://localhost:3000/auth/callback?next=/households",
+        emailRedirectTo:
+          "http://localhost:3000/auth/callback?next=%2Fhouseholds",
+      },
+    });
+  });
+
+  it("安全な next を確認メールと案内画面へ引き継ぐ", async () => {
+    await expect(
+      signUp(
+        undefined,
+        formDataWith({ ...validForm, next: "/invite/abc_123" }),
+      ),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/verify-email?email=new%40example.com&next=%2Finvite%2Fabc_123",
+    );
+
+    expect(state.signUpArgs).toEqual({
+      ...validForm,
+      options: {
+        emailRedirectTo:
+          "http://localhost:3000/auth/callback?next=%2Finvite%2Fabc_123",
       },
     });
   });
@@ -102,7 +150,42 @@ describe("resendConfirmation", () => {
       type: "signup",
       email: "new@example.com",
       options: {
-        emailRedirectTo: "http://localhost:3000/auth/callback?next=/households",
+        emailRedirectTo:
+          "http://localhost:3000/auth/callback?next=%2Fhouseholds",
+      },
+    });
+  });
+
+  it("安全な next を再送メールへ引き継ぎ、外部 URL は拒否する", async () => {
+    await resendConfirmation(
+      undefined,
+      formDataWith({
+        email: "new@example.com",
+        next: "/invite/abc_123",
+      }),
+    );
+    expect(state.resendArgs).toEqual({
+      type: "signup",
+      email: "new@example.com",
+      options: {
+        emailRedirectTo:
+          "http://localhost:3000/auth/callback?next=%2Finvite%2Fabc_123",
+      },
+    });
+
+    await resendConfirmation(
+      undefined,
+      formDataWith({
+        email: "new@example.com",
+        next: "//evil.example",
+      }),
+    );
+    expect(state.resendArgs).toEqual({
+      type: "signup",
+      email: "new@example.com",
+      options: {
+        emailRedirectTo:
+          "http://localhost:3000/auth/callback?next=%2Fhouseholds",
       },
     });
   });

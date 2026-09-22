@@ -27,6 +27,25 @@ describe("ResendConfirmation", () => {
     expect(formData.get("email")).toBe("me@example.com");
   });
 
+  it("確認メールの戻り先を再送 action に引き継ぐ", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({ success: true });
+    render(
+      <ResendConfirmation
+        email="me@example.com"
+        action={action}
+        nextPath="/invite/token"
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "確認メールを再送信" }),
+    );
+
+    const formData = action.mock.calls[0]?.[1] as FormData;
+    expect(formData.get("next")).toBe("/invite/token");
+  });
+
   it("成功時に role=status で案内を表示する", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue({ success: true });

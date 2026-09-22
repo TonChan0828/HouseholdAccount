@@ -1,10 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
+const { getUser, rpc } = vi.hoisted(() => ({
+  getUser: vi.fn(),
+  rpc: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ rpc }),
+  createClient: async () => ({ auth: { getUser }, rpc }),
 }));
 
 vi.mock("@/app/households/actions", () => ({
@@ -16,6 +19,8 @@ import InvitePage from "./page";
 describe("InvitePage", () => {
   beforeEach(() => {
     rpc.mockReset();
+    getUser.mockReset();
+    getUser.mockResolvedValue({ data: { user: null }, error: null });
   });
 
   it("形式不正なトークンは DB に渡さず、値も画面へ露出しない", async () => {
@@ -27,7 +32,7 @@ describe("InvitePage", () => {
     expect(screen.queryByDisplayValue(token)).not.toBeInTheDocument();
   });
 
-  it("正規形式のトークンだけを preview RPC に渡し、公開情報だけを表示する", async () => {
+  it("未ログインでは招待内容と認証後に戻る導線だけを表示する", async () => {
     const token = "a".repeat(32);
     rpc.mockResolvedValue({
       data: [{ status: "valid", household_name: "テスト家計簿" }],
@@ -38,7 +43,36 @@ describe("InvitePage", () => {
 
     expect(rpc).toHaveBeenCalledWith("invitation_preview", { _token: token });
     expect(screen.getByText(/テスト家計簿/)).toBeVisible();
-    expect(screen.getByRole("button", { name: "このグループに参加する" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "このグループに参加する" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue(token)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "ログインして参加" })).toHaveAttribute(
+      "href",
+      `/login?next=%2Finvite%2F${token}`,
+    );
+    expect(screen.getByRole("link", { name: "新規登録して参加" })).toHaveAttribute(
+      "href",
+      `/register?next=%2Finvite%2F${token}`,
+    );
+  });
+
+  it("ログイン済みなら参加操作を表示する", async () => {
+    const token = "b".repeat(32);
+    rpc.mockResolvedValue({
+      data: [{ status: "valid", household_name: "テスト家計簿" }],
+      error: null,
+    });
+    getUser.mockResolvedValue({
+      data: { user: { id: "user-id" } },
+      error: null,
+    });
+
+    render(await InvitePage({ params: Promise.resolve({ token }) }));
+
+    expect(
+      screen.getByRole("button", { name: "このグループに参加する" }),
+    ).toBeVisible();
     expect(screen.getByDisplayValue(token)).toHaveAttribute("type", "hidden");
   });
 

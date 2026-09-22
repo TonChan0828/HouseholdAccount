@@ -159,7 +159,7 @@ test.describe("家計簿グループ管理", () => {
     await expect(linkInput).toBeVisible();
     const inviteUrl = await linkInput.inputValue();
 
-    // 第2ユーザー（テストメンバー）は共有セッションとは別の未認証コンテキストでログインする
+    // 第2ユーザー（テストメンバー）は共有セッションとは別の未認証コンテキストで招待を開く
     // （@playwright/test の newContext はプロジェクトの storageState を継承するため、
     //   空の storageState を明示して未認証にする）
     const memberContext = await browser.newContext({
@@ -167,14 +167,19 @@ test.describe("家計簿グループ管理", () => {
       storageState: { cookies: [], origins: [] },
     });
     const memberPage = await memberContext.newPage();
-    await memberPage.goto("/login");
+    await memberPage.goto(inviteUrl);
+    await expect(memberPage.getByText(group, { exact: false })).toBeVisible();
+    await expect(
+      memberPage.getByRole("button", { name: "このグループに参加する" }),
+    ).toHaveCount(0);
+    await memberPage.getByRole("link", { name: "ログインして参加" }).click();
+    await expect(memberPage).toHaveURL(/\/login\?next=/);
     await memberPage.getByLabel("メールアドレス").fill(E2E_MEMBER_USER.email);
     await memberPage.getByLabel("パスワード").fill(E2E_MEMBER_USER.password);
     await memberPage.getByRole("button", { name: "ログイン" }).click();
-    await expect(memberPage).toHaveURL(/\/households$/);
+    await expect(memberPage).toHaveURL(inviteUrl);
 
-    // 招待ページから参加すると、参加先グループがアクティブになりダッシュボードへ入る
-    await memberPage.goto(inviteUrl);
+    // 認証後に招待ページへ戻り、参加先グループをアクティブにしてダッシュボードへ入る
     await memberPage
       .getByRole("button", { name: "このグループに参加する" })
       .click();
