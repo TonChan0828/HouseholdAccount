@@ -86,5 +86,32 @@ supabase migration repair --linked --status reverted \
 
 ## 修復後の検証
 
-修復完了後に、migration list、db push dry-run、schema marker、0025権限、
-pgTAP 30件、Database CIの結果を追記する。
+- `migration repair --status applied` は上記4 versionだけを追加して正常終了した。
+- `migration list --linked` はlocal/remote 25件が全行一致した。
+- `db push --linked --dry-run` は `Remote database is up to date.` となり、
+  適用予定SQLは0件だった。
+- 既存21件のversion・name・statement数・statement MD5は修復前から不変だった。
+- 追加4件はlocal fileからnameとstatementsが履歴へ記録された。
+- 0001〜0025の主要schema markerは25/25件成功し、0025 RPCは
+  `anon=false`、`authenticated=false`、`service_role=true` を維持した。
+- `private.rate_limits` は修復前後とも0行だった。
+- `supabase test db --linked` はCLIのpg_prove用Dockerコンテナが必要だが、作業ホストで
+  Dockerが未起動のためテスト開始前に停止した。remote DBにはpgTAP extensionがないため
+  SQLファイルの直接実行も開始前に停止した。`BEGIN`後のテストデータ処理には到達していない。
+  pgTAP 30件はPRで起動するDatabase CI（`supabase start` → `supabase test db`）を正とする。
+
+履歴以外の非変更根拠:
+
+- 実行した本番書き込みは公式CLIの `migration repair` 1回だけで、対象は4 versionだった。
+- migration SQL、`db push`、DDL/DMLは実行していない。
+- rename前後の全25 SQLファイルをSHA-256比較し、25/25で本文一致した。
+- schema marker 25/25、0025権限、`rate_limits` 行数は修復後も同一だった。
+
+## 今後の標準migration手順
+
+1. `supabase migration new <name>` でtimestamp versionの新規ファイルを作る。
+2. ローカルDBへ全migrationを適用し、`supabase test db` を実行する。
+3. 本番反映前に `supabase db push --linked --dry-run` で、新規ファイルだけが
+   列挙されることを確認する。
+4. `supabase db push --linked` で適用する。SQLの直接実行と手動の履歴更新は行わない。
+5. 適用済みmigrationは編集せず、修正は必ず新しいmigrationとして追加する。
