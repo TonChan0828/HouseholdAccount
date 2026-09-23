@@ -2,6 +2,20 @@ name: Mutation Testing
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "lib/amount-expression.ts"
+      - "lib/settlement.ts"
+      - "lib/budget.ts"
+      - "lib/forecast.ts"
+      - "lib/analytics.ts"
+      - "lib/category-matrix.ts"
+      - "lib/savings-goal.ts"
+      - "lib/period.ts"
+      - "lib/transaction-filter.ts"
+      - "lib/transactions/mirror.ts"
+      - "stryker.config.json"
+      - ".github/workflows/mutation.yml"
   push:
     branches: [main]
     paths:
@@ -16,23 +30,27 @@ on:
       - "lib/transaction-filter.ts"
       - "lib/transactions/mirror.ts"
       - "stryker.config.json"
+      - ".github/workflows/mutation.yml"
+
+permissions:
+  contents: read
 
 jobs:
   mutation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
       NEXT_PUBLIC_APP_URL: https://example.com
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run test:mutation
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: mutation-report
