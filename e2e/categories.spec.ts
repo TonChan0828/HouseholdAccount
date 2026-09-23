@@ -126,7 +126,15 @@ test.describe("カテゴリ管理", () => {
       .getByRole("button", { name: /^管理（メンバー/ })
       .click();
     await householdCard.getByLabel("開始日（1〜28）").fill(String(startDay));
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/households",
+    );
     await householdCard.getByRole("button", { name: "保存" }).click();
+    const response = await saveResponse;
+    expect(response.ok()).toBe(true);
+    expect(await response.finished()).toBeNull();
 
     // 「住居費」の登録が無いため、ダッシュボードにリマインダーが表示される
     await page.goto("/dashboard");
