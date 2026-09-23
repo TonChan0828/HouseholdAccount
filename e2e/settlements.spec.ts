@@ -12,6 +12,9 @@ test.describe("メンバー間精算（割り勘）", () => {
     browser,
     baseURL,
   }) => {
+    // 2ユーザー分の認証・招待・収支登録・精算を通すため、低速なCIでは共通の60秒を超える。
+    test.setTimeout(120_000);
+
     const group = ephemeralName("精算グループ");
     const card = page
       .locator('[data-testid="household-card"]')
