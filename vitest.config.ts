@@ -10,6 +10,13 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
       reportsDirectory: "./coverage",
+      // Aggregate floors start just below the current baseline and prevent regressions.
+      thresholds: {
+        statements: 73,
+        branches: 69,
+        functions: 73,
+        lines: 73,
+      },
       include: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
       exclude: [
         "**/*.{test,spec}.{ts,tsx}",
