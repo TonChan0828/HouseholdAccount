@@ -9,6 +9,7 @@
 import type { CategorySlice, CategoryTrend } from "./analytics";
 import type { BudgetSummary } from "./budget";
 import { yen } from "./format";
+import type { CategoryYoY } from "./yearly-analytics";
 
 export type AdviceSeverity = "alert" | "warn" | "good" | "info";
 
@@ -246,6 +247,143 @@ export function buildAdvice(input: AdviceInput): Advice[] {
   }
 
   // 深刻度優先で安定ソートし、上位を返す
+  out.sort((a, b) => RANK[a.severity] - RANK[b.severity]);
+  return out.slice(0, MAX_ADVICE);
+}
+
+/** 年間アドバイスの入力（前年は「前年同期」= 当年の経過期数ぶん）。 */
+export type YearlyAdviceInput = {
+  income: number;
+  expense: number;
+  prevIncome: number;
+  prevExpense: number;
+  /** 当年の経過期数（0〜12）。 */
+  elapsed: number;
+  /** 経過期あたりの支出。 */
+  avgExpense: number;
+  /** 支出最多の期。 */
+  peakExpense: { label: string; amount: number } | null;
+  /** カテゴリ別の前年同期比較（compareCategoryYoY の出力）。 */
+  categoryYoY: CategoryYoY[];
+};
+
+// 年間ルールのしきい値
+const YEAR_EXPENSE_UP_RATIO = 1.1; // 前年同期比でこの倍率超の増加を警告
+const YEAR_EXPENSE_DOWN_RATIO = 0.9; // 前年同期比でこの倍率未満の減少を称賛
+const YEAR_PEAK_RATIO = 1.5; // 月平均のこの倍率以上の月を「突出」とみなす
+const YEAR_PEAK_MIN_ELAPSED = 2; // 突出月はこの期数以上経過している時のみ判定
+const YEAR_CATEGORY_UP_RATIO = 0.2; // 前年比でこの割合以上増えたカテゴリを指摘
+const YEAR_CATEGORY_UP_MIN_DELTA = 10000; // 増加額がこれ未満は無視
+const MAX_YEAR_CATEGORY_UP = 2; // カテゴリ増加指摘の最大件数
+
+/** 年間の集計から決定的なルールで助言を生成する（深刻度優先・最大 MAX_ADVICE 件）。 */
+export function buildYearlyAdvice(input: YearlyAdviceInput): Advice[] {
+  const {
+    income,
+    expense,
+    prevExpense,
+    elapsed,
+    avgExpense,
+    peakExpense,
+    categoryYoY,
+  } = input;
+
+  if (income <= 0 && expense <= 0) {
+    return [
+      {
+        id: "year-no-data",
+        severity: "info",
+        title: "この年の収支はまだありません",
+        detail: "収支を記録すると、ここに1年の振り返りが表示されます。",
+      },
+    ];
+  }
+
+  const out: Advice[] = [];
+
+  // 年間の貯蓄率・収支バランス
+  if (expense > income) {
+    out.push({
+      id: "year-deficit",
+      severity: "alert",
+      title: `年間で支出が収入を ${yen(expense - income)} 上回っています`,
+      detail: "固定費や大きな出費を見直して、来年の収支を立て直しましょう。",
+    });
+  } else {
+    const rate = savingsRate(income, expense);
+    const pct = Math.round(rate * 100);
+    if (rate < LOW_SAVINGS_RATE) {
+      out.push({
+        id: "year-low-savings",
+        severity: "warn",
+        title: `年間の貯蓄率が ${pct}% と低めです`,
+        detail: "支出の多いカテゴリから、無理のない節約目標を立ててみましょう。",
+      });
+    } else if (rate >= GOOD_SAVINGS_RATE) {
+      out.push({
+        id: "year-good-savings",
+        severity: "good",
+        title: `年間の貯蓄率 ${pct}% を達成しています`,
+        detail: "1年を通して順調に貯蓄できています。",
+      });
+    }
+  }
+
+  // 前年同期比の支出
+  if (prevExpense > 0) {
+    if (expense > prevExpense * YEAR_EXPENSE_UP_RATIO) {
+      const pct = Math.round(((expense - prevExpense) / prevExpense) * 100);
+      out.push({
+        id: "year-expense-up",
+        severity: "warn",
+        title: `支出が前年同期比 +${pct}% 増えています`,
+        detail: `前年 ${yen(prevExpense)} → 今年 ${yen(expense)} に増加しました。`,
+      });
+    } else if (expense < prevExpense * YEAR_EXPENSE_DOWN_RATIO) {
+      const pct = Math.round(((prevExpense - expense) / prevExpense) * 100);
+      out.push({
+        id: "year-expense-down",
+        severity: "good",
+        title: `支出を前年同期比 ${pct}% 抑えられています`,
+        detail: `前年 ${yen(prevExpense)} → 今年 ${yen(expense)} に減少しました。`,
+      });
+    }
+  }
+
+  // 前年比で増えたカテゴリ
+  const ups = categoryYoY
+    .filter(
+      (c) =>
+        c.prevAmount > 0 &&
+        c.diff >= YEAR_CATEGORY_UP_MIN_DELTA &&
+        c.ratio !== null &&
+        c.ratio >= YEAR_CATEGORY_UP_RATIO,
+    )
+    .sort((a, b) => b.diff - a.diff);
+  for (const c of ups.slice(0, MAX_YEAR_CATEGORY_UP)) {
+    out.push({
+      id: `year-category-up:${c.categoryId ?? "none"}`,
+      severity: "warn",
+      title: `「${c.name}」が前年より ${yen(c.diff)} 増えています`,
+      detail: `前年 ${yen(c.prevAmount)} → 今年 ${yen(c.amount)}（+${Math.round((c.ratio ?? 0) * 100)}%）です。`,
+    });
+  }
+
+  // 支出が突出した月
+  if (
+    peakExpense &&
+    elapsed >= YEAR_PEAK_MIN_ELAPSED &&
+    avgExpense > 0 &&
+    peakExpense.amount >= avgExpense * YEAR_PEAK_RATIO
+  ) {
+    out.push({
+      id: "year-peak-month",
+      severity: "info",
+      title: `${peakExpense.label}の支出が突出しています`,
+      detail: `月平均 ${yen(avgExpense)} に対し ${yen(peakExpense.amount)} でした。特別な出費は来年の計画に織り込みましょう。`,
+    });
+  }
+
   out.sort((a, b) => RANK[a.severity] - RANK[b.severity]);
   return out.slice(0, MAX_ADVICE);
 }

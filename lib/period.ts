@@ -73,3 +73,26 @@ export function formatPeriodLabel(range: PeriodRange): string {
   const fmt = (d: Date) => toISODate(d).replace(/-/g, "/");
   return `${fmt(range.start)} 〜 ${fmt(lastDay)}`;
 }
+
+/**
+ * 締め日を考慮した「Y年」の12期を返す。
+ * 開始月が Y年1月〜12月 の期（`[Y/01/startDay, (Y+1)/01/startDay)`）で、
+ * getPeriodRange の「開始日以降はその月から期が始まる」規約に揃える。
+ */
+export function getYearRanges(year: number, startDay: number): PeriodRange[] {
+  return Array.from({ length: 12 }, (_, m) =>
+    getPeriodRange(new Date(Date.UTC(year, m, startDay)), startDay),
+  );
+}
+
+/** `?year=YYYY` を年に解釈する。不正・未指定は「今日を含む期の開始年」。 */
+export function yearFromParam(
+  year: string | undefined,
+  startDay: number,
+  now: Date = new Date(),
+): number {
+  if (year && /^\d{4}$/.test(year)) {
+    return Number(year);
+  }
+  return getPeriodRange(now, startDay).start.getUTCFullYear();
+}

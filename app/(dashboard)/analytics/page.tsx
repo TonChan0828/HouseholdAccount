@@ -1,4 +1,5 @@
 import { AdviceSection } from "@/components/features/charts/advice-section";
+import { AnalyticsViewTabs } from "@/components/features/charts/analytics-view-tabs";
 import { CategoryBreakdown } from "@/components/features/charts/category-breakdown";
 import { TrendBars } from "@/components/features/charts/trend-bars";
 import { MonthNav } from "@/components/features/transactions/month-nav";
@@ -23,29 +24,36 @@ import {
 import {
   formatPeriodLabel,
   getPeriodRange,
+  refFromParam,
   shiftPeriod,
   toISODate,
+  yearFromParam,
 } from "@/lib/period";
 
-const TREND_PERIODS = 6;
+import { YearlyAnalyticsView } from "./yearly-view";
 
-function refFromParam(ref: string | undefined): Date {
-  if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {
-    return new Date(`${ref}T00:00:00Z`);
-  }
-  return new Date();
-}
+const TREND_PERIODS = 6;
 
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<{ ref?: string; view?: string; year?: string }>;
 }) {
-  const { ref } = await searchParams;
+  const { ref, view, year } = await searchParams;
 
   const { householdId, supabase } = await requireDashboardContext();
 
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
+
+  if (view === "year") {
+    // async 子コンポーネントとして置かず直接呼ぶ（ページと同じ描画パスで await する）。
+    return YearlyAnalyticsView({
+      householdId,
+      supabase,
+      startDay,
+      year: yearFromParam(year, startDay),
+    });
+  }
 
   const base = getPeriodRange(refFromParam(ref), startDay);
   const ranges = Array.from({ length: TREND_PERIODS }, (_, i) =>
@@ -148,11 +156,14 @@ export default async function AnalyticsPage({
         title="分析"
         className={reveal}
         actions={
-          <MonthNav
-            label={formatPeriodLabel(base)}
-            prevHref={prevHref}
-            nextHref={nextHref}
-          />
+          <>
+            <AnalyticsViewTabs active="month" />
+            <MonthNav
+              label={formatPeriodLabel(base)}
+              prevHref={prevHref}
+              nextHref={nextHref}
+            />
+          </>
         }
       />
 

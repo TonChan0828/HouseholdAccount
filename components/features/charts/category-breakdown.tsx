@@ -3,6 +3,8 @@ import { yen } from "@/lib/format";
 
 type Props = {
   data: CategorySlice[];
+  /** 支出が無いときの案内文。 */
+  emptyMessage?: string;
 };
 
 /**
@@ -12,11 +14,14 @@ type Props = {
  * 注: カテゴリ名と yen(amount) は画面内で一意になるよう、ここでのみ描画する
  * （E2E の getByText は部分一致・厳格モードのため重複させない）。
  */
-export function CategoryBreakdown({ data }: Props) {
+export function CategoryBreakdown({
+  data,
+  emptyMessage = "当期の支出はまだありません。",
+}: Props) {
   if (data.length === 0) {
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
-        当期の支出はまだありません。
+        {emptyMessage}
       </p>
     );
   }
