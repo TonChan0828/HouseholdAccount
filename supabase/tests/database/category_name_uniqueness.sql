@@ -41,9 +41,13 @@ exception when others then
 end;
 $$;
 
-create function pg_temp.try_rename_category(_id uuid, _name text) returns text language plpgsql as $$
+create function pg_temp.try_rename_category(
+  _id uuid,
+  _name text,
+  _type public.category_type
+) returns text language plpgsql as $$
 begin
-  update public.categories set name = _name where id = _id;
+  update public.categories set name = _name, type = _type where id = _id;
   return '00000';
 exception when others then
   return sqlstate;
@@ -86,12 +90,12 @@ reset role;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000e1', true);
 set local role authenticated;
 select is(
-  pg_temp.try_rename_category('55000000-0000-0000-0000-000000000006', ' groceries '),
+  pg_temp.try_rename_category('55000000-0000-0000-0000-000000000006', ' groceries ', 'expense'),
   '23505',
   'renaming into an existing same-type name is rejected'
 );
 select is(
-  pg_temp.try_rename_category('55000000-0000-0000-0000-000000000005', ' groceries '),
+  pg_temp.try_rename_category('55000000-0000-0000-0000-000000000005', ' groceries ', 'expense'),
   '00000',
   'a case and whitespace-only rename keeps the same normalized name'
 );
