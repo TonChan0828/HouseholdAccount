@@ -14,6 +14,7 @@ on:
       - "lib/period.ts"
       - "lib/transaction-filter.ts"
       - "lib/transactions/mirror.ts"
+      - "lib/transactions/attribution.ts"
       - "stryker.config.json"
       - ".github/workflows/mutation.yml"
   push:
@@ -29,6 +30,7 @@ on:
       - "lib/period.ts"
       - "lib/transaction-filter.ts"
       - "lib/transactions/mirror.ts"
+      - "lib/transactions/attribution.ts"
       - "stryker.config.json"
       - ".github/workflows/mutation.yml"
 
