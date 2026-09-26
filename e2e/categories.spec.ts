@@ -31,6 +31,15 @@ test.describe("カテゴリ管理", () => {
       .filter({ hasText: name });
     await expect(row).toBeVisible();
 
+    // 前後空白・大文字小文字を正規化した同種別の重複名はDBで拒否する
+    await page.goto("/categories/new");
+    await page.getByLabel("カテゴリ名").fill(`  ${name}  `);
+    await page.getByRole("radio", { name: "支出" }).check();
+    await page.getByRole("button", { name: "追加する" }).click();
+    await expect(page.getByRole("alert")).toHaveText(
+      "同じ種別のカテゴリに同じ名前が既にあります",
+    );
+
     // デフォルトカテゴリには操作ボタンが無い
     const defaultRow = page
       .locator('[data-testid="category-row"]')

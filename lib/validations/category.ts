@@ -19,6 +19,7 @@ export const CATEGORY_COLORS = [
 export const categorySchema = z.object({
   name: z
     .string()
+    .trim()
     .min(1, "カテゴリ名を入力してください")
     .max(50, "カテゴリ名は50文字以内で入力してください"),
   color: z.enum(CATEGORY_COLORS, { message: "色を選択してください" }),
