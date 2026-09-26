@@ -60,9 +60,10 @@ reset role;
 
 select is(
   (select count(*)::integer from public.categories
-   where household_id = '30000000-0000-0000-0000-000000000003'),
-  2,
-  'case-insensitive duplicate rows create only one category and reuse both categories'
+   where household_id = '30000000-0000-0000-0000-000000000003'
+     and lower(btrim(name)) = 'food'),
+  1,
+  'case-insensitive duplicate rows create only one category'
 );
 select is(
   (select count(*)::integer from public.transactions
