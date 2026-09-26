@@ -40,6 +40,11 @@ test.describe("カテゴリ管理", () => {
       "同じ種別のカテゴリに同じ名前が既にあります",
     );
 
+    // 重複エラーでは追加画面に留まる。一覧に戻って登録件数と既存行を確認する。
+    await expect(page).toHaveURL(/\/categories\/new$/);
+    await page.goto("/categories");
+    await expect(row).toHaveCount(1);
+
     // デフォルトカテゴリには操作ボタンが無い
     const defaultRow = page
       .locator('[data-testid="category-row"]')
