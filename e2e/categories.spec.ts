@@ -36,7 +36,7 @@ test.describe("カテゴリ管理", () => {
     await page.getByLabel("カテゴリ名").fill(`  ${name}  `);
     await page.getByRole("radio", { name: "支出" }).check();
     await page.getByRole("button", { name: "追加する" }).click();
-    await expect(page.getByRole("alert")).toHaveText(
+    await expect(page.locator('p[role="alert"]')).toHaveText(
       "同じ種別のカテゴリに同じ名前が既にあります",
     );
 
