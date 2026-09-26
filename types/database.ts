@@ -427,6 +427,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_transaction_import: {
+        Args: {
+          _household_id: string
+          _month: string
+          _rows: Json
+        }
+        Returns: number
+      }
       accept_invitation: { Args: { _token: string }; Returns: string }
       consume_rate_limit: {
         Args: {

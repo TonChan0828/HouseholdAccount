@@ -73,7 +73,7 @@ export type BudgetRow = {
 export type ValidImportRow = {
   type: "income" | "expense";
   categoryName: string;
-  amount: number; // 整数 >= 1
+  amount: number; // 1 以上の整数（transactions.amount の int32 上限まで）
 };
 ```
 
@@ -99,6 +99,7 @@ export type ImportPreviewState =
 
 - `categories`（読み: 既存カテゴリの名前一致 / 書き: 不足カテゴリの自動作成）
 - `transactions`（書き: 有効行を一括 insert。`household_id` / `created_by` を自動付与）
+- `confirm_transaction_import` RPC（不足カテゴリ作成と取引登録を単一DBトランザクションで実行）
 
 ### RLS ポリシー
 
@@ -116,13 +117,14 @@ export async function parseImportFile(
 ): Promise<ImportPreviewState>;
 // 認証→household→file.arrayBuffer()→parseWorkbook()→classifyRows()→state を返す
 
-// 2) 確定→カテゴリ解決（自動作成）→一括 insert
+// 2) 確定→DB RPC でカテゴリ解決（自動作成）と一括 insert を原子的に実行
 export async function confirmImport(
   _prev: { error: string } | undefined, formData: FormData,
 ): Promise<{ error: string } | undefined>;
 // 認証→household→rows(JSON) と month を再検証
-//   →resolveCategories: 既存を名前×種別で照合し不足分を bulk insert（color 循環, is_default:false）
-//   →transactions を bulk insert（date=`${month}-01`）→revalidate→redirect("/transactions")
+//   →confirm_transaction_import(household, month, rows)
+//     （RLS + 所属確認、家計単位の advisory lock、カテゴリ作成と取引 insert を1 transaction で確定）
+//   →revalidate→redirect("/transactions")
 ```
 
 純関数（`lib/import/excel.ts`、TDD の中心）:
@@ -151,6 +153,8 @@ export function splitCategoryNames(                                  // 既存/�
 - E2E `e2e/transactions-import.spec.ts`: グループ作成 → `e2e/fixtures/` の合成 .xlsx をアップロード →
   プレビュー件数を検証 → 対象月選択 → 確定 → `/transactions` に取込行が反映。
   フィクスチャはテスト準備で exceljs により合成生成（実データは使わない）。
+- Database `supabase/tests/database/atomic_transaction_import.sql`: RPC 権限、household 境界、カテゴリ再利用、
+  失敗時にカテゴリと取引の両方が rollback されることを確認。
 
 ## 未解決の課題
 
@@ -161,10 +165,12 @@ export function splitCategoryNames(                                  // 既存/�
 - CSV インポートは対象外（今回は .xlsx のみ）。
 - `docs/inputs/`（個人データ）は `.gitignore` 対象。E2E は合成フィクスチャを使う。
 - **カテゴリ自動作成と取引 insert が非アトミック**（cloud review 指摘）: 取引 insert 失敗時に
-  カテゴリだけ残る／別メンバー同時取込で同名カテゴリが二重作成され得る。`categories` に
-  `(household_id, name, type)` のユニーク制約が無いのが根因で、`createCategory` やデフォルト
-  カテゴリ投入も同じ性質。正しい修正には migration（部分ユニークインデックス + upsert/RPC）が
-  必要なため本機能のスコープ外。将来対応。
+  カテゴリだけ残る／別メンバー同時取込で同名カテゴリが二重作成され得る問題は、
+  `confirm_transaction_import` RPC で解消した。RPC はカテゴリと取引を同一トランザクションで扱い、
+  household 単位の transaction advisory lock 下で既存カテゴリを照合してから作成する。
+  ただし `/categories` の直接作成や household 初期化はこのロックを使わず、DB 全体の
+  `(household_id, lower(name), type)` 一意性は保証しない。全経路に一意制約を導入する場合は、
+  既存重複カテゴリとそれを参照する取引・予算等の統合方針を別途決める必要がある。
 - **redirect 後のラベル**: 取込後は `?ref=YYYY-MM-01` へ遷移する。`period_start_day != 1` の
   グループでは取込行（月初日付）は表示期間に必ず含まれる（可視）が、期間ラベルは「前月X日〜当月Y日」
   になる。これは custom 期間開始日の仕様どおりで全画面共通の挙動のため許容（cloud review 指摘を検証し、
