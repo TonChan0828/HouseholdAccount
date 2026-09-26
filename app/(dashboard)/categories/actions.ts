@@ -35,6 +35,9 @@ export async function createCategory(
   });
 
   if (error) {
+    if (error.code === "23505") {
+      return { error: "同じ種別のカテゴリに同じ名前が既にあります" };
+    }
     return { error: "カテゴリの追加に失敗しました" };
   }
 
@@ -66,6 +69,9 @@ export async function updateCategory(
     .eq("is_default", false);
 
   if (error) {
+    if (error.code === "23505") {
+      return { error: "同じ種別のカテゴリに同じ名前が既にあります" };
+    }
     return { error: "カテゴリの更新に失敗しました" };
   }
 

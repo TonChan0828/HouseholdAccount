@@ -19,6 +19,11 @@ describe("categorySchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("空白だけの名前はエラーになり、前後の空白は除去する", () => {
+    expect(categorySchema.safeParse({ ...valid, name: "   " }).success).toBe(false);
+    expect(categorySchema.parse({ ...valid, name: "  ペット  " }).name).toBe("ペット");
+  });
+
   it("名前が51文字以上ならエラーになる", () => {
     const result = categorySchema.safeParse({ ...valid, name: "あ".repeat(51) });
     expect(result.success).toBe(false);

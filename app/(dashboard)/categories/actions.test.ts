@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { toggleCategoryReminder } from "./actions";
+import { createCategory, toggleCategoryReminder } from "./actions";
 
 const state = vi.hoisted(() => ({
   updates: [] as { table: string; values: unknown; filters: [string, unknown][] }[],
+  inserts: [] as { table: string; values: unknown }[],
+  insertError: null as { code: string } | null,
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -22,6 +24,12 @@ vi.mock("@/lib/household", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     from: (table: string) => ({
+      insert: (values: unknown) => ({
+        then: (resolve: (v: unknown) => unknown) => {
+          state.inserts.push({ table, values });
+          return resolve({ error: state.insertError });
+        },
+      }),
       update: (values: unknown) => {
         const filters: [string, unknown][] = [];
         const chain = {
@@ -48,6 +56,34 @@ function formDataWith(fields: Record<string, string>) {
 
 beforeEach(() => {
   state.updates = [];
+  state.inserts = [];
+  state.insertError = null;
+});
+
+describe("createCategory", () => {
+  it("DBが同種別の正規化重複名を拒否したら利用者向けエラーを返す", async () => {
+    state.insertError = { code: "23505" };
+    const result = await createCategory(
+      undefined,
+      formDataWith({ name: " groceries ", color: "#ef4444", type: "expense" }),
+    );
+
+    expect(result).toEqual({
+      error: "同じ種別のカテゴリに同じ名前が既にあります",
+    });
+    expect(state.inserts).toEqual([
+      {
+        table: "categories",
+        values: {
+          household_id: "h-1",
+          name: "groceries",
+          color: "#ef4444",
+          type: "expense",
+          is_default: false,
+        },
+      },
+    ]);
+  });
 });
 
 describe("toggleCategoryReminder", () => {
