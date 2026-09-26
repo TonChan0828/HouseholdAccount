@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   formatPeriodLabel,
   getPeriodRange,
+  getYearRanges,
   localToday,
   refFromParam,
   shiftPeriod,
   toISODate,
+  yearFromParam,
 } from "./period";
 
 // UTC で日付を組み立てるヘルパー（TZ 揺れを避ける）
@@ -117,5 +119,49 @@ describe("localToday", () => {
   it("ローカルの日境界（深夜）でも日付が繰り上がらない・繰り下がらない", () => {
     expect(localToday(new Date(2026, 11, 31, 23, 59, 59))).toBe("2026-12-31");
     expect(localToday(new Date(2027, 0, 1, 0, 0, 0))).toBe("2027-01-01");
+  });
+});
+
+describe("getYearRanges", () => {
+  it("締め日1: 1月1日〜翌年1月1日(排他)の12期", () => {
+    const ranges = getYearRanges(2026, 1);
+    expect(ranges).toHaveLength(12);
+    expect(toISODate(ranges[0].start)).toBe("2026-01-01");
+    expect(toISODate(ranges[0].end)).toBe("2026-02-01");
+    expect(toISODate(ranges[11].start)).toBe("2026-12-01");
+    expect(toISODate(ranges[11].end)).toBe("2027-01-01");
+  });
+
+  it("締め日25: 1月25日始まり〜翌年1月25日(排他)", () => {
+    const ranges = getYearRanges(2026, 25);
+    expect(toISODate(ranges[0].start)).toBe("2026-01-25");
+    expect(toISODate(ranges[11].start)).toBe("2026-12-25");
+    expect(toISODate(ranges[11].end)).toBe("2027-01-25");
+  });
+
+  it("各期は隙間なく連続する", () => {
+    const ranges = getYearRanges(2024, 10);
+    for (let i = 1; i < ranges.length; i++) {
+      expect(toISODate(ranges[i].start)).toBe(toISODate(ranges[i - 1].end));
+    }
+  });
+});
+
+describe("yearFromParam", () => {
+  it("4桁の年はそのまま使う", () => {
+    expect(yearFromParam("2024", 1, utc(2026, 6, 1))).toBe(2024);
+  });
+
+  it("未指定は今日を含む期の開始年", () => {
+    expect(yearFromParam(undefined, 1, utc(2026, 6, 1))).toBe(2026);
+  });
+
+  it("締め日25で1月10日なら当期は前年12/25始まりのため前年", () => {
+    expect(yearFromParam(undefined, 25, utc(2026, 1, 10))).toBe(2025);
+  });
+
+  it("不正な形式は今日基準へフォールバックする", () => {
+    expect(yearFromParam("20x6", 1, utc(2026, 6, 1))).toBe(2026);
+    expect(yearFromParam("2026-01", 1, utc(2026, 6, 1))).toBe(2026);
   });
 });

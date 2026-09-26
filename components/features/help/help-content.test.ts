@@ -49,6 +49,12 @@ describe("HELP_SECTIONS", () => {
     expect(steps).toMatch(/家計アドバイス|アドバイス/);
   });
 
+  it("分析セクションが年間ビューと前年比較に触れている", () => {
+    const steps = findSection("analytics").steps.join("\n");
+    expect(steps).toMatch(/年間/);
+    expect(steps).toMatch(/前年/);
+  });
+
   it("グループ管理セクションがグループ毎の表示名に触れている", () => {
     const steps = findSection("household").steps.join("\n");
     expect(steps).toMatch(/このグループでの表示名|ニックネーム/);

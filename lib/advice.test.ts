@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAdvice, type AdviceInput } from "./advice";
+import {
+  buildAdvice,
+  buildYearlyAdvice,
+  type AdviceInput,
+  type YearlyAdviceInput,
+} from "./advice";
 import type { CategorySlice } from "./analytics";
 import type { BudgetRow, BudgetSummary } from "./budget";
+import type { CategoryYoY } from "./yearly-analytics";
 
 const slice = (
   categoryId: string,
@@ -339,5 +345,149 @@ describe("buildAdvice — 並び順・件数・データ不足", () => {
     expect(advice).toHaveLength(1);
     expect(advice[0].severity).toBe("info");
     expect(advice[0].id).toBe("no-data");
+  });
+});
+
+describe("buildYearlyAdvice", () => {
+  const yoy = (
+    categoryId: string,
+    name: string,
+    amount: number,
+    prevAmount: number,
+  ): CategoryYoY => ({
+    categoryId,
+    name,
+    color: "#abc",
+    amount,
+    prevAmount,
+    diff: amount - prevAmount,
+    ratio: prevAmount > 0 ? (amount - prevAmount) / prevAmount : null,
+  });
+
+  /** 何のルールも発火しない穏当なベース入力。 */
+  const yearBase = (
+    over: Partial<YearlyAdviceInput> = {},
+  ): YearlyAdviceInput => ({
+    income: 3600000,
+    expense: 3000000, // 貯蓄率 16.7%
+    prevIncome: 3600000,
+    prevExpense: 3000000,
+    elapsed: 12,
+    avgExpense: 250000,
+    peakExpense: { label: "3月", amount: 300000 },
+    categoryYoY: [],
+    ...over,
+  });
+  const ids = (input: YearlyAdviceInput) =>
+    buildYearlyAdvice(input).map((a) => a.id);
+
+  it("穏当な入力では何も返さない", () => {
+    expect(buildYearlyAdvice(yearBase())).toEqual([]);
+  });
+
+  it("収支が無ければ案内1件のみ", () => {
+    const out = buildYearlyAdvice(
+      yearBase({ income: 0, expense: 0, peakExpense: null }),
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ id: "year-no-data", severity: "info" });
+  });
+
+  it("年間赤字は alert（貯蓄率ルールは出さない）", () => {
+    const out = buildYearlyAdvice(yearBase({ income: 1000000 }));
+    expect(out[0]).toMatchObject({ id: "year-deficit", severity: "alert" });
+    expect(out[0].title).toContain("¥2,000,000");
+    expect(out.map((a) => a.id)).not.toContain("year-low-savings");
+  });
+
+  it("貯蓄率10%未満は warn、20%以上は good", () => {
+    expect(ids(yearBase({ expense: 3300000, prevExpense: 3300000 }))).toContain(
+      "year-low-savings",
+    );
+    expect(ids(yearBase({ expense: 2880000, prevExpense: 2880000 }))).toContain(
+      "year-good-savings",
+    );
+  });
+
+  it("貯蓄率の境界: ちょうど10%は warn しない、ちょうど20%は good", () => {
+    expect(ids(yearBase({ expense: 3240000, prevExpense: 3240000 }))).not.toContain(
+      "year-low-savings",
+    );
+    expect(ids(yearBase({ expense: 2880000, prevExpense: 2880000 }))).toContain(
+      "year-good-savings",
+    );
+  });
+
+  it("前年同期比で支出10%超増は warn、10%超減は good、前年0なら判定しない", () => {
+    const up = buildYearlyAdvice(yearBase({ prevExpense: 2700000 }));
+    expect(up.find((a) => a.id === "year-expense-up")?.title).toContain("+11%");
+    expect(ids(yearBase({ prevExpense: 3400000 }))).toContain("year-expense-down");
+    expect(ids(yearBase({ prevExpense: 2727273 }))).not.toContain("year-expense-up");
+    expect(ids(yearBase({ prevExpense: 0 }))).toEqual([]);
+  });
+
+  it("支出が月平均の1.5倍以上の月を info で指摘する（経過2期以上）", () => {
+    const out = buildYearlyAdvice(
+      yearBase({ peakExpense: { label: "8月", amount: 375000 } }),
+    );
+    expect(out.find((a) => a.id === "year-peak-month")?.title).toContain("8月");
+    expect(
+      ids(yearBase({ peakExpense: { label: "8月", amount: 374999 } })),
+    ).not.toContain("year-peak-month");
+    expect(
+      ids(
+        yearBase({
+          elapsed: 1,
+          peakExpense: { label: "1月", amount: 999999 },
+        }),
+      ),
+    ).not.toContain("year-peak-month");
+  });
+
+  it("前年比で増えたカテゴリを増加額順に最大2件 warn する", () => {
+    const out = buildYearlyAdvice(
+      yearBase({
+        categoryYoY: [
+          yoy("a", "食費", 80000, 50000), // +30000, +60%
+          yoy("b", "娯楽", 70000, 50000), // +20000, +40%
+          yoy("c", "日用品", 62000, 50000), // +12000, +24%
+          yoy("d", "家賃", 110000, 100000), // +10000 だが +10% → 対象外
+          yoy("e", "新規", 50000, 0), // 前年0 → 対象外
+          yoy("f", "減少", 10000, 50000),
+        ],
+      }),
+    );
+    const cat = out.filter((a) => a.id.startsWith("year-category-up:"));
+    expect(cat.map((a) => a.id)).toEqual([
+      "year-category-up:a",
+      "year-category-up:b",
+    ]);
+    expect(cat[0].title).toContain("食費");
+  });
+
+  it("カテゴリ増加の境界: 増加額 ¥10,000 未満は対象外", () => {
+    expect(
+      ids(yearBase({ categoryYoY: [yoy("a", "食費", 49999, 40000)] })),
+    ).toEqual([]);
+    expect(
+      ids(yearBase({ categoryYoY: [yoy("a", "食費", 50000, 40000)] })),
+    ).toEqual(["year-category-up:a"]);
+  });
+
+  it("深刻度順に並べ、最大5件に絞る", () => {
+    const out = buildYearlyAdvice(
+      yearBase({
+        income: 1000000,
+        prevExpense: 1000000,
+        peakExpense: { label: "8月", amount: 900000 },
+        categoryYoY: [
+          yoy("a", "食費", 80000, 50000),
+          yoy("b", "娯楽", 70000, 50000),
+        ],
+      }),
+    );
+    expect(out.length).toBeLessThanOrEqual(5);
+    expect(out[0].severity).toBe("alert");
+    expect(out.at(-1)?.severity).toBe("info");
   });
 });
