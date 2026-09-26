@@ -55,6 +55,9 @@ Excel の月次家計簿（Microsoft「月々の収支（簡易版）」テン�
   - 上記以外 → 有効行（金額のある費目は貯蓄系=積み立てNISA 等も含め全て取込）。
 - 対象月は必須。`YYYY-MM` 形式。取引日付は `YYYY-MM-01` に固定。
 - 行数上限（例 500）を超える入力は拒否（過大ファイル対策）。
+- 過去の Excel 取込と household・対象月・種別・カテゴリ名（trim・case-insensitive）・金額・同一内容内の
+  出現番号が一致する行はスキップする。手入力は対象外。同じ取込内に同一内容の複数行があれば全件保持する。
+  新規登録数と重複スキップ数を完了後に案内する。
 
 ## データモデル
 
@@ -99,6 +102,7 @@ export type ImportPreviewState =
 
 - `categories`（読み: 既存カテゴリの名前一致 / 書き: 不足カテゴリの自動作成）
 - `transactions`（書き: 有効行を一括 insert。`household_id` / `created_by` を自動付与）
+- `transactions.import_key`（Excel 取込行の冪等キー。通常の手入力では NULL）
 - `confirm_transaction_import` RPC（不足カテゴリ作成と取引登録を単一DBトランザクションで実行）
 
 ### RLS ポリシー
@@ -117,13 +121,15 @@ export async function parseImportFile(
 ): Promise<ImportPreviewState>;
 // 認証→household→file.arrayBuffer()→parseWorkbook()→classifyRows()→state を返す
 
-// 2) 確定→DB RPC でカテゴリ解決（自動作成）と一括 insert を原子的に実行
+// 2) 確定→DB RPC でカテゴリ解決（自動作成）と重複を除いた insert を原子的に実行
 export async function confirmImport(
   _prev: { error: string } | undefined, formData: FormData,
 ): Promise<{ error: string } | undefined>;
 // 認証→household→rows(JSON) と month を再検証
 //   →confirm_transaction_import(household, month, rows)
 //     （RLS + 所属確認、家計単位の advisory lock、カテゴリ作成と取引 insert を1 transaction で確定）
+//     同一 household・対象月・種別・カテゴリ・金額・同一内容内の出現番号に一致する
+//     過去の Excel 取込行は再登録せず、新規登録件数を返す。
 //   →revalidate→redirect("/transactions")
 ```
 
@@ -158,8 +164,6 @@ export function splitCategoryNames(                                  // 既存/�
 
 ## 未解決の課題
 
-- **重複検出は対象外**: 同じ月を2回取り込むと取引が重複する。将来 `(date, category, amount)` での
-  重複スキップや「取込済み月」の管理を検討。
 - **フラットな取引リスト形式の取り込みは対象外**: 本テンプレートのセクション構造前提。別形式は将来対応。
 - **列マッピングの手動 UI は対象外**: 固定レイアウト前提。
 - CSV インポートは対象外（今回は .xlsx のみ）。

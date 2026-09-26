@@ -1,5 +1,5 @@
 begin;
-select plan(13);
+select plan(22);
 
 select ok(
   to_regprocedure('public.confirm_transaction_import(uuid,date,jsonb)') is not null,
@@ -79,6 +79,101 @@ select ok(
       and c.id = '33000000-0000-0000-0000-000000000003'
   ),
   'an existing both-type category is reused'
+);
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
+set local role authenticated;
+select is(pg_temp.try_valid_import(), '0', 'reimporting the same rows skips all duplicates');
+reset role;
+select is(
+  (select count(*)::integer from public.transactions
+   where household_id = '30000000-0000-0000-0000-000000000003'),
+  3,
+  'reimporting does not add duplicate transactions'
+);
+
+create function pg_temp.try_partial_import() returns text language plpgsql as $$
+begin
+  return public.confirm_transaction_import(
+    '30000000-0000-0000-0000-000000000003',
+    '2026-06-01',
+    '[
+      {"type":"expense","categoryName":"FOOD","amount":100},
+      {"type":"expense","categoryName":"Food","amount":250}
+    ]'::jsonb
+  )::text;
+exception when others then
+  return sqlstate || ':' || sqlerrm;
+end;
+$$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
+set local role authenticated;
+select is(pg_temp.try_partial_import(), '1', 'partial reimport skips matched rows and inserts new rows');
+reset role;
+select is(
+  (select count(*)::integer from public.transactions
+   where household_id = '30000000-0000-0000-0000-000000000003' and amount = 250),
+  1,
+  'the nonduplicate row from a partial reimport is inserted'
+);
+
+create function pg_temp.try_duplicate_rows() returns text language plpgsql as $$
+begin
+  return public.confirm_transaction_import(
+    '30000000-0000-0000-0000-000000000003',
+    '2026-07-01',
+    '[
+      {"type":"expense","categoryName":"Repeated","amount":55},
+      {"type":"expense","categoryName":"Repeated","amount":55}
+    ]'::jsonb
+  )::text;
+exception when others then
+  return sqlstate || ':' || sqlerrm;
+end;
+$$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
+set local role authenticated;
+select is(pg_temp.try_duplicate_rows(), '2', 'identical rows inside one import are both preserved');
+select is(pg_temp.try_duplicate_rows(), '0', 'identical rows are skipped on a repeated import');
+reset role;
+select is(
+  (select count(*)::integer from public.transactions
+   where household_id = '30000000-0000-0000-0000-000000000003' and amount = 55),
+  2,
+  'duplicate rows within the original import remain distinct'
+);
+
+insert into public.transactions (
+  household_id, created_by, amount, type, date, category_id
+) values (
+  '30000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-0000000000c1',
+  444, 'expense', '2026-06-01', '33000000-0000-0000-0000-000000000003'
+);
+
+create function pg_temp.try_manual_match_import() returns text language plpgsql as $$
+begin
+  return public.confirm_transaction_import(
+    '30000000-0000-0000-0000-000000000003',
+    '2026-06-01',
+    '[{"type":"expense","categoryName":"Shared","amount":444}]'::jsonb
+  )::text;
+exception when others then
+  return sqlstate || ':' || sqlerrm;
+end;
+$$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', true);
+set local role authenticated;
+select is(pg_temp.try_manual_match_import(), '1', 'an identical manual transaction does not suppress an Excel import');
+reset role;
+select is(
+  (select count(*)::integer from public.transactions
+   where household_id = '30000000-0000-0000-0000-000000000003' and amount = 444),
+  2,
+  'a manual row and its identical Excel import are both preserved'
 );
 
 create function pg_temp.try_invalid_import() returns text language plpgsql as $$

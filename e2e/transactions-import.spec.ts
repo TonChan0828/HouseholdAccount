@@ -94,6 +94,16 @@ test.describe("Excel取り込み", () => {
     const rows = page.locator('[data-testid="transaction-row"]');
     await expect(rows.filter({ hasText: "給料" })).toBeVisible();
     await expect(rows.filter({ hasText: "食費" })).toBeVisible();
+
+    // 同じブックを同じ月にもう一度確定しても重複行は増えない。
+    await page.goto("/transactions/import");
+    await page.getByLabel(/Excel ファイル/).setInputFiles(fixture);
+    await page.getByRole("button", { name: "ファイルを読み込む" }).click();
+    await page.getByRole("button", { name: /取り込む/ }).click();
+    await expect(page).toHaveURL(/imported=0&duplicates=2/);
+    await expect(page.getByRole("status")).toContainText("新規 0 件");
+    await expect(page.getByRole("status")).toContainText("重複 2 件");
+    await expect(page.locator('[data-testid="transaction-row"]')).toHaveCount(2);
   });
 
   test("複数シートのExcelはシートを選択して取り込める", async ({ page }) => {
