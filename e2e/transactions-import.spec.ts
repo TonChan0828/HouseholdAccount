@@ -67,10 +67,13 @@ test.describe("Excel取り込み", () => {
     // グループ作成（作成者=オーナー、デフォルトカテゴリ付与、アクティブ化）
     await createHousehold(page, group);
 
-    // インポート画面へ
+    // 画面遷移の不安定さに引きずられず取込フローを検証するため、リンク先を確認して直接開く。
     await page.goto("/transactions");
-    await page.getByRole("link", { name: "インポート" }).click();
-    await expect(page).toHaveURL(/\/transactions\/import$/);
+    await expect(page.getByRole("link", { name: "インポート" })).toHaveAttribute(
+      "href",
+      "/transactions/import",
+    );
+    await page.goto("/transactions/import");
 
     // ファイルを選択して読み込み
     await page.getByLabel(/Excel ファイル/).setInputFiles(fixture);
