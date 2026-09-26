@@ -46,7 +46,7 @@ function formDataWithFile(file: File): FormData {
 beforeEach(() => {
   state.parseWorkbookCalls = 0;
   state.rpc.mockReset();
-  state.rpc.mockResolvedValue({ error: null });
+  state.rpc.mockResolvedValue({ data: 1, error: null });
 });
 
 describe("parseImportFile", () => {
@@ -91,7 +91,7 @@ describe("confirmImport", () => {
     ]);
 
     await expect(confirmImport(undefined, formData)).rejects.toThrow(
-      "NEXT_REDIRECT:/transactions?ref=2026-06-01",
+      "NEXT_REDIRECT:/transactions?ref=2026-06-01&imported=1&duplicates=0",
     );
     expect(state.rpc).toHaveBeenCalledWith("confirm_transaction_import", {
       _household_id: "h-1",
@@ -100,8 +100,20 @@ describe("confirmImport", () => {
     });
   });
 
+  it("一部だけ重複した取込は新規件数とスキップ数を表示する", async () => {
+    state.rpc.mockResolvedValue({ data: 1, error: null });
+    const formData = formDataWithRows([
+      { type: "expense", categoryName: "食費", amount: 1200 },
+      { type: "expense", categoryName: "日用品", amount: 800 },
+    ]);
+
+    await expect(confirmImport(undefined, formData)).rejects.toThrow(
+      "NEXT_REDIRECT:/transactions?ref=2026-06-01&imported=1&duplicates=1",
+    );
+  });
+
   it("RPC失敗時は完了画面へ遷移しない", async () => {
-    state.rpc.mockResolvedValue({ error: new Error("database failure") });
+    state.rpc.mockResolvedValue({ data: null, error: new Error("database failure") });
 
     await expect(
       confirmImport(

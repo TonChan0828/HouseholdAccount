@@ -357,6 +357,7 @@ export type Database = {
           date: string
           household_id: string
           id: string
+          import_key: string | null
           is_shared: boolean
           memo: string | null
           on_behalf_of: string | null
@@ -371,6 +372,7 @@ export type Database = {
           date: string
           household_id: string
           id?: string
+          import_key?: string | null
           is_shared?: boolean
           memo?: string | null
           on_behalf_of?: string | null
@@ -385,6 +387,7 @@ export type Database = {
           date?: string
           household_id?: string
           id?: string
+          import_key?: string | null
           is_shared?: boolean
           memo?: string | null
           on_behalf_of?: string | null

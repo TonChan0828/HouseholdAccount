@@ -107,7 +107,8 @@ export type ImportConfirmState = { error: string } | undefined;
 /**
  * プレビューで確定された有効行を取り込む。
  *
- * クライアントを信用せずサーバーで再検証し、不足カテゴリを自動作成してから一括 insert する。
+ * クライアントを信用せずサーバーで再検証し、不足カテゴリを自動作成して一括 insert する。
+ * 過去の Excel 取込と一致した行は RPC が二重登録を避け、件数を返す。
  */
 export async function confirmImport(
   _prev: ImportConfirmState,
@@ -125,16 +126,28 @@ export async function confirmImport(
 
   const { householdId, supabase } = await requireDashboardContext();
   const rows = parsed.rows as ValidImportRow[];
-  const { error } = await supabase.rpc("confirm_transaction_import", {
-    _household_id: householdId,
-    _month: `${parsed.month}-01`,
-    _rows: rows,
-  });
-  if (error) {
+  const { data: importedCount, error } = await supabase.rpc(
+    "confirm_transaction_import",
+    {
+      _household_id: householdId,
+      _month: `${parsed.month}-01`,
+      _rows: rows,
+    },
+  );
+  if (
+    error ||
+    typeof importedCount !== "number" ||
+    !Number.isInteger(importedCount) ||
+    importedCount < 0 ||
+    importedCount > rows.length
+  ) {
     return { error: "収支の取り込みに失敗しました" };
   }
 
   const date = `${parsed.month}-01`;
+  const duplicateCount = rows.length - importedCount;
   revalidatePath("/transactions");
-  redirect(`/transactions?ref=${date}`);
+  redirect(
+    `/transactions?ref=${date}&imported=${importedCount}&duplicates=${duplicateCount}`,
+  );
 }

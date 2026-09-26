@@ -73,10 +73,15 @@ export default async function TransactionsPage({
   searchParams,
 }: {
   searchParams: Promise<
-    { ref?: string; cursor?: string } & TransactionFilterParams
+    {
+      ref?: string;
+      cursor?: string;
+      imported?: string;
+      duplicates?: string;
+    } & TransactionFilterParams
   >;
 }) {
-  const { ref, cursor, ...filterParams } = await searchParams;
+  const { ref, cursor, imported, duplicates, ...filterParams } = await searchParams;
   const filter = parseTransactionFilter(filterParams);
   const filtering = hasActiveFilter(filter);
 
@@ -124,6 +129,18 @@ export default async function TransactionsPage({
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
+  const importedValue = Number(imported);
+  const duplicateValue = Number(duplicates);
+  const importSummary =
+    imported !== undefined &&
+    duplicates !== undefined &&
+    /^\d+$/.test(imported) &&
+    /^\d+$/.test(duplicates) &&
+    Number.isSafeInteger(importedValue) &&
+    Number.isSafeInteger(duplicateValue) &&
+    importedValue + duplicateValue <= 500
+      ? { imported: importedValue, duplicates: duplicateValue }
+      : null;
 
   return (
     <TransactionDialogProvider
@@ -167,6 +184,18 @@ export default async function TransactionsPage({
             </>
           }
         />
+
+        {importSummary ? (
+          <p
+            className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm"
+            role="status"
+          >
+            Excel 取込: 新規 {importSummary.imported} 件
+            {importSummary.duplicates > 0
+              ? `・重複 ${importSummary.duplicates} 件をスキップしました。`
+              : "を登録しました。"}
+          </p>
+        ) : null}
 
         <div
           className={cn("flex flex-col items-center gap-3", reveal)}
