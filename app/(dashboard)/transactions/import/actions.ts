@@ -5,17 +5,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import {
-  categoryKey,
   type ClassifyResult,
   classifyRows,
-  type ExistingCategory,
   parseMonthFromFilename,
-  splitCategoryNames,
   type ValidImportRow,
 } from "@/lib/import/excel";
 import { parseWorkbook } from "@/lib/import/parse-workbook";
 import { requireDashboardContext } from "@/lib/household";
-import { CATEGORY_COLORS } from "@/lib/validations/category";
 
 /** 取り込みの上限行数（過大ファイル対策）。 */
 const MAX_ROWS = 500;
@@ -99,7 +95,7 @@ const confirmSchema = z.object({
       z.object({
         type: z.enum(["income", "expense"]),
         categoryName: z.string().trim().min(1).max(50),
-        amount: z.coerce.number().int().min(1),
+        amount: z.coerce.number().int().min(1).max(2_147_483_647),
       }),
     )
     .min(1, "取り込む収支がありません")
@@ -127,70 +123,18 @@ export async function confirmImport(
     return { error: "取り込む内容を確認してください" };
   }
 
-  const { user, householdId, supabase } = await requireDashboardContext();
-
+  const { householdId, supabase } = await requireDashboardContext();
   const rows = parsed.rows as ValidImportRow[];
-  const date = `${parsed.month}-01`;
-
-  // 1) 既存カテゴリを取得し、不足分を自動作成して name×type → id の解決マップを作る。
-  const { data: existing, error: catFetchError } = await supabase
-    .from("categories")
-    .select("id, name, type")
-    .eq("household_id", householdId);
-  if (catFetchError) {
-    return { error: "カテゴリの取得に失敗しました" };
-  }
-
-  const needed = rows.map((r) => ({ name: r.categoryName, type: r.type }));
-  const { matched, toCreate } = splitCategoryNames(
-    (existing ?? []) as ExistingCategory[],
-    needed,
-  );
-
-  const idByKey = new Map<string, string>();
-  for (const m of matched) {
-    idByKey.set(categoryKey(m.name, m.type), m.id);
-  }
-
-  if (toCreate.length > 0) {
-    // 色は既存カテゴリ数からのオフセットで循環させ、毎回赤から始まる偏りを避ける。
-    const colorBase = existing?.length ?? 0;
-    const { data: created, error: createError } = await supabase
-      .from("categories")
-      .insert(
-        toCreate.map((c, i) => ({
-          household_id: householdId,
-          name: c.name,
-          type: c.type,
-          color: CATEGORY_COLORS[(colorBase + i) % CATEGORY_COLORS.length],
-          is_default: false,
-        })),
-      )
-      .select("id, name, type");
-    if (createError || !created) {
-      return { error: "カテゴリの作成に失敗しました" };
-    }
-    for (const c of created) {
-      idByKey.set(categoryKey(c.name, c.type as ValidImportRow["type"]), c.id);
-    }
-  }
-
-  // 2) 取引を一括 insert（household_id / created_by を自動付与、日付は対象月の1日）。
-  const { error: insertError } = await supabase.from("transactions").insert(
-    rows.map((r) => ({
-      household_id: householdId,
-      created_by: user.id,
-      type: r.type,
-      amount: r.amount,
-      date,
-      category_id: idByKey.get(categoryKey(r.categoryName, r.type)) ?? null,
-      memo: null,
-    })),
-  );
-  if (insertError) {
+  const { error } = await supabase.rpc("confirm_transaction_import", {
+    _household_id: householdId,
+    _month: `${parsed.month}-01`,
+    _rows: rows,
+  });
+  if (error) {
     return { error: "収支の取り込みに失敗しました" };
   }
 
+  const date = `${parsed.month}-01`;
   revalidatePath("/transactions");
   redirect(`/transactions?ref=${date}`);
 }
