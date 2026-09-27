@@ -201,7 +201,7 @@ export default async function TransactionsPage({
           className={cn("flex flex-col items-center gap-3", reveal)}
           style={{ animationDelay: "60ms" }}
         >
-          <ViewToggle active="list" />
+          <ViewToggle active="list" currentRef={toISODate(range.start)} />
           <MonthNav
             label={formatPeriodLabel(range)}
             prevHref={prevHref}

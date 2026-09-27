@@ -102,7 +102,7 @@ export default async function CalendarPage({
           className={reveal}
           actions={
             <>
-              <ViewToggle active="calendar" />
+              <ViewToggle active="calendar" currentRef={toISODate(refDate)} />
               <MonthNav
                 label={formatMonthLabel(refDate)}
                 prevHref={prevHref}
