@@ -18,6 +18,7 @@ export default async function NewRecurringPage() {
     .select("*")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
+    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   const data = unwrapData(result, "fetchRecurringFormCategories");
   const categories = (data ?? []) as Category[];

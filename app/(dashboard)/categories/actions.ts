@@ -2,12 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { requireDashboardContext } from "@/lib/household";
 import { throwIfError } from "@/lib/queries/result";
 import { categorySchema } from "@/lib/validations/category";
 
 export type CategoryActionState = { error: string } | undefined;
+
+const categoryOrderSchema = z.object({
+  type: z.enum(["income", "expense", "both"]),
+  categoryIds: z.array(z.uuid()),
+});
 
 function parse(formData: FormData) {
   return categorySchema.safeParse({
@@ -100,6 +106,42 @@ export async function toggleCategoryReminder(
     .eq("id", id)
     .eq("household_id", householdId);
   throwIfError(result, "toggleCategoryReminder");
+
+  revalidatePath("/categories");
+}
+
+/** カテゴリ種別内の並び順を、DBで全件検証して原子的に保存する。 */
+export async function reorderCategories(formData: FormData): Promise<void> {
+  const rawCategoryIds = formData.get("category_ids");
+  let categoryIds: unknown;
+  try {
+    categoryIds =
+      typeof rawCategoryIds === "string" ? JSON.parse(rawCategoryIds) : null;
+  } catch {
+    categoryIds = null;
+  }
+
+  const parsed = categoryOrderSchema.safeParse({
+    type: formData.get("type"),
+    categoryIds,
+  });
+  if (!parsed.success) {
+    redirect("/categories?sortError=invalid");
+  }
+
+  const { householdId, supabase } = await requireDashboardContext();
+  const { error } = await supabase.rpc("reorder_categories", {
+    _household_id: householdId,
+    _type: parsed.data.type,
+    _category_ids: parsed.data.categoryIds,
+  });
+
+  if (error) {
+    // Concurrently changed lists are rejected by the RPC instead of applying a
+    // partial order. Reload with a neutral message so the latest order is shown.
+    revalidatePath("/categories");
+    redirect("/categories?sortError=conflict");
+  }
 
   revalidatePath("/categories");
 }

@@ -94,6 +94,7 @@ export function createSeedState(): DemoState {
     icon: null,
     is_default: c.is_default,
     reminder_enabled: false,
+    sort_order: i + 1,
   }));
   const categoryIdByName = new Map(categories.map((c) => [c.name, c.id]));
 

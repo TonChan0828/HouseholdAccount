@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Bell, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, Bell, Plus } from "lucide-react";
 
 import {
   deleteCategory,
+  reorderCategories,
   toggleCategoryReminder,
 } from "@/app/(dashboard)/categories/actions";
 import { DeleteCategoryButton } from "@/components/features/categories/delete-category-button";
@@ -23,13 +24,36 @@ const GROUPS: { type: CategoryType; label: string }[] = [
   { type: "both", label: "両方" },
 ];
 
-export default async function CategoriesPage() {
-  const { householdId, supabase } = await requireDashboardContext();
+function moveCategoryIds(
+  ids: string[],
+  index: number,
+  direction: -1 | 1,
+): string[] {
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= ids.length) {
+    return ids;
+  }
+  const next = [...ids];
+  [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+  return next;
+}
+
+export default async function CategoriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sortError?: string }>;
+}) {
+  const [{ sortError }, { householdId, supabase }] = await Promise.all([
+    searchParams,
+    requireDashboardContext(),
+  ]);
 
   const result = await supabase
     .from("categories")
     .select("*")
     .eq("household_id", householdId)
+    .order("type", { ascending: true })
+    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   const data = unwrapData(result, "fetchCategories");
   const categories = (data ?? []) as Category[];
@@ -54,6 +78,14 @@ export default async function CategoriesPage() {
         }
       />
 
+      {sortError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {sortError === "conflict"
+            ? "カテゴリ一覧が更新されたため、並び替えを保存できませんでした。最新の一覧からやり直してください。"
+            : "カテゴリの並び替え内容を確認できませんでした。最新の一覧からやり直してください。"}
+        </p>
+      ) : null}
+
       <p
         data-testid="category-reminder-note"
         className={cn(
@@ -71,6 +103,7 @@ export default async function CategoriesPage() {
 
       {GROUPS.map((group, gi) => {
         const items = categories.filter((c) => c.type === group.type);
+        const itemIds = items.map((c) => c.id);
         if (items.length === 0) {
           return null;
         }
@@ -82,7 +115,7 @@ export default async function CategoriesPage() {
           >
             <SectionHeading>{group.label}</SectionHeading>
             <ul className="grid gap-2 sm:grid-cols-2">
-              {items.map((c) => (
+              {items.map((c, index) => (
                 <li key={c.id}>
                   <Surface
                     variant="raised"
@@ -101,6 +134,44 @@ export default async function CategoriesPage() {
                         <span className="truncate font-medium">{c.name}</span>
                       </span>
                       <span className="flex shrink-0 items-center gap-1">
+                        <form action={reorderCategories}>
+                          <input type="hidden" name="type" value={group.type} />
+                          <input
+                            type="hidden"
+                            name="category_ids"
+                            value={JSON.stringify(moveCategoryIds(itemIds, index, -1))}
+                          />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`${c.name}を上へ移動`}
+                            title="上へ移動"
+                            disabled={index === 0}
+                            data-testid="category-move-up"
+                          >
+                            <ArrowUp className="size-4" aria-hidden />
+                          </Button>
+                        </form>
+                        <form action={reorderCategories}>
+                          <input type="hidden" name="type" value={group.type} />
+                          <input
+                            type="hidden"
+                            name="category_ids"
+                            value={JSON.stringify(moveCategoryIds(itemIds, index, 1))}
+                          />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`${c.name}を下へ移動`}
+                            title="下へ移動"
+                            disabled={index === items.length - 1}
+                            data-testid="category-move-down"
+                          >
+                            <ArrowDown className="size-4" aria-hidden />
+                          </Button>
+                        </form>
                         <form action={toggleCategoryReminder}>
                           <input type="hidden" name="id" value={c.id} />
                           <input

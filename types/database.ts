@@ -109,6 +109,7 @@ export type Database = {
           is_default: boolean
           name: string
           reminder_enabled: boolean
+          sort_order: number
           type: Database["public"]["Enums"]["category_type"]
         }
         Insert: {
@@ -119,6 +120,7 @@ export type Database = {
           is_default?: boolean
           name: string
           reminder_enabled?: boolean
+          sort_order?: number
           type?: Database["public"]["Enums"]["category_type"]
         }
         Update: {
@@ -129,6 +131,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           reminder_enabled?: boolean
+          sort_order?: number
           type?: Database["public"]["Enums"]["category_type"]
         }
         Relationships: [
@@ -457,6 +460,14 @@ export type Database = {
       invitation_preview: {
         Args: { _token: string }
         Returns: { household_name: string; status: string }[]
+      }
+      reorder_categories: {
+        Args: {
+          _category_ids: string[]
+          _household_id: string
+          _type: Database["public"]["Enums"]["category_type"]
+        }
+        Returns: undefined
       }
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
       is_household_owner: { Args: { _household_id: string }; Returns: boolean }

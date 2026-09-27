@@ -10,7 +10,7 @@ import type { Category } from "@/types";
 export type CategoryOption = Pick<Category, "id" | "name" | "color" | "type">;
 
 /**
- * グループのカテゴリを、収支フォーム向けに type・name の昇順で取得する。
+ * グループのカテゴリを、収支フォーム向けに type・保存順で取得する。
  *
  * 収支の登録・編集画面で同じクエリを重複して書いていたのを一箇所に集約する。
  * 取得失敗を空配列（＝カテゴリ0件）と誤認させないため、例外を投げる。
@@ -24,6 +24,7 @@ export async function fetchHouseholdCategories(
     .select("id, name, color, type")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
+    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
   if (error) {

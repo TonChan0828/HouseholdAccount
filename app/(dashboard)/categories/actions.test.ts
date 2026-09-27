@@ -1,14 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createCategory, toggleCategoryReminder } from "./actions";
+import {
+  createCategory,
+  reorderCategories,
+  toggleCategoryReminder,
+} from "./actions";
 
 const state = vi.hoisted(() => ({
   updates: [] as { table: string; values: unknown; filters: [string, unknown][] }[],
   inserts: [] as { table: string; values: unknown }[],
   insertError: null as { code: string } | null,
+  rpcCalls: [] as { name: string; args: Record<string, unknown> }[],
+  rpcError: null as { message: string } | null,
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  redirect: (path: string) => {
+    throw new Error(`redirect:${path}`);
+  },
+}));
 
 vi.mock("@/lib/household", () => ({
   requireDashboardContext: async () => {
@@ -23,6 +34,10 @@ vi.mock("@/lib/household", () => ({
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
+    rpc: (name: string, args: Record<string, unknown>) => {
+      state.rpcCalls.push({ name, args });
+      return Promise.resolve({ error: state.rpcError });
+    },
     from: (table: string) => ({
       insert: (values: unknown) => ({
         then: (resolve: (v: unknown) => unknown) => {
@@ -58,6 +73,8 @@ beforeEach(() => {
   state.updates = [];
   state.inserts = [];
   state.insertError = null;
+  state.rpcCalls = [];
+  state.rpcError = null;
 });
 
 describe("createCategory", () => {
@@ -114,5 +131,48 @@ describe("toggleCategoryReminder", () => {
   it("id が無ければ何もしない", async () => {
     await toggleCategoryReminder(formDataWith({ reminder_enabled: "true" }));
     expect(state.updates).toHaveLength(0);
+  });
+});
+
+describe("reorderCategories", () => {
+  it("household と type をサーバー側で固定して順序全体をRPCへ送る", async () => {
+    const ids = [
+      "00000000-0000-4000-8000-000000000001",
+      "00000000-0000-4000-8000-000000000002",
+    ];
+    await reorderCategories(
+      formDataWith({ type: "expense", category_ids: JSON.stringify(ids) }),
+    );
+
+    expect(state.rpcCalls).toEqual([
+      {
+        name: "reorder_categories",
+        args: {
+          _household_id: "h-1",
+          _type: "expense",
+          _category_ids: ids,
+        },
+      },
+    ]);
+  });
+
+  it("RPCが競合・無効な順序を拒否した場合、再読み込みを促す", async () => {
+    state.rpcError = { message: "stale category order" };
+    const ids = ["00000000-0000-4000-8000-000000000001"];
+
+    await expect(
+      reorderCategories(
+        formDataWith({ type: "expense", category_ids: JSON.stringify(ids) }),
+      ),
+    ).rejects.toThrow("redirect:/categories?sortError=conflict");
+  });
+
+  it("不正なJSONや種別をDBへ送らない", async () => {
+    await expect(
+      reorderCategories(
+        formDataWith({ type: "unsupported", category_ids: "not-json" }),
+      ),
+    ).rejects.toThrow("redirect:/categories?sortError=invalid");
+    expect(state.rpcCalls).toHaveLength(0);
   });
 });
