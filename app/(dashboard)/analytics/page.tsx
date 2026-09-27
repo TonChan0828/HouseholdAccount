@@ -43,7 +43,10 @@ export default async function AnalyticsPage({
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
+  const {
+    periodStartDay: startDay,
+    fiscalYearStartMonth: startMonth = 1,
+  } = await getHouseholdSettings(householdId);
 
   if (view === "year") {
     // async 子コンポーネントとして置かず直接呼ぶ（ページと同じ描画パスで await する）。
@@ -51,7 +54,8 @@ export default async function AnalyticsPage({
       householdId,
       supabase,
       startDay,
-      year: yearFromParam(year, startDay),
+      startMonth,
+      year: yearFromParam(year, startDay, new Date(), startMonth),
     });
   }
 
