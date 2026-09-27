@@ -33,7 +33,7 @@ test.describe("カテゴリ管理", () => {
       .locator('[data-testid="category-row"]')
       .filter({ hasText: name });
     await expect(row).toBeVisible();
-    await expect(row.locator("svg")).toBeVisible();
+    await expect(row.locator("svg.lucide-paw-print")).toBeVisible();
 
     // 前後空白・大文字小文字を正規化した同種別の重複名はDBで拒否する
     await page.goto("/categories/new");
@@ -78,7 +78,7 @@ test.describe("カテゴリ管理", () => {
       .locator('[data-testid="category-row"]')
       .filter({ hasText: renamed });
     await expect(renamedRow).toBeVisible();
-    await expect(renamedRow.locator("svg")).toBeVisible();
+    await expect(renamedRow.locator("svg.lucide-plane")).toBeVisible();
 
     // 削除（confirm 承諾）で一覧から消える
     page.once("dialog", (dialog) => dialog.accept());
