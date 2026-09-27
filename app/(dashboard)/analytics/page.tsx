@@ -37,9 +37,14 @@ const TREND_PERIODS = 6;
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string; view?: string; year?: string }>;
+  searchParams: Promise<{
+    ref?: string;
+    view?: string;
+    year?: string;
+    member?: string;
+  }>;
 }) {
-  const { ref, view, year } = await searchParams;
+  const { ref, view, year, member } = await searchParams;
 
   const { householdId, supabase } = await requireDashboardContext();
 
@@ -56,6 +61,7 @@ export default async function AnalyticsPage({
       startDay,
       startMonth,
       year: yearFromParam(year, startDay, new Date(), startMonth),
+      memberId: member,
     });
   }
 

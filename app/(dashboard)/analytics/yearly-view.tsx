@@ -3,6 +3,7 @@ import { AnalyticsViewTabs } from "@/components/features/charts/analytics-view-t
 import { CategoryBreakdown } from "@/components/features/charts/category-breakdown";
 import { TrendBars } from "@/components/features/charts/trend-bars";
 import { YoyComparison } from "@/components/features/charts/yoy-comparison";
+import { YearlyMemberFilter } from "@/components/features/charts/yearly-member-filter";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import { CardContent } from "@/components/ui/card";
 import { KpiRibbon } from "@/components/shared/kpi-ribbon";
@@ -14,6 +15,7 @@ import { summarizeCategoryExpense, type TxLite } from "@/lib/analytics";
 import type { ServerClient } from "@/lib/household";
 import { getYearRanges, toISODate, type PeriodRange } from "@/lib/period";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
+import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { compareCategoryYoY, summarizeYear } from "@/lib/yearly-analytics";
 
 type Props = {
@@ -22,6 +24,7 @@ type Props = {
   startDay: number;
   startMonth: number;
   year: number;
+  memberId?: string;
 };
 
 /** txs のうち [start, end) に入るものだけを返す。 */
@@ -45,16 +48,27 @@ export async function YearlyAnalyticsView({
   startDay,
   startMonth,
   year,
+  memberId: requestedMemberId,
 }: Props) {
   const ranges = getYearRanges(year, startDay, startMonth);
   const prevYearRanges = getYearRanges(year - 1, startDay, startMonth);
   const yearStart = ranges[0].start;
   const yearEnd = ranges[11].end;
 
-  const txs = await fetchTransactionsInRange(supabase, householdId, {
-    start: prevYearRanges[0].start,
-    end: yearEnd,
-  });
+  const members = await getHouseholdMemberNames(householdId);
+  // URLの値は信用せず、この家計に現在所属するメンバーだけを許可する。
+  const selectedMember = members.find(
+    (member) => member.user_id === requestedMemberId,
+  );
+  const txs = await fetchTransactionsInRange(
+    supabase,
+    householdId,
+    {
+      start: prevYearRanges[0].start,
+      end: yearEnd,
+    },
+    selectedMember ? { filter: { createdBy: selectedMember.user_id } } : undefined,
+  );
 
   const today = toISODate(new Date());
   const summary = summarizeYear(txs, ranges, today);
@@ -105,6 +119,10 @@ export async function YearlyAnalyticsView({
     },
   ];
 
+  const memberQuery = selectedMember
+    ? `&member=${encodeURIComponent(selectedMember.user_id)}`
+    : "";
+
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
 
@@ -124,10 +142,15 @@ export async function YearlyAnalyticsView({
         actions={
           <>
             <AnalyticsViewTabs active="year" />
+            <YearlyMemberFilter
+              members={members}
+              selectedMemberId={selectedMember?.user_id ?? null}
+              year={year}
+            />
             <MonthNav
               label={startMonth === 1 ? `${year}年` : `${year}年度`}
-              prevHref={`/analytics?view=year&year=${year - 1}`}
-              nextHref={`/analytics?view=year&year=${year + 1}`}
+              prevHref={`/analytics?view=year&year=${year - 1}${memberQuery}`}
+              nextHref={`/analytics?view=year&year=${year + 1}${memberQuery}`}
             />
           </>
         }
