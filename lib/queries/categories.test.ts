@@ -59,7 +59,7 @@ function createClientStub(result: {
 }
 
 describe("fetchHouseholdCategories", () => {
-  it("household_id でスコープし、type・name の昇順で取得する", async () => {
+  it("household_id でスコープし、type・保存順・name で取得する", async () => {
     const rows: Row[] = [
       { id: "c-1", name: "給与", color: "#0f0", type: "income" },
       { id: "c-2", name: "食費", color: "#f00", type: "expense" },
@@ -71,7 +71,7 @@ describe("fetchHouseholdCategories", () => {
     expect(categories).toEqual(rows);
     expect(calls.table).toBe("categories");
     expect(calls.eq).toEqual([["household_id", "h-1"]]);
-    expect(calls.order).toEqual(["type", "name"]);
+    expect(calls.order).toEqual(["type", "sort_order", "name"]);
   });
 
   it("フォームが必要とする id・name・color・type を取得する", async () => {

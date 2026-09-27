@@ -30,6 +30,7 @@ export default async function NewTransactionPage({
     .select("*")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
+    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   const data = unwrapData(categoryResult, "fetchTransactionFormCategories");
   const categories = (data ?? []) as Category[];

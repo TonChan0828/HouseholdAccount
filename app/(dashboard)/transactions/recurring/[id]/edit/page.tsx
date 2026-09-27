@@ -40,6 +40,7 @@ export default async function EditRecurringPage({
     .select("*")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
+    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   const data = unwrapData(categoryResult, "fetchRecurringFormCategories");
   const categories = (data ?? []) as Category[];

@@ -19,6 +19,7 @@ const categories: Category[] = [
     type: "expense",
     is_default: true,
     reminder_enabled: false,
+    sort_order: 1,
   },
   {
     id: "22222222-2222-2222-2222-222222222222",
@@ -29,6 +30,7 @@ const categories: Category[] = [
     type: "income",
     is_default: true,
     reminder_enabled: false,
+    sort_order: 1,
   },
 ];
 

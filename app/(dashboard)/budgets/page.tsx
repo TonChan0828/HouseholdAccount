@@ -44,6 +44,8 @@ export default async function BudgetsPage({
         .select("id, name, color, type")
         .eq("household_id", householdId)
         .in("type", ["expense", "both"])
+        .order("type", { ascending: true })
+        .order("sort_order", { ascending: true })
         .order("name", { ascending: true }),
       supabase
         .from("budgets")

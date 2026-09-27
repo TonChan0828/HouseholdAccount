@@ -114,6 +114,13 @@ export function addCategory(
     icon: input.icon,
     is_default: false,
     reminder_enabled: false,
+    sort_order:
+      Math.max(
+        0,
+        ...state.categories
+          .filter((category) => category.type === input.type)
+          .map((category) => category.sort_order),
+      ) + 1,
   };
   return { ...state, categories: [...state.categories, category] };
 }

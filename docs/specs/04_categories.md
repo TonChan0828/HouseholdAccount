@@ -33,9 +33,10 @@
 
 ### 表示内容
 
-- type ごと（支出 → 収入 → 両方）にグループ表示。各グループ内は名前昇順
-- 各行: 色に加え、アイコンが設定されていればアイコン＋カテゴリ名。未設定は従来の色ドットを表示する。デフォルトは「デフォルト」バッジを表示し操作ボタンを置かない
+- type ごと（支出 → 収入 → 両方）にグループ表示。各グループ内は保存済みの手動順
+- 各行: 色に加え、アイコンが設定されていればアイコン＋カテゴリ名。未設定は従来の色ドットを表示する。デフォルトは「デフォルト」バッジを表示する
 - カスタムのみ [編集]（`/categories/[id]/edit`）と [削除] を表示
+- 各行にアクセス可能な「上へ移動」「下へ移動」ボタンを表示する。先頭/末尾では移動できない方向のボタンを disabled にする。順序は household 内で共有する
 - 追加は `/categories/new`、編集は `/categories/[id]/edit`（transactions と同じページ構成）
 
 ### フォーム項目（追加・編集共通）
@@ -59,7 +60,7 @@
 ```typescript
 // types/index.ts（既存）
 type Category = Tables["categories"]["Row"];
-// { id, household_id, name, color, icon, type: "income" | "expense" | "both", is_default }
+// { id, household_id, name, color, icon, type: "income" | "expense" | "both", is_default, sort_order }
 
 // フォーム入力
 type CategoryInput = {
@@ -76,7 +77,7 @@ type CategoryInput = {
 
 ### 使用テーブル
 
-- `categories`（既存。スキーマ変更なし）
+- `categories`（`sort_order` を追加。household・type 内の順序を保存）
 
 ### RLS ポリシー（既存・変更なし）
 
@@ -91,6 +92,8 @@ supabase
   .from("categories")
   .select("*")
   .eq("household_id", activeId)
+  .order("type", { ascending: true })
+  .order("sort_order", { ascending: true })
   .order("name", { ascending: true });
 // type ごとのグループ化は JS で行う
 
@@ -100,6 +103,10 @@ updateCategory(formData); // id + household_id + is_default=false でスコー�
 deleteCategory(formData); // id + household_id + is_default=false でスコープして delete
 ```
 
+- 既存カテゴリは移行時に type ごとの名前昇順で `sort_order` を初期化する。新規カテゴリと種別変更は移動先 type の末尾に追加する
+- 並び替え Action は household と type を検証した上で対象 type の ID 全件を DB RPC に渡す。RPC は household メンバー権限・ID重複なし・現在の全件一致を確認し、advisory lock 下で原子的に更新する。古い一覧からの操作は拒否して最新順を再表示する
+- 収支・定期収支・予算などのカテゴリ候補も `type` → `sort_order` の順で取得し、管理画面と同じ type 内の順序を使う
+
 - update/delete は `.eq("household_id", activeId).eq("is_default", false)` を必ず付ける
 - バリデーション: name 必須・1〜50字、type は enum 3値、color はパレット内、icon は許可リスト内または null のみ許可
 
@@ -107,18 +114,20 @@ deleteCategory(formData); // id + household_id + is_default=false でスコー�
 
 - `components/features/categories/category-form.tsx` — 名前・色・種別のフォーム（presentational、`TransactionForm` と同型。追加/編集で共用）
 - `components/features/categories/delete-category-button.tsx` — `"use client"`、confirm 付き削除ボタン
+- `/categories` — 種別内の並び替えフォームを表示。DB RPC が対象 ID 全件を検証して保存する
 - 一覧はページ内でレンダリング
-- 既存の `/transactions`・ダッシュボード・分析のコードは変更しない
+- 収支・定期収支・予算のカテゴリ候補も保存済み順を使う。金額などの分析ランキングは変更しない
 
 ## テスト
 
 - Unit: 入力バリデーション（name 空・51字・type 不正・color パレット外）
 - Component: `CategoryForm`（入力と初期値の表示）、`CategoryBadge`（設定アイコンの表示）、`DeleteCategoryButton`（confirm キャンセル時に送信しない）
 - E2E（`e2e/categories.spec.ts`）: グループ作成 → アイコン付きカテゴリ追加 → 一覧表示 → 収支フォームの選択肢に反映 → アイコン変更を含む編集 → 削除（confirm 承諾）→ 一覧から消える。デフォルトカテゴリに操作ボタンが無いことも確認
+- E2E（`e2e/categories-order.spec.ts`）: type 内の上下移動、再読み込み後の永続化、収支・定期収支のカテゴリ候補への反映を確認
+- Database（`supabase/tests/database/category_sort_order.sql`）: RPC権限、member/household境界、全件順序の置換、部分・重複・別household IDの拒否、新規作成・種別変更時の末尾追加を確認
 
 ## 未解決の課題
 
-- カテゴリの並び替え（現状は名前昇順固定）
 - 既存データのうち、予算が複数ある重複カテゴリや名前表記・色・icon・default・通知設定が異なる重複は自動統合せず残す（要確認）
 
 既存データの重複のうち、同一 household・同一種別で名前と表示属性が完全一致し、予算が合計1件以下のものは、migration `0029` で取引・定期取引・予算の参照を維持して統合する。それ以外はデータを変更しない。
