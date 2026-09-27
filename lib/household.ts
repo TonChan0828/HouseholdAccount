@@ -53,21 +53,26 @@ export const getCurrentUser = cache(async () => {
 });
 
 /**
- * グループの期間設定（`period_start_day`）を取得する。
+ * グループの期間設定（締め日・年度開始月）を取得する。
  *
  * 複数ページで都度取得していた静的設定値を、`cache()` でリクエスト内一度に集約する。
  * グループが見つからない場合は既定値 1 を返す。
  */
 export const getHouseholdSettings = cache(
-  async (householdId: string): Promise<{ periodStartDay: number }> => {
+  async (
+    householdId: string,
+  ): Promise<{ periodStartDay: number; fiscalYearStartMonth: number }> => {
     const supabase = await createClient();
     const result = await supabase
       .from("households")
-      .select("period_start_day")
+      .select("period_start_day, fiscal_year_start_month")
       .eq("id", householdId)
       .maybeSingle();
     const data = unwrapData(result, "getHouseholdSettings");
-    return { periodStartDay: data?.period_start_day ?? 1 };
+    return {
+      periodStartDay: data?.period_start_day ?? 1,
+      fiscalYearStartMonth: data?.fiscal_year_start_month ?? 1,
+    };
   },
 );
 

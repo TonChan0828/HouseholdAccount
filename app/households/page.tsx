@@ -12,6 +12,7 @@ import {
   removeMember,
   revokeInvitation,
   setActiveHousehold,
+  setFiscalYearStartMonth,
   setPeriodStartDay,
   transferOwnership,
   updateGroupDisplayName,
@@ -42,7 +43,12 @@ import type { HouseholdInvitation, MemberRole } from "@/types";
 
 type MembershipRow = {
   role: MemberRole;
-  household: { id: string; name: string; period_start_day: number } | null;
+  household: {
+    id: string;
+    name: string;
+    period_start_day: number;
+    fiscal_year_start_month: number;
+  } | null;
 };
 
 export default async function HouseholdsPage() {
@@ -57,7 +63,9 @@ export default async function HouseholdsPage() {
   // RLS は同居メンバー全員の行を返すため、自分の所属行に絞る（重複表示防止）。
   const membershipResult = await supabase
     .from("household_members")
-    .select("role, household:households(id, name, period_start_day)")
+    .select(
+      "role, household:households(id, name, period_start_day, fiscal_year_start_month)",
+    )
     .eq("user_id", user.id)
     .order("joined_at", { ascending: true })
     .overrideTypes<MembershipRow[]>();
@@ -287,6 +295,51 @@ export default async function HouseholdsPage() {
                                     保存
                                   </Button>
                                 </form>
+                              </div>
+                              <div>
+                                <p className="mb-2 text-sm font-medium">
+                                  年度
+                                </p>
+                                <form
+                                  action={setFiscalYearStartMonth}
+                                  className="flex items-end gap-2"
+                                >
+                                  <input
+                                    type="hidden"
+                                    name="household_id"
+                                    value={group.id}
+                                  />
+                                  <div className="space-y-1">
+                                    <label
+                                      htmlFor={`fiscal-year-start-month-${group.id}`}
+                                      className="text-xs text-muted-foreground"
+                                    >
+                                      開始月
+                                    </label>
+                                    <select
+                                      id={`fiscal-year-start-month-${group.id}`}
+                                      name="fiscal_year_start_month"
+                                      defaultValue={group.fiscal_year_start_month}
+                                      className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                                    >
+                                      {Array.from({ length: 12 }, (_, index) => (
+                                        <option key={index + 1} value={index + 1}>
+                                          {index + 1}月
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <Button
+                                    type="submit"
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    保存
+                                  </Button>
+                                </form>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  年間分析の年度を、この月から数えます。
+                                </p>
                               </div>
                               <div>
                                 <p className="mb-3 text-sm font-medium">

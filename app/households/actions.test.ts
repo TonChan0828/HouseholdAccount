@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   revokeInvitation,
+  setFiscalYearStartMonth,
   setPeriodStartDay,
   transferOwnership,
   updateGroupDisplayName,
@@ -212,6 +213,57 @@ describe("setPeriodStartDay", () => {
 
     await setPeriodStartDay(
       formDataWith({ household_id: "h-1", period_start_day: "10" }),
+    );
+
+    expect(mutationCalls()).toHaveLength(0);
+  });
+});
+
+describe("setFiscalYearStartMonth", () => {
+  function mutationCalls() {
+    return state.calls.filter(
+      (c) => c.table === "households" && c.method === "update",
+    );
+  }
+
+  it("ownerなら世帯の年度開始月を更新する", async () => {
+    await setFiscalYearStartMonth(
+      formDataWith({ household_id: "h-1", fiscal_year_start_month: "4" }),
+    );
+
+    expect(mutationCalls()).toEqual([
+      {
+        table: "households",
+        method: "update",
+        values: { fiscal_year_start_month: 4 },
+        filters: { id: "h-1" },
+      },
+    ]);
+  });
+
+  it("範囲外の値は更新しない", async () => {
+    await setFiscalYearStartMonth(
+      formDataWith({ household_id: "h-1", fiscal_year_start_month: "13" }),
+    );
+
+    expect(mutationCalls()).toHaveLength(0);
+  });
+
+  it("ownerでなければ更新しない", async () => {
+    state.role = "member";
+
+    await setFiscalYearStartMonth(
+      formDataWith({ household_id: "h-1", fiscal_year_start_month: "4" }),
+    );
+
+    expect(mutationCalls()).toHaveLength(0);
+  });
+
+  it("未ログインなら更新しない", async () => {
+    state.user = null;
+
+    await setFiscalYearStartMonth(
+      formDataWith({ household_id: "h-1", fiscal_year_start_month: "4" }),
     );
 
     expect(mutationCalls()).toHaveLength(0);

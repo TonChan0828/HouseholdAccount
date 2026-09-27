@@ -145,6 +145,28 @@ describe("getYearRanges", () => {
       expect(toISODate(ranges[i].start)).toBe(toISODate(ranges[i - 1].end));
     }
   });
+
+  it("開始月4ならFY年の4月から翌年3月までの12期を返す", () => {
+    const ranges = getYearRanges(2026, 1, 4);
+    expect(ranges).toHaveLength(12);
+    expect(toISODate(ranges[0].start)).toBe("2026-04-01");
+    expect(toISODate(ranges[0].end)).toBe("2026-05-01");
+    expect(toISODate(ranges[11].start)).toBe("2027-03-01");
+    expect(toISODate(ranges[11].end)).toBe("2027-04-01");
+  });
+
+  it("締め日と開始月を併用し、12期を隙間なく連続させる", () => {
+    const ranges = getYearRanges(2026, 25, 4);
+    expect(toISODate(ranges[0].start)).toBe("2026-04-25");
+    expect(toISODate(ranges[11].end)).toBe("2027-04-25");
+    for (let i = 1; i < ranges.length; i++) {
+      expect(toISODate(ranges[i].start)).toBe(toISODate(ranges[i - 1].end));
+    }
+  });
+
+  it("開始月省略時は従来どおり1月開始を維持する", () => {
+    expect(getYearRanges(2026, 1)).toEqual(getYearRanges(2026, 1, 1));
+  });
 });
 
 describe("yearFromParam", () => {
@@ -163,5 +185,20 @@ describe("yearFromParam", () => {
   it("不正な形式は今日基準へフォールバックする", () => {
     expect(yearFromParam("20x6", 1, utc(2026, 6, 1))).toBe(2026);
     expect(yearFromParam("2026-01", 1, utc(2026, 6, 1))).toBe(2026);
+  });
+
+  it("開始月4では1〜3月を前年FY、4月以降を当年FYにする", () => {
+    expect(yearFromParam(undefined, 1, utc(2026, 3, 31), 4)).toBe(2025);
+    expect(yearFromParam(undefined, 1, utc(2026, 4, 1), 4)).toBe(2026);
+    expect(yearFromParam(undefined, 1, utc(2027, 3, 31), 4)).toBe(2026);
+  });
+
+  it("締め日を含めて年度境界を決める", () => {
+    expect(yearFromParam(undefined, 25, utc(2026, 4, 24), 4)).toBe(2025);
+    expect(yearFromParam(undefined, 25, utc(2026, 4, 25), 4)).toBe(2026);
+  });
+
+  it("開始月省略時は従来どおり暦年ベースを維持する", () => {
+    expect(yearFromParam(undefined, 25, utc(2026, 1, 10))).toBe(2025);
   });
 });

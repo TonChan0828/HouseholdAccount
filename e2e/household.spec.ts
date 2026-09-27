@@ -10,6 +10,29 @@ import { createHousehold } from "./helpers";
 // ログイン済み（storageState）で実行される。
 
 test.describe("家計簿グループ管理", () => {
+  test("オーナーは年度開始月を設定でき、再表示後も維持される", async ({
+    page,
+  }) => {
+    const group = ephemeralName("年度設定");
+    const card = page
+      .locator('[data-testid="household-card"]')
+      .filter({ hasText: group });
+
+    await createHousehold(page, group);
+    await page.goto("/households");
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+
+    const startMonth = card.getByLabel("開始月");
+    await expect(startMonth).toHaveValue("1");
+    await startMonth.selectOption("4");
+    await card.getByRole("button", { name: "保存" }).nth(1).click();
+    await expect(startMonth).toHaveValue("4");
+
+    await page.reload();
+    await card.getByRole("button", { name: /^管理（メンバー/ }).click();
+    await expect(card.getByLabel("開始月")).toHaveValue("4");
+  });
+
   test("同じグループがグループ選択画面に重複表示されない", async ({
     page,
   }) => {

@@ -26,6 +26,18 @@ export const periodStartDaySchema = z.object({
     .max(28, "開始日は1〜28で指定してください"),
 });
 
+/** 年度の開始月（暦年から年度を数えるため1〜12）。 */
+export const fiscalYearStartMonthSchema = z.object({
+  fiscalYearStartMonth: z.coerce
+    .number()
+    .int("開始月は整数で指定してください")
+    .min(1, "開始月は1〜12月で指定してください")
+    .max(12, "開始月は1〜12月で指定してください"),
+});
+
 export type CreateHouseholdInput = z.infer<typeof createHouseholdSchema>;
 export type InvitationLimitInput = z.infer<typeof invitationLimitSchema>;
 export type PeriodStartDayInput = z.infer<typeof periodStartDaySchema>;
+export type FiscalYearStartMonthInput = z.infer<
+  typeof fiscalYearStartMonthSchema
+>;

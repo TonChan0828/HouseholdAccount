@@ -224,6 +224,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          fiscal_year_start_month: number
           id: string
           name: string
           period_start_day: number
@@ -231,6 +232,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          fiscal_year_start_month?: number
           id?: string
           name: string
           period_start_day?: number
@@ -238,6 +240,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          fiscal_year_start_month?: number
           id?: string
           name?: string
           period_start_day?: number
