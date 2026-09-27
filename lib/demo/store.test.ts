@@ -10,6 +10,7 @@ import {
   removeTransaction,
   selectTransactionRows,
 } from "./store";
+import { toISODate } from "@/lib/period";
 
 describe("createDemoState", () => {
   it("サンプルデータ（メンバー4名・カテゴリ・収支）を持つ", () => {
@@ -42,6 +43,27 @@ describe("createDemoState", () => {
     expect(a.transactions.map((t) => t.id)).toEqual(
       b.transactions.map((t) => t.id),
     );
+  });
+
+  it("前年12か月と当年の経過月に年間分析用サンプルを持つ", () => {
+    const s = createDemoState();
+    const today = toISODate(new Date());
+    const currentYear = Number(today.slice(0, 4));
+    const previousMonths = new Set(
+      s.transactions
+        .filter((tx) => tx.date.startsWith(`${currentYear - 1}-`))
+        .map((tx) => tx.date.slice(5, 7)),
+    );
+    const currentMonths = new Set(
+      s.transactions
+        .filter((tx) => tx.date.startsWith(`${currentYear}-`))
+        .map((tx) => tx.date.slice(5, 7)),
+    );
+
+    expect(previousMonths.size).toBe(12);
+    expect(currentMonths.size).toBeGreaterThan(0);
+    expect(currentMonths.size).toBeLessThanOrEqual(new Date().getUTCMonth() + 1);
+    expect(s.transactions.every((tx) => tx.date <= today)).toBe(true);
   });
 });
 

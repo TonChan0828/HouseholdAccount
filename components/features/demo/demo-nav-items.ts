@@ -1,4 +1,5 @@
 import {
+  ChartPie,
   House,
   ReceiptJapaneseYen,
   Tags,
@@ -15,6 +16,7 @@ export type DemoNavItem = {
 export const DEMO_NAV_ITEMS: DemoNavItem[] = [
   { href: "/demo/dashboard", label: "ホーム", icon: House },
   { href: "/demo/transactions", label: "収支", icon: ReceiptJapaneseYen },
+  { href: "/demo/analytics", label: "分析", icon: ChartPie },
   { href: "/demo/categories", label: "カテゴリ", icon: Tags },
 ];
 
