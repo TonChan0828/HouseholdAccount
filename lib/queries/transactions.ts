@@ -23,7 +23,7 @@ export type TransactionRow = {
   category_id: string | null;
   recurring_id: string | null;
   is_shared: boolean;
-  category: { name: string; color: string | null } | null;
+  category: { name: string; color: string | null; icon: string | null } | null;
 };
 
 /**
@@ -117,7 +117,7 @@ function buildTransactionQuery(
   let query = supabase
     .from("transactions")
     .select(
-      "id, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, category:categories(name, color)",
+      "id, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, category:categories(name, color, icon)",
     )
     .eq("household_id", householdId)
     .gte("date", toISODate(range.start))

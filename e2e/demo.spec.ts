@@ -92,10 +92,15 @@ test.describe("デモモード", () => {
     // カスタムカテゴリを追加
     await page.getByRole("link", { name: "カテゴリを追加" }).click();
     await page.getByLabel("カテゴリ名").fill("旅行");
+    const travelIcon = page.getByRole("radio", { name: "アイコン: 旅行" });
+    await travelIcon.locator("xpath=..").click();
+    await expect(travelIcon).toBeChecked();
     await page.getByRole("button", { name: "追加する" }).click();
     await expect(page).toHaveURL(/\/demo\/categories$/);
-    await expect(
-      page.getByTestId("category-row").filter({ hasText: "旅行" }),
-    ).toBeVisible();
+    const travelRow = page
+      .getByTestId("category-row")
+      .filter({ hasText: "旅行" });
+    await expect(travelRow).toBeVisible();
+    await expect(travelRow.locator("svg")).toBeVisible();
   });
 });

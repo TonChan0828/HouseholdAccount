@@ -6,6 +6,7 @@ import type { CategoryActionState } from "@/app/(dashboard)/categories/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CATEGORY_ICON_OPTIONS } from "@/lib/category-icons";
 import { CATEGORY_COLORS } from "@/lib/validations/category";
 import { cn } from "@/lib/utils";
 import type { CategoryType } from "@/types";
@@ -22,6 +23,7 @@ type Props = {
     id?: string;
     name?: string;
     color?: string | null;
+    icon?: string | null;
     type?: CategoryType;
   };
 };
@@ -75,6 +77,53 @@ export function CategoryForm({ action, submitLabel, defaultValues }: Props) {
                 className="block size-7 rounded-full border-2 border-transparent peer-checked:border-foreground"
                 style={{ backgroundColor: color }}
               />
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">アイコン</legend>
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+          <label
+            className={cn(
+              "flex cursor-pointer flex-col items-center gap-1 rounded-lg border px-2 py-2 text-xs",
+              "has-checked:border-primary has-checked:bg-primary/10 has-checked:font-medium",
+            )}
+          >
+            <input
+              type="radio"
+              name="icon"
+              value=""
+              aria-label="アイコン: なし"
+              defaultChecked={!defaultValues?.icon}
+              className="sr-only"
+            />
+            <span className="pointer-events-none flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              —
+            </span>
+            なし
+          </label>
+          {CATEGORY_ICON_OPTIONS.map(({ value, label, Icon }) => (
+            <label
+              key={value}
+              className={cn(
+                "flex cursor-pointer flex-col items-center gap-1 rounded-lg border px-2 py-2 text-xs",
+                "has-checked:border-primary has-checked:bg-primary/10 has-checked:font-medium",
+              )}
+            >
+              <input
+                type="radio"
+                name="icon"
+                value={value}
+                aria-label={`アイコン: ${label}`}
+                defaultChecked={defaultValues?.icon === value}
+                className="sr-only"
+              />
+              <span className="pointer-events-none flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                <Icon className="size-4" aria-hidden />
+              </span>
+              {label}
             </label>
           ))}
         </div>

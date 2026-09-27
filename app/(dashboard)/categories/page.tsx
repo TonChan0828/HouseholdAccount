@@ -6,6 +6,7 @@ import {
   toggleCategoryReminder,
 } from "@/app/(dashboard)/categories/actions";
 import { DeleteCategoryButton } from "@/components/features/categories/delete-category-button";
+import { CategoryIconMark } from "@/components/features/categories/category-icon-mark";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
@@ -90,11 +91,13 @@ export default async function CategoriesPage() {
                   >
                     <CardContent className="flex items-center justify-between gap-3 py-3">
                       <span className="inline-flex min-w-0 items-center gap-3 text-sm">
-                        <span
-                          aria-hidden
-                          className="inline-block size-8 shrink-0 rounded-xl shadow-soft"
-                          style={{ backgroundColor: c.color ?? "#999" }}
-                        />
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-secondary shadow-soft">
+                          <CategoryIconMark
+                            icon={c.icon}
+                            color={c.color}
+                            className="size-4"
+                          />
+                        </span>
                         <span className="truncate font-medium">{c.name}</span>
                       </span>
                       <span className="flex shrink-0 items-center gap-1">

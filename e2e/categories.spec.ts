@@ -22,6 +22,9 @@ test.describe("カテゴリ管理", () => {
     await page.goto("/categories/new");
     await page.getByLabel("カテゴリ名").fill(name);
     await page.getByRole("radio", { name: "支出" }).check();
+    const petIcon = page.getByRole("radio", { name: "アイコン: ペット" });
+    await petIcon.locator("xpath=..").click();
+    await expect(petIcon).toBeChecked();
     await page.getByRole("button", { name: "追加する" }).click();
 
     // 一覧に表示される
@@ -30,6 +33,7 @@ test.describe("カテゴリ管理", () => {
       .locator('[data-testid="category-row"]')
       .filter({ hasText: name });
     await expect(row).toBeVisible();
+    await expect(row.locator("svg")).toBeVisible();
 
     // 前後空白・大文字小文字を正規化した同種別の重複名はDBで拒否する
     await page.goto("/categories/new");
@@ -62,6 +66,10 @@ test.describe("カテゴリ管理", () => {
     await page.goto("/categories");
     await row.getByRole("link", { name: "編集" }).click();
     await expect(page).toHaveURL(/\/categories\/.+\/edit$/);
+    await expect(page.getByRole("radio", { name: "アイコン: ペット" })).toBeChecked();
+    const travelIcon = page.getByRole("radio", { name: "アイコン: 旅行" });
+    await travelIcon.locator("xpath=..").click();
+    await expect(travelIcon).toBeChecked();
     await page.getByLabel("カテゴリ名").fill(renamed);
     await page.getByRole("button", { name: "更新する" }).click();
 
@@ -70,6 +78,7 @@ test.describe("カテゴリ管理", () => {
       .locator('[data-testid="category-row"]')
       .filter({ hasText: renamed });
     await expect(renamedRow).toBeVisible();
+    await expect(renamedRow.locator("svg")).toBeVisible();
 
     // 削除（confirm 承諾）で一覧から消える
     page.once("dialog", (dialog) => dialog.accept());

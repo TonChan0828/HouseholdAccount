@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CATEGORY_ICON_OPTIONS } from "@/lib/category-icons";
+
 /** カテゴリ色のプリセット（デフォルトカテゴリと同系の12色）。 */
 export const CATEGORY_COLORS = [
   "#ef4444", // red
@@ -26,6 +28,10 @@ export const categorySchema = z.object({
   type: z.enum(["income", "expense", "both"], {
     message: "種別を選択してください",
   }),
+  icon: z
+    .enum(CATEGORY_ICON_OPTIONS.map((option) => option.value) as [string, ...string[]])
+    .nullable()
+    .default(null),
 });
 
 export type CategoryInput = z.infer<typeof categorySchema>;

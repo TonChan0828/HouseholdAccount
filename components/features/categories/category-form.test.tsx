@@ -14,6 +14,9 @@ describe("CategoryForm", () => {
     expect(screen.getByLabelText("カテゴリ名")).toBeInTheDocument();
     // 色パレット12色のラジオ
     expect(screen.getAllByRole("radio", { name: /^色: / })).toHaveLength(12);
+    expect(
+      screen.getAllByRole("radio", { name: /^アイコン: / }),
+    ).toHaveLength(13);
     // 種別の3択
     expect(screen.getByRole("radio", { name: "支出" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "収入" })).toBeInTheDocument();
@@ -32,6 +35,7 @@ describe("CategoryForm", () => {
           id: "cat-1",
           name: "ペット",
           color: CATEGORY_COLORS[3],
+          icon: "paw-print",
           type: "both",
         }}
       />,
@@ -42,5 +46,6 @@ describe("CategoryForm", () => {
     expect(
       screen.getByRole("radio", { name: `色: ${CATEGORY_COLORS[3]}` }),
     ).toBeChecked();
+    expect(screen.getByRole("radio", { name: "アイコン: ペット" })).toBeChecked();
   });
 });

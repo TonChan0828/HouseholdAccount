@@ -10,6 +10,14 @@ describe("CategoryBadge", () => {
     expect(screen.getByText("食費")).toBeInTheDocument();
   });
 
+  it("設定済みアイコンを表示する", () => {
+    const { container } = render(
+      <CategoryBadge category={{ name: "ペット", color: "#22c55e", icon: "paw-print" }} />,
+    );
+    expect(screen.getByText("ペット")).toBeInTheDocument();
+    expect(container.querySelector("svg")).toBeInTheDocument();
+  });
+
   it("カテゴリが無いときは未分類と表示する", () => {
     render(<CategoryBadge category={null} />);
 

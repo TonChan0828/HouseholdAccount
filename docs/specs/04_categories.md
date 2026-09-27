@@ -34,7 +34,7 @@
 ### 表示内容
 
 - type ごと（支出 → 収入 → 両方）にグループ表示。各グループ内は名前昇順
-- 各行: 色ドット＋カテゴリ名。デフォルトは「デフォルト」バッジを表示し操作ボタンを置かない
+- 各行: 色に加え、アイコンが設定されていればアイコン＋カテゴリ名。未設定は従来の色ドットを表示する。デフォルトは「デフォルト」バッジを表示し操作ボタンを置かない
 - カスタムのみ [編集]（`/categories/[id]/edit`）と [削除] を表示
 - 追加は `/categories/new`、編集は `/categories/[id]/edit`（transactions と同じページ構成）
 
@@ -42,6 +42,7 @@
 
 - **名前**: 必須、1〜50字（DB の check 制約と同じ）
 - **色**: プリセットパレット12色から選択（デフォルトカテゴリと同系の Tailwind 系統色）
+- **アイコン**: 用意した12種類から選択、または「なし」。未選択時は `icon = null` とし、未知の値は保存しない
 - **種別**: 支出 / 収入 / 両方（`category_type`）
 
 ### インタラクション・バリデーション
@@ -64,6 +65,7 @@ type Category = Tables["categories"]["Row"];
 type CategoryInput = {
   name: string;       // 1〜50字
   color: string;      // プリセットパレット内の HEX
+  icon: string | null; // 許可済みのアイコン識別子。未選択は null
   type: "income" | "expense" | "both";
 };
 ```
@@ -99,7 +101,7 @@ deleteCategory(formData); // id + household_id + is_default=false でスコー�
 ```
 
 - update/delete は `.eq("household_id", activeId).eq("is_default", false)` を必ず付ける
-- バリデーション: name 必須・1〜50字、type は enum 3値、color はパレット内のみ許可
+- バリデーション: name 必須・1〜50字、type は enum 3値、color はパレット内、icon は許可リスト内または null のみ許可
 
 ## コンポーネント
 
@@ -111,12 +113,11 @@ deleteCategory(formData); // id + household_id + is_default=false でスコー�
 ## テスト
 
 - Unit: 入力バリデーション（name 空・51字・type 不正・color パレット外）
-- Component: `CategoryForm`（入力と初期値の表示）、`DeleteCategoryButton`（confirm キャンセル時に送信しない）
-- E2E（`e2e/categories.spec.ts`）: グループ作成 → カテゴリ追加 → 一覧表示 → 収支フォームの選択肢に反映 → 編集 → 削除（confirm 承諾）→ 一覧から消える。デフォルトカテゴリに操作ボタンが無いことも確認
+- Component: `CategoryForm`（入力と初期値の表示）、`CategoryBadge`（設定アイコンの表示）、`DeleteCategoryButton`（confirm キャンセル時に送信しない）
+- E2E（`e2e/categories.spec.ts`）: グループ作成 → アイコン付きカテゴリ追加 → 一覧表示 → 収支フォームの選択肢に反映 → アイコン変更を含む編集 → 削除（confirm 承諾）→ 一覧から消える。デフォルトカテゴリに操作ボタンが無いことも確認
 
 ## 未解決の課題
 
-- アイコン選択（icon 列は保持するが UI 未対応）
 - カテゴリの並び替え（現状は名前昇順固定）
 - 既存データのうち、予算が複数ある重複カテゴリや名前表記・色・icon・default・通知設定が異なる重複は自動統合せず残す（要確認）
 

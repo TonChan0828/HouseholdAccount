@@ -108,13 +108,15 @@ describe("addCategory", () => {
   it("is_default=false のカスタムカテゴリを追加する", () => {
     const s = createDemoState();
     const next = addCategory(s, {
-      name: "ペット",
+      name: "カスタムペット",
       color: "#ef4444",
+      icon: "paw-print",
       type: "expense",
     });
-    const added = next.categories.find((c) => c.name === "ペット");
+    const added = next.categories.find((c) => c.name === "カスタムペット");
     expect(added).toBeDefined();
     expect(added?.is_default).toBe(false);
+    expect(added?.icon).toBe("paw-print");
   });
 });
 
@@ -125,9 +127,11 @@ describe("editCategory", () => {
     const next = editCategory(s, custom.id, {
       name: "更新後",
       color: "#ef4444",
+      icon: "house",
       type: custom.type,
     });
     expect(next.categories.find((c) => c.id === custom.id)?.name).toBe("更新後");
+    expect(next.categories.find((c) => c.id === custom.id)?.icon).toBe("house");
   });
 
   it("デフォルトカテゴリの編集は no-op", () => {
@@ -136,6 +140,7 @@ describe("editCategory", () => {
     const next = editCategory(s, def.id, {
       name: "書き換え",
       color: "#ef4444",
+      icon: null,
       type: "expense",
     });
     expect(next.categories.find((c) => c.id === def.id)?.name).toBe(def.name);

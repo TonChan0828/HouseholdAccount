@@ -23,7 +23,7 @@ type RecurringRow = {
   memo: string | null;
   is_active: boolean;
   created_by: string;
-  category: { name: string; color: string | null } | null;
+  category: { name: string; color: string | null; icon: string | null } | null;
 };
 
 export default async function RecurringTransactionsPage() {
@@ -34,7 +34,7 @@ export default async function RecurringTransactionsPage() {
   const result = await supabase
     .from("recurring_transactions")
     .select(
-      "id, amount, type, memo, is_active, created_by, category:categories(name, color)",
+      "id, amount, type, memo, is_active, created_by, category:categories(name, color, icon)",
     )
     .eq("household_id", householdId)
     .order("created_at", { ascending: false })

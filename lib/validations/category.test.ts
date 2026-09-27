@@ -12,6 +12,7 @@ describe("categorySchema", () => {
   it("正しい入力を受け付ける", () => {
     const result = categorySchema.safeParse(valid);
     expect(result.success).toBe(true);
+    if (result.success) expect(result.data.icon).toBeNull();
   });
 
   it("名前が空ならエラーになる", () => {
@@ -47,6 +48,11 @@ describe("categorySchema", () => {
   it("color がパレット外ならエラーになる", () => {
     const result = categorySchema.safeParse({ ...valid, color: "#000000" });
     expect(result.success).toBe(false);
+  });
+
+  it("許可したアイコンを受け付け、未知の値は拒否する", () => {
+    expect(categorySchema.safeParse({ ...valid, icon: "paw-print" }).success).toBe(true);
+    expect(categorySchema.safeParse({ ...valid, icon: "not-an-icon" }).success).toBe(false);
   });
 });
 
