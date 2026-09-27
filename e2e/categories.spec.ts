@@ -191,10 +191,22 @@ test.describe("カテゴリ管理", () => {
     expect(chipFitsCard).toBe(true);
     await expect(reminder).toContainText(/残り\d+日/);
 
-    // 「住居費」で収支を1件記録すると、次のダッシュボード訪問でリマインダーが消える
+    // まず「住居費」を記録する。長いカテゴリは未記録なので通知は残る。
     await reminder.getByRole("link", { name: "収支を記録" }).click();
     await page.getByLabel("金額").fill("85000");
     await page.getByRole("radio", { name: "住居費" }).check();
+    await page.getByRole("button", { name: "登録する" }).click();
+    await expect(page).toHaveURL(/\/transactions$/);
+
+    await page.goto("/dashboard");
+    await expect(reminder).toBeVisible();
+    await expect(reminder).toContainText(longCategoryName);
+    await expect(reminder).not.toContainText("住居費");
+
+    // 長いカテゴリも記録すると、登録漏れがなくなり通知カードが消える。
+    await reminder.getByRole("link", { name: "収支を記録" }).click();
+    await page.getByLabel("金額").fill("1000");
+    await page.getByRole("radio", { name: longCategoryName }).check();
     await page.getByRole("button", { name: "登録する" }).click();
     await expect(page).toHaveURL(/\/transactions$/);
 
