@@ -52,6 +52,7 @@ export function BudgetRowCard({ row }: { row: BudgetRow }) {
                 ¥
               </span>
               <Input
+                key={`${row.categoryId}:${row.budget}`}
                 name="amount"
                 inputMode="numeric"
                 autoComplete="off"
