@@ -1,7 +1,7 @@
 /**
  * デモモードの初期サンプルデータ生成。
  *
- * 当期（今月）内の日付で収支を生成し、リロードのたびに新しい uuid で組み立て直す。
+ * 年間分析を試せる前年・当年のサンプル収支を生成し、リロードのたびに組み立て直す。
  */
 
 import { toISODate } from "@/lib/period";
@@ -83,6 +83,18 @@ const SEED_TRANSACTIONS: SeedTx[] = [
   { day: 20, type: "expense", amount: 1200, categoryName: null, memo: "コンビニ", by: "you" },
 ];
 
+/** 年間ビューで月ごとの比較ができるよう、過去月用の簡潔な取引パターンを用意する。 */
+const HISTORY_TRANSACTIONS: SeedTx[] = [
+  { day: 1, type: "income", amount: 280000, categoryName: "給与", memo: "給与", by: "you" },
+  { day: 1, type: "income", amount: 220000, categoryName: "給与", memo: "給与", by: "partner" },
+  { day: 2, type: "expense", amount: 85000, categoryName: "住居費", memo: "家賃", by: "you" },
+  { day: 5, type: "expense", amount: 14500, categoryName: "食費", memo: "食料品", by: "partner" },
+  { day: 9, type: "expense", amount: 4800, categoryName: "日用品", memo: "日用品", by: "you" },
+  { day: 14, type: "expense", amount: 3900, categoryName: "交通費", memo: "交通費", by: "family" },
+  { day: 18, type: "expense", amount: 7200, categoryName: "娯楽", memo: "レジャー", by: "child" },
+  { day: 20, type: "income", amount: 15000, categoryName: "副業", memo: "副業", by: "you" },
+];
+
 /** seed から初期状態を組み立てる。 */
 export function createSeedState(): DemoState {
   const categories: Category[] = SEED_CATEGORIES.map((c, i) => ({
@@ -102,17 +114,29 @@ export function createSeedState(): DemoState {
   const month = now.getUTCMonth();
   const today = now.getUTCDate();
 
-  const transactions = SEED_TRANSACTIONS.map((t, i) => {
-    const day = Math.min(t.day, today);
-    const date = toISODate(new Date(Date.UTC(year, month, day)));
+  const createTransaction = (
+    t: SeedTx,
+    transactionYear: number,
+    transactionMonth: number,
+    id: number,
+    amountScale = 1,
+    clampToToday = false,
+  ) => {
+    const monthEnd = new Date(
+      Date.UTC(transactionYear, transactionMonth + 1, 0),
+    ).getUTCDate();
+    const day = Math.min(t.day, monthEnd, clampToToday ? today : monthEnd);
+    const date = toISODate(
+      new Date(Date.UTC(transactionYear, transactionMonth, day)),
+    );
     return {
-      id: demoUuid("01d00000", i + 1),
+      id: demoUuid("01d00000", id),
       household_id: DEMO_HOUSEHOLD_ID,
       created_by: MEMBER_ID_BY_SEED[t.by ?? "you"],
       // 表示には使わないが、決定論的に保つため日付から導出する。
       created_at: `${date}T00:00:00.000Z`,
       type: t.type,
-      amount: t.amount,
+      amount: Math.round(t.amount * amountScale),
       date,
       category_id: t.categoryName
         ? (categoryIdByName.get(t.categoryName) ?? null)
@@ -124,7 +148,36 @@ export function createSeedState(): DemoState {
       recurring_id: null,
       is_shared: false,
     };
+  };
+
+  // 前年の12期と当年の経過済み月を生成する。前年度は少し控えめな金額にし、
+  // 年間の前年比較にも差が出るようにする。当月は従来の詳細サンプルを維持する。
+  const historyTransactions = Array.from(
+    { length: 12 + month },
+    (_, index) => index - 12,
+  ).flatMap((monthOffset, index) => {
+    const date = new Date(Date.UTC(year, monthOffset, 1));
+    const transactionYear = date.getUTCFullYear();
+    const transactionMonth = date.getUTCMonth();
+    const yearScale = transactionYear < year ? 0.93 : 1;
+    const monthScale = 1 + (transactionMonth % 4) * 0.025;
+    return HISTORY_TRANSACTIONS.map((t, i) =>
+      createTransaction(
+        t,
+        transactionYear,
+        transactionMonth,
+        100 + index * HISTORY_TRANSACTIONS.length + i,
+        yearScale * monthScale,
+      ),
+    );
   });
+
+  const transactions = [
+    ...historyTransactions,
+    ...SEED_TRANSACTIONS.map((t, i) =>
+      createTransaction(t, year, month, i + 1, 1, true),
+    ),
+  ];
 
   return {
     household: {

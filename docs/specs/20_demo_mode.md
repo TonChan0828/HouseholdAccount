@@ -15,10 +15,11 @@
 | 画面 | 操作 |
 | --- | --- |
 | ダッシュボード | 当期サマリー・収支グラフ・カテゴリ×メンバーマトリクス・最近の取引（閲覧、全体/自分の切替） |
+| 分析 | 年間KPI・12期推移・カテゴリ別支出・前年比較・年間アドバイス（閲覧のみ） |
 | 収支 | 一覧・追加・編集・削除（期間切替） |
 | カテゴリ | 一覧・追加・編集・削除（デフォルトカテゴリは編集/削除不可） |
 
-分析（`/analytics`）・メンバー別アクティビティ（`/members`）・グループ設定等はデモ対象外。
+月次分析（`/analytics`）・メンバー別アクティビティ（`/members`）・グループ設定等はデモ対象外。年間分析は `/demo/analytics` で、年次集計の閲覧のみ提供する。
 
 ## ルーティング
 
@@ -27,6 +28,7 @@
 ```text
 /demo                         → /demo/dashboard へリダイレクト
 /demo/dashboard               ダッシュボード
+/demo/analytics               年間分析
 /demo/transactions            収支一覧
 /demo/transactions/new        収支追加
 /demo/transactions/[id]/edit  収支編集
@@ -48,13 +50,13 @@ type DemoState = {
   currentUserId: string;          // スコープ（全体/自分）判定の基準ユーザー
   members: MemberInfo[];          // 4名（「あなた」「パートナー」「家族」「子ども」。3人以上の表示確認を兼ねる）
   categories: Category[];         // デフォルト＋カスタム混在（is_default で区別）
-  transactions: Transaction[];    // 当期内のサンプル数件
+  transactions: Transaction[];    // 前年12か月・当年経過月と当月のサンプル
 };
 ```
 
 - 型は本番と同じ `Category` / `Transaction`（`types/index.ts`）を使用。`household_id` は固定のデモID、`created_at` は ISO 文字列。
 - `id` は `crypto.randomUUID()` で生成（カテゴリIDは収支フォームのZod検証で uuid を要求されるため必須）。
-- 初期データ（サンプル）は `lib/demo/seed.ts` の `createSeedState()` が当期（今月）内の日付で生成する。
+- 初期データ（サンプル）は `lib/demo/seed.ts` の `createSeedState()` が前年12か月・当年の経過月と当月の詳細サンプルを生成する。これにより、年間推移と前年同期比較を閲覧できる。
 
 ### 純粋ロジック（テスト対象）
 
@@ -67,7 +69,7 @@ type DemoState = {
   - カテゴリ削除時、参照していた収支の `category_id` を `null` にする（本番の on delete set null を再現）
 - `selectTransactionRows(state)` — 収支に `category: { name, color } | null` を join した行を返す（ダッシュボード／一覧／マトリクスの入力）
 
-集計は既存の純粋ヘルパーを再利用: `getPeriodRange`/`shiftPeriod`/`formatPeriodLabel`（`lib/period.ts`）、`buildCategoryMemberMatrix`（`lib/category-matrix.ts`）、`groupByDate`/`yen`/`formatDayLabel`（`lib/format.ts`）。
+集計は既存の純粋ヘルパーを再利用: `getPeriodRange`/`shiftPeriod`/`formatPeriodLabel`/`getYearRanges`（`lib/period.ts`）、`summarizeYear`（`lib/yearly-analytics.ts`）、`buildCategoryMemberMatrix`（`lib/category-matrix.ts`）、`groupByDate`/`yen`/`formatDayLabel`（`lib/format.ts`）。
 
 ## UI の動作・バリデーション
 

@@ -31,6 +31,22 @@ test.describe("デモモード", () => {
     ).toBeVisible();
   });
 
+  test("デモの年間分析で12期の推移と前年比較を見られる", async ({ page }) => {
+    await page.goto("/demo/dashboard");
+    await page.getByRole("link", { name: "分析" }).click();
+
+    await expect(page).toHaveURL(/\/demo\/analytics$/);
+    await expect(
+      page.getByRole("heading", { name: "カテゴリ別支出（年間）" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "前年比較" })).toBeVisible();
+    await expect(page.getByText("前年同期", { exact: false })).toBeVisible();
+    await expect(page.getByText("12月", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "前年" }).click();
+    await expect(page.getByText(`${new Date().getUTCFullYear() - 1}年`)).toBeVisible();
+  });
+
   test("収支を追加すると一覧に反映され、リロードで初期化される", async ({
     page,
   }) => {
