@@ -26,4 +26,28 @@ describe("ViewToggle", () => {
       "aria-current",
     );
   });
+
+  it("現在表示中の日付をリスト・カレンダー間で引き継ぐ", () => {
+    render(<ViewToggle active="list" currentRef="2026-07-20" />);
+    expect(screen.getByRole("link", { name: "リスト" })).toHaveAttribute(
+      "href",
+      "/transactions?ref=2026-07-20",
+    );
+    expect(screen.getByRole("link", { name: "カレンダー" })).toHaveAttribute(
+      "href",
+      "/calendar?ref=2026-07-20",
+    );
+  });
+
+  it("ref がない場合は従来どおりクエリなしのリンクを使う", () => {
+    render(<ViewToggle active="calendar" />);
+    expect(screen.getByRole("link", { name: "リスト" })).toHaveAttribute(
+      "href",
+      "/transactions",
+    );
+    expect(screen.getByRole("link", { name: "カレンダー" })).toHaveAttribute(
+      "href",
+      "/calendar",
+    );
+  });
 });

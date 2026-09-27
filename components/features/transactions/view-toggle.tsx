@@ -7,16 +7,18 @@ type View = "list" | "calendar";
 
 type Props = {
   active: View;
+  /** 現在表示している期間に属する日付。切替先でもこの期間を解決する。 */
+  currentRef?: string;
   className?: string;
 };
 
-const VIEWS: { key: View; href: string; label: string; icon: typeof List }[] = [
-  { key: "list", href: "/transactions", label: "リスト", icon: List },
-  { key: "calendar", href: "/calendar", label: "カレンダー", icon: CalendarDays },
+const VIEWS: { key: View; path: string; label: string; icon: typeof List }[] = [
+  { key: "list", path: "/transactions", label: "リスト", icon: List },
+  { key: "calendar", path: "/calendar", label: "カレンダー", icon: CalendarDays },
 ];
 
 /** 収支の「リスト ⇄ カレンダー」表示を切り替えるセグメントピル（presentational）。 */
-export function ViewToggle({ active, className }: Props) {
+export function ViewToggle({ active, currentRef, className }: Props) {
   return (
     <div
       className={cn(
@@ -27,10 +29,13 @@ export function ViewToggle({ active, className }: Props) {
       {VIEWS.map((view) => {
         const isActive = view.key === active;
         const Icon = view.icon;
+        const href = currentRef
+          ? `${view.path}?ref=${encodeURIComponent(currentRef)}`
+          : view.path;
         return (
           <Link
             key={view.key}
-            href={view.href}
+            href={href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors",
