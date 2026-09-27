@@ -16,6 +16,7 @@ import { consumeRateLimit } from "@/lib/rate-limit";
 import {
   createHouseholdSchema,
   invitationLimitSchema,
+  fiscalYearStartMonthSchema,
   periodStartDaySchema,
 } from "@/lib/validations/household";
 import { groupDisplayNameSchema } from "@/lib/validations/profile";
@@ -226,6 +227,42 @@ export async function setPeriodStartDay(formData: FormData): Promise<void> {
 
   revalidatePath("/households");
   revalidatePath("/transactions");
+}
+
+/** owner が年度の開始月を変更する（年度範囲は世帯メンバー全員に適用）。 */
+export async function setFiscalYearStartMonth(formData: FormData): Promise<void> {
+  const householdId = String(formData.get("household_id") ?? "");
+  if (!householdId) {
+    return;
+  }
+
+  const parsed = fiscalYearStartMonthSchema.safeParse({
+    fiscalYearStartMonth: formData.get("fiscal_year_start_month"),
+  });
+  if (!parsed.success) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return;
+  }
+
+  if (!(await isHouseholdOwner(supabase, householdId, user.id))) {
+    return;
+  }
+
+  const result = await supabase
+    .from("households")
+    .update({ fiscal_year_start_month: parsed.data.fiscalYearStartMonth })
+    .eq("id", householdId);
+  throwIfError(result, "setFiscalYearStartMonth");
+
+  revalidatePath("/households");
+  revalidatePath("/analytics");
 }
 
 /** owner が招待リンクを失効（削除）する。 */

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createHouseholdSchema,
+  fiscalYearStartMonthSchema,
   invitationLimitSchema,
   periodStartDaySchema,
 } from "./household";
@@ -89,5 +90,30 @@ describe("periodStartDaySchema", () => {
     expect(periodStartDaySchema.safeParse({ periodStartDay: 29 }).success).toBe(
       false,
     );
+  });
+});
+
+describe("fiscalYearStartMonthSchema", () => {
+  it("1〜12月を受け付け、フォーム文字列を数値に変換する", () => {
+    expect(
+      fiscalYearStartMonthSchema.safeParse({ fiscalYearStartMonth: "4" }),
+    ).toMatchObject({ success: true, data: { fiscalYearStartMonth: 4 } });
+    expect(
+      fiscalYearStartMonthSchema.safeParse({ fiscalYearStartMonth: "1" })
+        .success,
+    ).toBe(true);
+    expect(
+      fiscalYearStartMonthSchema.safeParse({ fiscalYearStartMonth: "12" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("範囲外と小数を拒否する", () => {
+    for (const value of ["0", "13", "4.5"]) {
+      expect(
+        fiscalYearStartMonthSchema.safeParse({ fiscalYearStartMonth: value })
+          .success,
+      ).toBe(false);
+    }
   });
 });

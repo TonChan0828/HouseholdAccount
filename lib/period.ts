@@ -1,7 +1,7 @@
 /**
  * 家計簿の「月の区切り」期間計算。
  *
- * 期間は半開区間 `[start, end)`（start <= date < end）。
+ * 月次期間は半開区間 `[start, end)`（start <= date < end）。
  * household の `period_start_day`（1〜28）を開始日とし、暦の TZ 揺れを避けるため
  * すべて UTC 真夜中の Date として扱う（DB の `date` 型は時刻を持たない）。
  */
@@ -75,24 +75,38 @@ export function formatPeriodLabel(range: PeriodRange): string {
 }
 
 /**
- * 締め日を考慮した「Y年」の12期を返す。
- * 開始月が Y年1月〜12月 の期（`[Y/01/startDay, (Y+1)/01/startDay)`）で、
- * getPeriodRange の「開始日以降はその月から期が始まる」規約に揃える。
+ * 締め日と年度開始月を考慮した「Y年度」の12期を返す。
+ * デフォルトは従来どおり1月開始。例えば開始月4なら
+ * `[Y/04/startDay, (Y+1)/04/startDay)` の範囲になる。
  */
-export function getYearRanges(year: number, startDay: number): PeriodRange[] {
-  return Array.from({ length: 12 }, (_, m) =>
-    getPeriodRange(new Date(Date.UTC(year, m, startDay)), startDay),
+export function getYearRanges(
+  year: number,
+  startDay: number,
+  startMonth = 1,
+): PeriodRange[] {
+  return Array.from({ length: 12 }, (_, index) =>
+    getPeriodRange(
+      new Date(Date.UTC(year, startMonth - 1 + index, startDay)),
+      startDay,
+    ),
   );
 }
 
-/** `?year=YYYY` を年に解釈する。不正・未指定は「今日を含む期の開始年」。 */
+/** `?year=YYYY` を年に解釈する。不正・未指定は「今日を含む年度の開始年」。 */
 export function yearFromParam(
   year: string | undefined,
   startDay: number,
   now: Date = new Date(),
+  startMonth = 1,
 ): number {
   if (year && /^\d{4}$/.test(year)) {
     return Number(year);
   }
-  return getPeriodRange(now, startDay).start.getUTCFullYear();
+  const period = getPeriodRange(now, startDay);
+  const fiscalStart = new Date(
+    Date.UTC(period.start.getUTCFullYear(), startMonth - 1, startDay),
+  );
+  return period.start < fiscalStart
+    ? fiscalStart.getUTCFullYear() - 1
+    : fiscalStart.getUTCFullYear();
 }

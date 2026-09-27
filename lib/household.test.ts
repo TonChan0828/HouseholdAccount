@@ -25,7 +25,11 @@ const state = vi.hoisted(() => ({
     joined_at: string;
     role: "owner" | "member";
   }[],
-  households: [] as { id: string; period_start_day: number }[],
+  households: [] as {
+    id: string;
+    period_start_day: number;
+    fiscal_year_start_month: number;
+  }[],
   setCalls: [] as { name: string; value: string; options: Record<string, unknown> }[],
 }));
 
@@ -108,8 +112,8 @@ beforeEach(() => {
     },
   ];
   state.households = [
-    { id: "h-old", period_start_day: 1 },
-    { id: "h-new", period_start_day: 25 },
+    { id: "h-old", period_start_day: 1, fiscal_year_start_month: 1 },
+    { id: "h-new", period_start_day: 25, fiscal_year_start_month: 4 },
   ];
   state.setCalls = [];
 });
@@ -162,13 +166,17 @@ describe("getCurrentUser", () => {
 });
 
 describe("getHouseholdSettings", () => {
-  it("グループの period_start_day を返す", async () => {
-    expect(await getHouseholdSettings("h-new")).toEqual({ periodStartDay: 25 });
+  it("締め日と年度開始月を返す", async () => {
+    expect(await getHouseholdSettings("h-new")).toEqual({
+      periodStartDay: 25,
+      fiscalYearStartMonth: 4,
+    });
   });
 
   it("グループが見つからない場合は既定値 1 を返す", async () => {
     expect(await getHouseholdSettings("h-missing")).toEqual({
       periodStartDay: 1,
+      fiscalYearStartMonth: 1,
     });
   });
 });
