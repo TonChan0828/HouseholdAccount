@@ -94,6 +94,7 @@ test.describe("カテゴリ管理", () => {
     page,
   }) => {
     const group = ephemeralName("カテゴリ通知");
+    const longCategoryName = `UnbrokenCategory${Date.now()}`;
     const householdCard = page
       .locator('[data-testid="household-card"]')
       .filter({ hasText: group });
@@ -118,6 +119,21 @@ test.describe("カテゴリ管理", () => {
     await housingRow.getByTestId("category-reminder-toggle").click();
     await expect(
       housingRow.getByTestId("category-reminder-toggle"),
+    ).toHaveText("通知ON");
+
+    // 長いカテゴリ名も通知対象に含め、ダッシュボードでカード幅に収まることを確認する。
+    await page.goto("/categories/new");
+    await page.getByLabel("カテゴリ名").fill(longCategoryName);
+    await page.getByRole("radio", { name: "支出" }).check();
+    await page.getByRole("button", { name: "追加する" }).click();
+    await expect(page).toHaveURL(/\/categories$/);
+    const longCategoryRow = page
+      .locator('[data-testid="category-row"]')
+      .filter({ hasText: longCategoryName });
+    await expect(longCategoryRow).toBeVisible();
+    await longCategoryRow.getByTestId("category-reminder-toggle").click();
+    await expect(
+      longCategoryRow.getByTestId("category-reminder-toggle"),
     ).toHaveText("通知ON");
 
     // 「開始日」を今日から逆算し、当期の残り日数を閾値（3日）以内に追い込む。
@@ -165,6 +181,14 @@ test.describe("カテゴリ管理", () => {
     await expect(reminder).toBeVisible();
     await expect(reminder).toContainText("まだ登録がありません");
     await expect(reminder).toContainText("住居費");
+    const longCategoryChip = reminder.getByText(longCategoryName);
+    await expect(longCategoryChip).toBeVisible();
+    const chipFitsCard = await longCategoryChip.evaluate((chip) => {
+      const card = chip.closest('[data-testid="unrecorded-categories-reminder"]');
+      if (!card) return false;
+      return chip.getBoundingClientRect().right <= card.getBoundingClientRect().right;
+    });
+    expect(chipFitsCard).toBe(true);
     await expect(reminder).toContainText(/残り\d+日/);
 
     // 「住居費」で収支を1件記録すると、次のダッシュボード訪問でリマインダーが消える
