@@ -100,7 +100,7 @@ describe("fetchTransactionsInRange", () => {
       "gte:date": "2026-07-01",
       "lt:date": "2026-08-01",
     });
-    expect(state.captured.select).toContain("category:categories(name, color)");
+    expect(state.captured.select).toContain("category:categories(name, color, icon)");
     expect(state.captured.select).toContain("is_shared");
   });
 

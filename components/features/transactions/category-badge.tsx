@@ -1,8 +1,10 @@
+import { CategoryIconMark } from "@/components/features/categories/category-icon-mark";
+
 type Props = {
-  category: { name: string; color: string | null } | null;
+  category: { name: string; color: string | null; icon?: string | null } | null;
 };
 
-/** カテゴリ名を色ドット付きのピルで表示する（presentational）。 */
+/** カテゴリ名を設定済みアイコンまたは色ドットとともに表示する。 */
 export function CategoryBadge({ category }: Props) {
   if (!category) {
     return (
@@ -13,10 +15,9 @@ export function CategoryBadge({ category }: Props) {
   }
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2 py-0.5 text-xs font-medium">
-      <span
-        aria-hidden
-        className="inline-block size-2 rounded-full"
-        style={{ backgroundColor: category.color ?? "#999" }}
+      <CategoryIconMark
+        icon={category.icon ?? null}
+        color={category.color}
       />
       {category.name}
     </span>

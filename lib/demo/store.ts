@@ -111,7 +111,7 @@ export function addCategory(
     name: input.name,
     color: input.color,
     type: input.type,
-    icon: null,
+    icon: input.icon,
     is_default: false,
     reminder_enabled: false,
   };
@@ -128,7 +128,13 @@ export function editCategory(
     ...state,
     categories: state.categories.map((c) =>
       c.id === id && !c.is_default
-        ? { ...c, name: input.name, color: input.color, type: input.type }
+        ? {
+            ...c,
+            name: input.name,
+            color: input.color,
+            icon: input.icon,
+            type: input.type,
+          }
         : c,
     ),
   };
@@ -165,7 +171,9 @@ export function selectTransactionRows(state: DemoState): DemoTransactionRow[] {
       memo: t.memo,
       created_by: t.created_by,
       category_id: t.category_id,
-      category: cat ? { name: cat.name, color: cat.color } : null,
+      category: cat
+        ? { name: cat.name, color: cat.color, icon: cat.icon }
+        : null,
     };
   });
 }

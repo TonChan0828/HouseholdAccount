@@ -71,6 +71,7 @@ function parseCategory(formData: FormData) {
     name: formData.get("name"),
     color: formData.get("color"),
     type: formData.get("type"),
+    icon: String(formData.get("icon") ?? "") || null,
   });
 }
 

@@ -42,6 +42,7 @@ export default function DemoEditCategoryPage() {
               id: category.id,
               name: category.name,
               color: category.color,
+              icon: category.icon,
               type: category.type,
             }}
           />

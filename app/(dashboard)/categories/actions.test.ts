@@ -79,6 +79,7 @@ describe("createCategory", () => {
           name: "groceries",
           color: "#ef4444",
           type: "expense",
+          icon: null,
           is_default: false,
         },
       },
