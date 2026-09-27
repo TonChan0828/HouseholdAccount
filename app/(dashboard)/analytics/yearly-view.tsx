@@ -20,6 +20,7 @@ type Props = {
   householdId: string;
   supabase: ServerClient;
   startDay: number;
+  startMonth: number;
   year: number;
 };
 
@@ -42,10 +43,11 @@ export async function YearlyAnalyticsView({
   householdId,
   supabase,
   startDay,
+  startMonth,
   year,
 }: Props) {
-  const ranges = getYearRanges(year, startDay);
-  const prevYearRanges = getYearRanges(year - 1, startDay);
+  const ranges = getYearRanges(year, startDay, startMonth);
+  const prevYearRanges = getYearRanges(year - 1, startDay, startMonth);
   const yearStart = ranges[0].start;
   const yearEnd = ranges[11].end;
 
@@ -71,10 +73,12 @@ export async function YearlyAnalyticsView({
     categories,
     summarizeCategoryExpense(prevTxs),
   );
-  const compareLabel =
-    summary.elapsed >= 12
-      ? `${year - 1}年`
-      : `${year - 1}年 1月〜${summary.elapsed}月`;
+  const compareLabel = formatCompareLabel(
+    year - 1,
+    prevYearRanges,
+    summary.elapsed,
+    startMonth,
+  );
 
   const advice = buildYearlyAdvice({
     income: summary.income,
@@ -121,7 +125,7 @@ export async function YearlyAnalyticsView({
           <>
             <AnalyticsViewTabs active="year" />
             <MonthNav
-              label={`${year}年`}
+              label={startMonth === 1 ? `${year}年` : `${year}年度`}
               prevHref={`/analytics?view=year&year=${year - 1}`}
               nextHref={`/analytics?view=year&year=${year + 1}`}
             />
@@ -190,4 +194,21 @@ export async function YearlyAnalyticsView({
       </section>
     </main>
   );
+}
+
+export function formatCompareLabel(
+  previousYear: number,
+  ranges: PeriodRange[],
+  elapsed: number,
+  startMonth: number,
+): string {
+  const yearLabel = startMonth === 1 ? `${previousYear}年` : `${previousYear}年度`;
+  if (elapsed >= 12) return yearLabel;
+  if (elapsed === 0) return yearLabel;
+
+  const start = ranges[0].start;
+  const end = ranges[elapsed - 1].start;
+  const endYear = end.getUTCFullYear();
+  const endYearLabel = endYear === start.getUTCFullYear() ? "" : `${endYear}年`;
+  return `${yearLabel} ${start.getUTCMonth() + 1}月〜${endYearLabel}${end.getUTCMonth() + 1}月`;
 }
