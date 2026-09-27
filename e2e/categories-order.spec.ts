@@ -20,25 +20,38 @@ async function expectCategoryOptionsInOrder(
   later: string,
 ) {
   const options = page.locator('input[type="radio"][name="category_id"]');
-  const earlierIndex = await page
-    .getByRole("radio", { name: earlier })
-    .evaluate((element) =>
-      Array.from(document.querySelectorAll('input[type="radio"][name="category_id"]')).indexOf(
-        element as HTMLInputElement,
-      ),
-    );
-  const laterIndex = await page
-    .getByRole("radio", { name: later })
-    .evaluate((element) =>
-      Array.from(document.querySelectorAll('input[type="radio"][name="category_id"]')).indexOf(
-        element as HTMLInputElement,
-      ),
-    );
+  await expect
+    .poll(
+      async () => {
+        const labels = await options.evaluateAll((elements) =>
+          elements.map((element) => element.parentElement?.textContent ?? ""),
+        );
+        const earlierIndex = labels.findIndex((label) => label.includes(earlier));
+        const laterIndex = labels.findIndex((label) => label.includes(later));
+        return earlierIndex >= 0 && laterIndex >= 0 && earlierIndex < laterIndex;
+      },
+      { message: `カテゴリ候補で「${earlier}」が「${later}」より前に表示される` },
+    )
+    .toBe(true);
+}
 
-  expect(await options.count()).toBeGreaterThan(0);
-  expect(earlierIndex).toBeGreaterThanOrEqual(0);
-  expect(laterIndex).toBeGreaterThanOrEqual(0);
-  expect(earlierIndex).toBeLessThan(laterIndex);
+async function expectCategoryRowsInOrder(
+  page: Page,
+  earlier: string,
+  later: string,
+) {
+  const rows = page.getByTestId("category-row");
+  await expect
+    .poll(
+      async () => {
+        const texts = await rows.allTextContents();
+        const earlierIndex = texts.findIndex((text) => text.includes(earlier));
+        const laterIndex = texts.findIndex((text) => text.includes(later));
+        return earlierIndex >= 0 && laterIndex >= 0 && earlierIndex < laterIndex;
+      },
+      { message: `カテゴリ一覧で「${earlier}」が「${later}」より前に表示される` },
+    )
+    .toBe(true);
 }
 
 test("種別内のカテゴリ順を保存し、収支と定期収支の候補にも反映する", async ({
@@ -58,20 +71,13 @@ test("種別内のカテゴリ順を保存し、収支と定期収支の候補�
     .locator('[data-testid="category-row"]')
     .filter({ hasText: first });
   await firstRow.getByRole("button", { name: `${first}を下へ移動` }).click();
-  await expect(page).toHaveURL(/\/categories$/);
-
-  const rows = await page.getByTestId("category-row").allTextContents();
-  expect(rows.findIndex((text) => text.includes(second))).toBeLessThan(
-    rows.findIndex((text) => text.includes(first)),
-  );
+  // URLは変わらない Server Action のため、URL assertionではなくRSC更新後の順序を待つ。
+  await expectCategoryRowsInOrder(page, second, first);
   await expect(page.getByTestId("category-move-up").first()).toBeDisabled();
   await expect(page.getByTestId("category-move-down").last()).toBeDisabled();
 
   await page.reload();
-  const reloadedRows = await page.getByTestId("category-row").allTextContents();
-  expect(reloadedRows.findIndex((text) => text.includes(second))).toBeLessThan(
-    reloadedRows.findIndex((text) => text.includes(first)),
-  );
+  await expectCategoryRowsInOrder(page, second, first);
 
   await page.goto("/transactions/new");
   await expectCategoryOptionsInOrder(page, second, first);
