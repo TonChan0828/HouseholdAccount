@@ -44,6 +44,13 @@ vi.mock("@/lib/queries/transactions", () => ({
   fetchTransactionsInRange: fetchSpy,
 }));
 
+vi.mock("@/lib/queries/members", () => ({
+  getHouseholdMemberNames: async () => [
+    { user_id: "u-1", display_name: "太郎" },
+    { user_id: "u-2", display_name: "花子" },
+  ],
+}));
+
 describe("AnalyticsPage", () => {
   it("分析画面を表示する", async () => {
     await AnalyticsPage({ searchParams: Promise.resolve({}) });
@@ -73,6 +80,47 @@ describe("AnalyticsPage", () => {
     const range = fetchSpy.mock.calls[0][2] as { start: Date; end: Date };
     expect(range.start.toISOString().slice(0, 10)).toBe("2024-01-01");
     expect(range.end.toISOString().slice(0, 10)).toBe("2026-01-01");
+    expect(screen.getByLabelText("メンバー")).toHaveValue("");
+    expect(screen.getByRole("option", { name: "花子" })).toBeInTheDocument();
+  });
+
+  it("有効なメンバーIDで帰属者を絞り、前年比較も同じメンバーで表示する", async () => {
+    fetchSpy.mockClear();
+    const ui = await AnalyticsPage({
+      searchParams: Promise.resolve({
+        view: "year",
+        year: "2025",
+        member: "u-2",
+      }),
+    });
+    render(ui);
+
+    expect(screen.getByLabelText("メンバー")).toHaveValue("u-2");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      "h-1",
+      expect.anything(),
+      { filter: { createdBy: "u-2" } },
+    );
+    expect(screen.getByRole("link", { name: "前の期間" })).toHaveAttribute(
+      "href",
+      "/analytics?view=year&year=2024&member=u-2",
+    );
+  });
+
+  it("別世帯のメンバーIDは無視し、全員表示に戻す", async () => {
+    fetchSpy.mockClear();
+    const ui = await AnalyticsPage({
+      searchParams: Promise.resolve({
+        view: "year",
+        year: "2025",
+        member: "outsider",
+      }),
+    });
+    render(ui);
+
+    expect(screen.getByLabelText("メンバー")).toHaveValue("");
+    expect(fetchSpy.mock.calls[0][3]).toBeUndefined();
   });
 
   it("年度設定に従って年度名・月ラベル・前年同期の範囲を表示する", async () => {
