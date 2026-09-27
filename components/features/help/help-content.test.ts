@@ -55,6 +55,13 @@ describe("HELP_SECTIONS", () => {
     expect(steps).toMatch(/前年/);
   });
 
+  it("未実装のメンバー別分析を案内せず、集計範囲をグループ全体と明記する", () => {
+    const steps = findSection("analytics").steps.join("\n");
+    expect(steps).toMatch(/グループ全体/);
+    expect(steps).toMatch(/メンバー別の絞り込みには対応していません/);
+    expect(steps).not.toMatch(/メンバー別の切り替え/);
+  });
+
   it("グループ管理セクションがグループ毎の表示名に触れている", () => {
     const steps = findSection("household").steps.join("\n");
     expect(steps).toMatch(/このグループでの表示名|ニックネーム/);
