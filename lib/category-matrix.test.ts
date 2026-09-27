@@ -171,16 +171,38 @@ describe("buildCategoryMemberMatrix", () => {
     });
   });
 
-  it("メンバー一覧にいないユーザーの取引は無視する（脱退者など）", () => {
+  it("メンバー一覧にいない帰属ユーザーは個人を特定せず一列に集約する", () => {
     const txs = [
-      tx({ created_by: "user-gone", amount: 999 }),
+      tx({ created_by: "user-gone-1", amount: 999 }),
+      tx({ created_by: "user-gone-2", amount: 500 }),
+      tx({
+        created_by: "user-1",
+        on_behalf_of: "user-gone-2",
+        amount: 200,
+      }),
       tx({ created_by: "user-1", amount: 100 }),
     ];
 
     const result = buildCategoryMemberMatrix(txs, members);
 
+    expect(result.members).toEqual([
+      { userId: "user-1", displayName: "太郎" },
+      { userId: "user-2", displayName: "花子" },
+      { userId: "__former_members__", displayName: "脱退メンバー" },
+    ]);
+    expect(result.expense.rows[0].cells).toEqual([100, 0, 1699]);
+    expect(result.expense.memberTotals).toEqual([100, 0, 1699]);
+    expect(result.expense.total).toBe(1799);
+  });
+
+  it("脱退メンバーの取引が無い場合は集約列を追加しない", () => {
+    const result = buildCategoryMemberMatrix(
+      [tx({ created_by: "user-1", amount: 100 })],
+      members,
+    );
+
+    expect(result.members).toHaveLength(2);
     expect(result.expense.rows[0].cells).toEqual([100, 0]);
-    expect(result.expense.total).toBe(100);
   });
 
   it("取引0件なら空の行と全0の合計行を返す", () => {

@@ -87,6 +87,33 @@ describe("CategoryMemberMatrix", () => {
     expect(within(expense).getByText("¥78,000")).toBeInTheDocument();
   });
 
+  it("脱退メンバーは個人別でなく集約列として表示する", () => {
+    const withFormerMembers: Matrix = {
+      ...matrix,
+      members: [
+        ...members,
+        { userId: "__former_members__", displayName: "脱退メンバー" },
+      ],
+      expense: {
+        rows: matrix.expense.rows.map((row, i) => ({
+          ...row,
+          cells: [...row.cells, i === 0 ? 12000 : 0],
+        })),
+        memberTotals: [...matrix.expense.memberTotals, 12000],
+        total: matrix.expense.total + 12000,
+      },
+    };
+
+    render(<CategoryMemberMatrix matrix={withFormerMembers} />);
+
+    const expense = screen.getByTestId("matrix-expense");
+    expect(
+      within(expense).getByRole("columnheader", { name: "脱退メンバー" }),
+    ).toBeInTheDocument();
+    expect(within(expense).getAllByText("¥12,000")).toHaveLength(2);
+    expect(within(expense).getByText("¥90,000")).toBeInTheDocument();
+  });
+
   it("ゼロセルは - を表示する", () => {
     render(<CategoryMemberMatrix matrix={matrix} />);
 

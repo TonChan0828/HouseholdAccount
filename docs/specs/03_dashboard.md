@@ -99,7 +99,7 @@ type MatrixRow = {
   categoryId: string | null; // null = 未分類
   name: string;
   color: string;
-  cells: number[]; // members と同順・同長。取引なしは 0
+  cells: number[]; // 表示列と同順・同長。取引なしは 0
   total: number;   // 合計列
 };
 type MatrixSection = {
@@ -108,7 +108,7 @@ type MatrixSection = {
   total: number;
 };
 type CategoryMemberMatrix = {
-  members: { userId: string; displayName: string }[];
+  members: { userId: string; displayName: string }[]; // 現メンバー。脱退者の取引があれば集約列も末尾に追加
   expense: MatrixSection;
   income: MatrixSection;
 };
@@ -165,7 +165,7 @@ Server Action は不要（閲覧専用）。
 
 ## テスト
 
-- Unit: `lib/category-matrix.ts#buildCategoryMemberMatrix`（セクション振り分け・合計行/列・列順維持・未分類集約・脱退者除外・0件時）
+- Unit: `lib/category-matrix.ts#buildCategoryMemberMatrix`（セクション振り分け・合計行/列・列順維持・未分類集約・脱退者を個人特定せず集約・0件時）
 - Unit: `lib/analytics.ts#buildBalanceBars`（収入→支出の順・ラベル・key・金額、0円時も2本返す）
 - Component: `SummaryCards`（収入/支出/収支の金額表示）、`ScopeToggle`（全体/自分のリンク・現在値の強調・`currentRef` 指定時に ref を引き継ぐ）、`CategoryMemberMatrix`（セクション見出し・カテゴリ行・合計・ゼロセル `-`・空時非描画）
 - E2E: グループ作成 → 収支追加 → ダッシュボードでサマリーに金額反映 → 全体/自分トグルの遷移 → マトリクスにカテゴリ行と金額が表示・scope=mine でも全メンバー表示のまま
@@ -173,6 +173,5 @@ Server Action は不要（閲覧専用）。
 
 ## 未解決の課題
 
-- 脱退メンバーの取引はマトリクスから除外されるため、scope=all のサマリー合計とマトリクス総計が乖離し得る（将来「その他」列で吸収する選択肢あり）
 - 当期収支グラフは「当期の収入・支出の2本」のみ。カテゴリ別内訳・複数期の推移グラフは分析（05）の領域でダッシュボードには含めない
 - 収入・支出ともに0の期間は空に近い軸のみ表示される（専用の「データなし」表示は設けていない）

@@ -39,10 +39,14 @@ export type CategoryMemberMatrix = {
 
 const UNCATEGORIZED_NAME = "未分類";
 const UNCATEGORIZED_COLOR = "#999";
+const FORMER_MEMBERS_COLUMN = {
+  userId: "__former_members__",
+  displayName: "脱退メンバー",
+} as const;
 
 /**
  * 取引をカテゴリ×メンバーへ集計する。members の並び順を列順として維持し、
- * members にいないユーザー（脱退者など）の取引は無視する。
+ * members にいない帰属ユーザーの取引は、個人を特定せず「脱退メンバー」列に集約する。
  * 列の振り分けは入力者ではなく帰属ユーザー（名義人。spec 41）で行う。
  * セクションの振り分けは取引の type で行う（both 型カテゴリは両方に現れ得る）。
  */
@@ -51,16 +55,23 @@ export function buildCategoryMemberMatrix(
   members: MemberInfo[],
 ): CategoryMemberMatrix {
   const memberIndex = new Map(members.map((m, i) => [m.user_id, i]));
+  const hasFormerMemberTransactions = txs.some(
+    (t) => !memberIndex.has(attributedTo(t)),
+  );
+  const columns = [
+    ...members.map((m) => ({ userId: m.user_id, displayName: m.display_name })),
+    ...(hasFormerMemberTransactions ? [FORMER_MEMBERS_COLUMN] : []),
+  ];
+  const formerMembersIndex = hasFormerMemberTransactions ? members.length : -1;
 
   const buildSection = (type: "income" | "expense"): MatrixSection => {
     const byCategory = new Map<string, MatrixRow>();
-    const memberTotals = members.map(() => 0);
+    const memberTotals = columns.map(() => 0);
     let total = 0;
 
     for (const t of txs) {
       if (t.type !== type) continue;
-      const index = memberIndex.get(attributedTo(t));
-      if (index === undefined) continue;
+      const index = memberIndex.get(attributedTo(t)) ?? formerMembersIndex;
 
       const key = t.category_id ?? "__none__";
       let row = byCategory.get(key);
@@ -69,7 +80,7 @@ export function buildCategoryMemberMatrix(
           categoryId: t.category_id,
           name: t.category?.name ?? UNCATEGORIZED_NAME,
           color: t.category?.color ?? UNCATEGORIZED_COLOR,
-          cells: members.map(() => 0),
+          cells: columns.map(() => 0),
           total: 0,
         };
         byCategory.set(key, row);
@@ -88,10 +99,7 @@ export function buildCategoryMemberMatrix(
   };
 
   return {
-    members: members.map((m) => ({
-      userId: m.user_id,
-      displayName: m.display_name,
-    })),
+    members: columns,
     expense: buildSection("expense"),
     income: buildSection("income"),
   };
