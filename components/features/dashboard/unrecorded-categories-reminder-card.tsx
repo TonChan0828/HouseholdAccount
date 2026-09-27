@@ -48,7 +48,7 @@ export function UnrecordedCategoriesReminderCard({
             {categories.map((c) => (
               <li
                 key={c.id}
-                className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+                className="max-w-full break-words rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
               >
                 {c.name}
               </li>

@@ -22,6 +22,27 @@ describe("UnrecordedCategoriesReminderCard", () => {
     expect(card).toHaveTextContent("まだ登録がありません");
   });
 
+  it("通知対象を全件表示し、長いカテゴリ名も折り返せる", () => {
+    const categories = Array.from({ length: 40 }, (_, index) => ({
+      id: `c${index}`,
+      name: index === 39 ? "UnbrokenCategoryName".repeat(3) : `カテゴリ${index + 1}`,
+    }));
+
+    render(
+      <UnrecordedCategoriesReminderCard
+        categories={categories}
+        daysRemaining={2}
+        newTransactionHref="/transactions/new"
+      />,
+    );
+
+    const card = screen.getByTestId("unrecorded-categories-reminder");
+    expect(card.querySelectorAll("li")).toHaveLength(categories.length);
+    const longName = screen.getByText("UnbrokenCategoryName".repeat(3));
+    expect(longName.className).toContain("max-w-full");
+    expect(longName.className).toContain("break-words");
+  });
+
   it("「収支を記録」CTAが newTransactionHref を指す", () => {
     render(
       <UnrecordedCategoriesReminderCard
