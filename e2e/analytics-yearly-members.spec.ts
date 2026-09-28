@@ -10,7 +10,8 @@ test.describe("年間分析のメンバー別表示", () => {
     await createHousehold(page, ephemeralName("年間分析メンバー"));
     await page.goto("/analytics?view=year&year=2025");
 
-    const memberSelect = page.getByLabel("メンバー");
+    // E2Eで作成する家計名にも「メンバー」が含まれるため完全一致にする。
+    const memberSelect = page.getByLabel("メンバー", { exact: true });
     await expect(memberSelect).toBeVisible();
     const memberId = await memberSelect.locator("option").nth(1).getAttribute("value");
     expect(memberId).toBeTruthy();
@@ -26,6 +27,8 @@ test.describe("年間分析のメンバー別表示", () => {
     await expect(page).toHaveURL(
       `/analytics?view=year&year=2024&member=${memberId}`,
     );
-    await expect(page.getByLabel("メンバー")).toHaveValue(memberId!);
+    await expect(page.getByLabel("メンバー", { exact: true })).toHaveValue(
+      memberId!,
+    );
   });
 });
