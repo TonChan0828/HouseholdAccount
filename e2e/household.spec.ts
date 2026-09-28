@@ -25,7 +25,7 @@ test.describe("家計簿グループ管理", () => {
     const startMonth = card.getByLabel("開始月");
     await expect(startMonth).toHaveValue("1");
     await startMonth.selectOption("4");
-    const fiscalYearForm = card.locator("form").filter({ has: startMonth });
+    const fiscalYearForm = startMonth.locator("xpath=ancestor::form");
     const saveResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&

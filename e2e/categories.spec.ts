@@ -171,8 +171,8 @@ test.describe("カテゴリ管理", () => {
         new URL(response.url()).pathname === "/households",
     );
     const periodSettingsForm = householdCard
-      .locator("form")
-      .filter({ has: householdCard.getByLabel("開始日（1〜28）") });
+      .getByLabel("開始日（1〜28）")
+      .locator("xpath=ancestor::form");
     await periodSettingsForm.getByRole("button", { name: "保存" }).click();
     const response = await saveResponse;
     expect(response.ok()).toBe(true);
