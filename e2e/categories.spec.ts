@@ -170,7 +170,10 @@ test.describe("カテゴリ管理", () => {
         response.request().method() === "POST" &&
         new URL(response.url()).pathname === "/households",
     );
-    await householdCard.getByRole("button", { name: "保存" }).click();
+    const periodSettingsForm = householdCard
+      .locator("form")
+      .filter({ has: householdCard.getByLabel("開始日（1〜28）") });
+    await periodSettingsForm.getByRole("button", { name: "保存" }).click();
     const response = await saveResponse;
     expect(response.ok()).toBe(true);
     expect(await response.finished()).toBeNull();

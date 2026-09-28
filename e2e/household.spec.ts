@@ -25,8 +25,16 @@ test.describe("家計簿グループ管理", () => {
     const startMonth = card.getByLabel("開始月");
     await expect(startMonth).toHaveValue("1");
     await startMonth.selectOption("4");
-    await card.getByRole("button", { name: "保存" }).nth(1).click();
-    await expect(startMonth).toHaveValue("4");
+    const fiscalYearForm = card.locator("form").filter({ has: startMonth });
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/households",
+    );
+    await fiscalYearForm.getByRole("button", { name: "保存" }).click();
+    const response = await saveResponse;
+    expect(response.ok()).toBe(true);
+    expect(await response.finished()).toBeNull();
 
     await page.reload();
     await card.getByRole("button", { name: /^管理（メンバー/ }).click();
