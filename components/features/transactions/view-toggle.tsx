@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, List } from "lucide-react";
 
+import { buildFilterQueryString, type TransactionFilter } from "@/lib/transaction-filter";
 import { cn } from "@/lib/utils";
 
 type View = "list" | "calendar";
@@ -9,6 +10,7 @@ type Props = {
   active: View;
   /** 現在表示している期間に属する日付。切替先でもこの期間を解決する。 */
   currentRef?: string;
+  filter?: TransactionFilter;
   className?: string;
 };
 
@@ -18,7 +20,7 @@ const VIEWS: { key: View; path: string; label: string; icon: typeof List }[] = [
 ];
 
 /** 収支の「リスト ⇄ カレンダー」表示を切り替えるセグメントピル（presentational）。 */
-export function ViewToggle({ active, currentRef, className }: Props) {
+export function ViewToggle({ active, currentRef, filter = {}, className }: Props) {
   return (
     <div
       className={cn(
@@ -29,9 +31,10 @@ export function ViewToggle({ active, currentRef, className }: Props) {
       {VIEWS.map((view) => {
         const isActive = view.key === active;
         const Icon = view.icon;
-        const href = currentRef
-          ? `${view.path}?ref=${encodeURIComponent(currentRef)}`
-          : view.path;
+        const params = new URLSearchParams(buildFilterQueryString(filter));
+        if (currentRef) params.set("ref", currentRef);
+        const query = params.toString();
+        const href = `${view.path}${query ? `?${query}` : ""}`;
         return (
           <Link
             key={view.key}

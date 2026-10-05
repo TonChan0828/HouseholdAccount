@@ -4,6 +4,7 @@ import { createHmac } from "node:crypto";
 
 import { headers } from "next/headers";
 
+import { rateLimitConfigError } from "@/lib/runtime-config";
 import { logServerError } from "@/lib/observability";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -24,15 +25,15 @@ function clientAddress(headerList: Headers): string {
 
 /**
  * Supabase の原子的カウンターを使い、サーバーインスタンスをまたいで試行を制限する。
- * 設定不備や一時的な DB 障害では可用性を優先して許可するが、安全な構造化ログを残す。
+ * 本番の設定不備は拒否する。開発時の未設定や一時的なDB障害はログを残して続行する。
  */
 export async function consumeRateLimit(options: RateLimitOptions): Promise<boolean> {
   const secret = process.env.RATE_LIMIT_SECRET;
-  if (!secret) {
-    logServerError("rate_limit.configuration_missing", new Error("MissingSecret"), {
+  if (!secret || (process.env.NODE_ENV === "production" && rateLimitConfigError(process.env))) {
+    logServerError("rate_limit.configuration_invalid", new Error("InvalidRateLimitConfig"), {
       bucket: options.bucket,
     });
-    return true;
+    return process.env.NODE_ENV !== "production";
   }
 
   const headerList = options.includeIp === false ? null : await headers();

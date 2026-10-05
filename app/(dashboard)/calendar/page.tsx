@@ -3,6 +3,7 @@ import {
   type CalendarTx,
 } from "@/components/features/calendar/calendar-board";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
+import { FilterBar } from "@/components/features/transactions/filter-bar";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import {
   NewTransactionButton,
@@ -22,14 +23,16 @@ import { getUserHouseholds, requireDashboardContext } from "@/lib/household";
 import { refFromParam, toISODate } from "@/lib/period";
 import { fetchHouseholdCategories } from "@/lib/queries/categories";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { parseTransactionFilter, buildFilterQueryString, type TransactionFilterParams } from "@/lib/transaction-filter";
 import { fetchTransactionsInRange } from "@/lib/queries/transactions";
 
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<{ ref?: string } & TransactionFilterParams>;
 }) {
-  const { ref } = await searchParams;
+  const { ref, ...filterParams } = await searchParams;
+  const filter = parseTransactionFilter(filterParams);
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
@@ -40,7 +43,7 @@ export default async function CalendarPage({
   // 明細から編集ダイアログ（spec 40）を開けるよう、カテゴリと所属グループも揃える。
   // メンバー名は代理入力（spec 41）の補助ラベルと名義人セレクトに使う。
   const [txs, categories, households, members] = await Promise.all([
-    fetchTransactionsInRange(supabase, householdId, grid, { order: "asc" }),
+    fetchTransactionsInRange(supabase, householdId, grid, { order: "asc", filter }),
     fetchHouseholdCategories(supabase, householdId),
     getUserHouseholds(),
     getHouseholdMemberNames(householdId),
@@ -81,8 +84,10 @@ export default async function CalendarPage({
   const todayIso = toISODate(new Date());
   const initialSelected = inMonth(todayIso) ? todayIso : monthStart;
 
-  const prevHref = `/calendar?ref=${toISODate(shiftMonth(refDate, -1))}`;
-  const nextHref = `/calendar?ref=${toISODate(shiftMonth(refDate, 1))}`;
+  const filterQs = buildFilterQueryString(filter);
+  const filterSuffix = filterQs ? `&${filterQs}` : "";
+  const prevHref = `/calendar?ref=${toISODate(shiftMonth(refDate, -1))}${filterSuffix}`;
+  const nextHref = `/calendar?ref=${toISODate(shiftMonth(refDate, 1))}${filterSuffix}`;
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
@@ -102,7 +107,7 @@ export default async function CalendarPage({
           className={reveal}
           actions={
             <>
-              <ViewToggle active="calendar" currentRef={toISODate(refDate)} />
+              <ViewToggle active="calendar" currentRef={toISODate(refDate)} filter={filter} />
               <MonthNav
                 label={formatMonthLabel(refDate)}
                 prevHref={prevHref}
@@ -112,6 +117,8 @@ export default async function CalendarPage({
             </>
           }
         />
+
+        <FilterBar filter={filter} currentRef={ref} categories={categories} members={members} basePath="/calendar" />
 
         <div className={reveal} style={{ animationDelay: "120ms" }}>
           <CalendarBoard

@@ -2,6 +2,7 @@ import type { ServerClient } from "@/lib/household";
 import { toISODate } from "@/lib/period";
 import { DataAccessError } from "@/lib/queries/errors";
 import { escapeLike, type TransactionFilter } from "@/lib/transaction-filter";
+import { cursorCondition, decodePageCursor, encodePageCursor } from "@/lib/transactions/page-cursor";
 import { attributionOrFilter } from "@/lib/transactions/attribution";
 
 const FETCH_BATCH_SIZE = 1000;
@@ -13,6 +14,7 @@ export const TRANSACTION_PAGE_SIZE = 50;
  */
 export type TransactionRow = {
   id: string;
+  created_at: string;
   amount: number;
   type: "income" | "expense";
   date: string;
@@ -70,41 +72,37 @@ export type TransactionPage = {
   previousCursor: string | null;
 };
 
-/** 一覧表示用に50件ずつ取得する。cursor は先頭からの安全な数値offset。 */
+/** 一覧表示用に50件ずつ、最後に表示した記録の値を基準に取得する。 */
 export async function fetchTransactionPage(
   supabase: ServerClient,
   householdId: string,
   range: { start: Date; end: Date },
   options?: { cursor?: string; filter?: TransactionFilter },
 ): Promise<TransactionPage> {
-  const offset = parseCursor(options?.cursor);
-  const { data, error } = await buildTransactionQuery(
-    supabase,
-    householdId,
-    range,
-    options?.filter ?? {},
-    false,
-  )
-    .range(offset, offset + TRANSACTION_PAGE_SIZE)
-    .overrideTypes<TransactionRow[]>();
-  if (error) {
-    throw new DataAccessError("fetchTransactionPage", error);
-  }
-
+  const cursor = decodePageCursor(options?.cursor);
+  const backwards = cursor?.direction === "before";
+  let query = buildTransactionQuery(supabase, householdId, range, options?.filter ?? {}, backwards);
+  if (cursor) query = query.or(cursorCondition(cursor));
+  const { data, error } = await query.limit(TRANSACTION_PAGE_SIZE + 1).overrideTypes<TransactionRow[]>();
+  if (error) throw new DataAccessError("fetchTransactionPage", error);
   const rows = data ?? [];
-  const hasNext = rows.length > TRANSACTION_PAGE_SIZE;
+  const hasMore = rows.length > TRANSACTION_PAGE_SIZE;
+  const items = rows.slice(0, TRANSACTION_PAGE_SIZE);
+  if (backwards) items.reverse();
+  const first = items[0];
+  const last = items.at(-1);
+  if (!first && cursor) {
+    return {
+      items,
+      previousCursor: backwards ? null : encodePageCursor(cursor, "before"),
+      nextCursor: backwards ? encodePageCursor(cursor, "after") : null,
+    };
+  }
   return {
-    items: rows.slice(0, TRANSACTION_PAGE_SIZE),
-    nextCursor: hasNext ? String(offset + TRANSACTION_PAGE_SIZE) : null,
-    previousCursor:
-      offset > 0 ? String(Math.max(0, offset - TRANSACTION_PAGE_SIZE)) : null,
+    items,
+    nextCursor: last && (backwards || hasMore) ? encodePageCursor(last, "after") : null,
+    previousCursor: first && (backwards ? hasMore : Boolean(cursor)) ? encodePageCursor(first, "before") : null,
   };
-}
-
-function parseCursor(cursor: string | undefined): number {
-  if (!cursor || !/^\d+$/.test(cursor)) return 0;
-  const value = Number(cursor);
-  return Number.isSafeInteger(value) ? value : 0;
 }
 
 function buildTransactionQuery(
@@ -117,7 +115,7 @@ function buildTransactionQuery(
   let query = supabase
     .from("transactions")
     .select(
-      "id, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, category:categories(name, color, icon)",
+      "id, created_at, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, category:categories(name, color, icon)",
     )
     .eq("household_id", householdId)
     .gte("date", toISODate(range.start))
@@ -134,5 +132,6 @@ function buildTransactionQuery(
   if (filter.maxAmount !== undefined) query = query.lte("amount", filter.maxAmount);
   return query
     .order("date", { ascending })
-    .order("created_at", { ascending });
+    .order("created_at", { ascending })
+    .order("id", { ascending });
 }

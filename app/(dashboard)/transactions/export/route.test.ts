@@ -3,21 +3,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type QueryResult = { data: unknown; error: unknown; count?: number | null };
 
-const { state, pagination, logServerError, supabase } = vi.hoisted(() => {
+const { state, pagination, filters, logServerError, supabase } = vi.hoisted(() => {
   const state: Record<string, QueryResult> = {
     transactions: { data: [], error: null },
     household_members: { data: [], error: null },
     profiles: { data: [], error: null },
   };
 
+  const filters: [string, string, unknown][] = [];
   const pagination = { cap: 1000, failAt: -1, truncateAt: -1, countAt: -1, calls: [] as number[] };
 
   function queryFor(table: string) {
     let offset = 0;
     let end = 0;
     const query: Record<string, unknown> = {};
-    for (const method of ["select", "eq", "gte", "lt", "order", "in"]) {
-      query[method] = () => query;
+    for (const method of ["select", "eq", "gte", "lte", "lt", "order", "in", "or", "ilike"]) {
+      query[method] = (column: string, value: unknown) => { filters.push([method, column, value]); return query; };
     }
     query.range = (start: number, last: number) => {
       offset = start;
@@ -44,6 +45,7 @@ const { state, pagination, logServerError, supabase } = vi.hoisted(() => {
   return {
     state,
     pagination,
+    filters,
     logServerError: vi.fn(),
     supabase: { from: vi.fn((table: string) => queryFor(table)) },
   };
@@ -87,6 +89,7 @@ describe("GET /transactions/export", () => {
       error: null,
     };
     Object.assign(pagination, { cap: 1000, failAt: -1, truncateAt: -1, countAt: -1, calls: [] });
+    filters.length = 0;
     logServerError.mockReset();
     supabase.from.mockClear();
   });
@@ -174,4 +177,22 @@ describe("GET /transactions/export", () => {
       );
     });
   }
+});
+
+it("CSVへ種別・カテゴリ・名義人・メモ・金額の絞り込みを反映する", async () => {
+  const category = "11111111-1111-4111-8111-111111111111";
+  const member = "22222222-2222-4222-8222-222222222222";
+  state.transactions = { data: [], error: null };
+  state.household_members = { data: [], error: null };
+  state.profiles = { data: [], error: null };
+  Object.assign(pagination, { cap: 1000, failAt: -1, truncateAt: -1, countAt: -1, calls: [] });
+  filters.length = 0;
+  const response = await GET(new NextRequest(`http://localhost/transactions/export?ref=2026-09-01&type=expense&category=${category}&member=${member}&q=100%25&min=0&max=5000`));
+  expect(response.status).toBe(200);
+  expect(filters).toContainEqual(["eq", "type", "expense"]);
+  expect(filters).toContainEqual(["eq", "category_id", category]);
+  expect(filters).toContainEqual(["or", `on_behalf_of.eq.${member},and(on_behalf_of.is.null,created_by.eq.${member})`, undefined]);
+  expect(filters).toContainEqual(["ilike", "memo", "%100\\%%"]);
+  expect(filters).toContainEqual(["gte", "amount", 0]);
+  expect(filters).toContainEqual(["lte", "amount", 5000]);
 });

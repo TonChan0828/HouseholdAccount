@@ -26,6 +26,7 @@ type Props = {
   categories: CategoryOption[];
   members: MemberOption[];
   className?: string;
+  basePath?: "/transactions" | "/calendar";
 };
 
 const TYPE_ITEMS: { value: string; label: string }[] = [
@@ -50,6 +51,7 @@ export function FilterBar({
   categories,
   members,
   className,
+  basePath = "/transactions",
 }: Props) {
   const router = useRouter();
   const [q, setQ] = useState(filter.memoQuery ?? "");
@@ -86,7 +88,7 @@ export function FilterBar({
     ]
       .filter(Boolean)
       .join("&");
-    router.replace(parts ? `/transactions?${parts}` : "/transactions", {
+    router.replace(parts ? `${basePath}?${parts}` : basePath, {
       scroll: false,
     });
   };

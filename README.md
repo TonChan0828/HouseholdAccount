@@ -35,10 +35,15 @@ npm run dev           # 開発サーバー起動（http://localhost:3000）
 ```dotenv
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=... # Cron / E2E 管理処理専用。ブラウザへ公開しない
+SUPABASE_SERVICE_ROLE_KEY=... # アクセス回数制限 / Cron / E2E用。ブラウザへ公開しない
+RATE_LIMIT_SECRET=...         # 32バイト以上のランダム値。openssl rand -base64 32 で生成
 CRON_SECRET=...               # 16文字以上のランダム値
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+本番は `RATE_LIMIT_SECRET` と回数制限用のSupabase設定を起動時に検査します。設定不足の場合は起動を中止します。
+
+収支一覧のデータベース集計には `20261005120000_0032_transaction_summary.sql` の適用が必要です。アプリの更新前にマイグレーションを適用してください。
 
 本番では `NEXT_PUBLIC_APP_URL` を公開URLへ変更してください。定期収支は
 Vercel Cron から毎日 `/api/cron/recurring` を呼び出して生成します。
