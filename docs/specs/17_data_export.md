@@ -70,6 +70,7 @@ export function toTransactionsCsv(rows: ExportRow[]): string;
 - `transactions/page.tsx` と同じ流れ: 認証 → `getActiveHouseholdId()` → `period_start_day` 取得
   → `getPeriodRange()` → `household_id` + `gte/lt date` で取引取得。
 - 登録者名は `dashboard/page.tsx` の2段 join（`household_members` → `profiles`）を再利用。
+- 取引は取得上限を考慮して複数回に分けて取得し、対象期間の全件を出力します。途中の取得が失敗した場合は、不完全なCSVを返さずエラーを返します。
 - 整形した `ExportRow[]`（日付昇順）を `toTransactionsCsv()` に渡し、
   `Content-Type: text/csv; charset=utf-8` と `Content-Disposition: attachment; filename=...` で返す。
 - 未ログインは 401、household 未解決は 403。

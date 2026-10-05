@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { attributedTo } from "@/lib/transactions/attribution";
 
 type TransactionRow = {
+  id: string;
   amount: number;
   type: "income" | "expense";
   date: string;
@@ -54,19 +55,47 @@ export async function GET(request: NextRequest) {
     const isoStart = toISODate(range.start);
     const isoEnd = toISODate(range.end);
 
-    const transactionResult = await supabase
-      .from("transactions")
-      .select(
-        "amount, type, date, memo, created_by, on_behalf_of, category:categories(name)",
-      )
-      .eq("household_id", householdId)
-      .gte("date", isoStart)
-      .lt("date", isoEnd)
-      .order("date", { ascending: true })
-      .order("created_at", { ascending: true })
-      .overrideTypes<TransactionRow[]>();
-    const transactions =
-      unwrapData(transactionResult, "exportTransactions") ?? [];
+    // 取得上限が設定されていても、実際に受け取った件数から次の範囲を取得する。
+    // 正確な総件数と一意な並び順で、途中の欠落・重複を検出する。
+    const transactions: TransactionRow[] = [];
+    const seenIds = new Set<string>();
+    let expectedCount: number | null = null;
+    do {
+      const transactionResult = await supabase
+        .from("transactions")
+        .select(
+          "id, amount, type, date, memo, created_by, on_behalf_of, category:categories(name)",
+          { count: "exact" },
+        )
+        .eq("household_id", householdId)
+        .gte("date", isoStart)
+        .lt("date", isoEnd)
+        .order("date", { ascending: true })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(transactions.length, transactions.length + 499)
+        .overrideTypes<TransactionRow[]>();
+      const batch = unwrapData(transactionResult, "exportTransactions") ?? [];
+      const count = transactionResult.count;
+      if (
+        count === null ||
+        (expectedCount !== null && count !== expectedCount) ||
+        (batch.length === 0 && transactions.length < count)
+      ) {
+        throw new Error("CSV export transaction count changed or is unavailable");
+      }
+      expectedCount = count;
+      for (const transaction of batch) {
+        if (seenIds.has(transaction.id)) {
+          throw new Error("CSV export contains duplicate transactions");
+        }
+        seenIds.add(transaction.id);
+        transactions.push(transaction);
+      }
+      if (transactions.length > expectedCount) {
+        throw new Error("CSV export transaction count does not match");
+      }
+    } while (transactions.length < expectedCount);
 
     // user_id → display_name のマップを作る（dashboard と同じ2段 join パターン）。
     // グループ毎の名前（household_members.display_name）優先・未設定はグローバル名へ。
