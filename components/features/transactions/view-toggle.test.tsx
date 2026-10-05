@@ -51,3 +51,12 @@ describe("ViewToggle", () => {
     );
   });
 });
+
+it("表示切り替えで全絞り込み条件を引き継ぐ", () => {
+  const filter = { type: "expense" as const, categoryId: "category", createdBy: "member", memoQuery: "食費 & 日用品", minAmount: 0, maxAmount: 1000 };
+  render(<ViewToggle active="list" currentRef="2026-10-01" filter={filter} />);
+  for (const name of ["リスト", "カレンダー"]) {
+    const params = new URL(screen.getByRole("link", { name }).getAttribute("href")!, "http://local").searchParams;
+    expect(Object.fromEntries(params)).toEqual({ ref: "2026-10-01", type: "expense", category: "category", member: "member", q: "食費 & 日用品", min: "0", max: "1000" });
+  }
+});

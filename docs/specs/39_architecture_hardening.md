@@ -32,13 +32,15 @@
 
 - `lib/queries` の予期しない Supabase エラーは `DataAccessError` として送出する。
 - `fetchTransactionsInRange` は内部で範囲取得を繰り返し、API の1回上限を超えても全件返す。
-- 一覧表示用に `fetchTransactionPage` を追加し、50件と前後ページ情報を返す。
+- `fetchTransactionPage` は日付・作成日時・IDを境界として50件と前後ページ情報を返す。境界の記録が削除されても、その値から取得を継続する。
+- 一覧の集計はRLSを適用する `transaction_daily_summary` に移し、期間全体の明細を転送しない。
 - 定期収支 Cron は `CRON_SECRET` を Bearer 認証し、東京日付をRPCへ渡す。
 - service-role クライアントは `server-only` な専用モジュールに閉じ込める。
 
 ## 環境変数
 
-- `SUPABASE_SERVICE_ROLE_KEY`: Cron と既存 E2E 管理処理用。クライアントへ公開しない。
+- `SUPABASE_SERVICE_ROLE_KEY`: アクセス回数制限、Cron と既存 E2E 管理処理用。クライアントへ公開しない。
+- `RATE_LIMIT_SECRET`: 32バイト以上のランダム値。本番起動時に回数制限用のSupabase設定と合わせて検査し、不足時は起動を中止する。制限処理自身も本番の設定不足では許可しない。
 - `CRON_SECRET`: Vercel Cron Route Handler の認証用。
 - `NEXT_PUBLIC_APP_URL`: `metadataBase` 用の公開URL。
 

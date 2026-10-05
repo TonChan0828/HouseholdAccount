@@ -28,7 +28,8 @@ const UUID_RE =
 
 function parseAmount(value: string | undefined): number | undefined {
   if (value === undefined || !/^\d+$/.test(value)) return undefined;
-  return Number(value);
+  const amount = Number(value);
+  return Number.isSafeInteger(amount) ? amount : undefined;
 }
 
 /** クエリパラメータを検証し、有効な条件だけのフィルタに正規化する。 */

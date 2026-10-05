@@ -436,6 +436,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      transaction_daily_summary: {
+        Args: {
+          _household_id: string
+          _start: string
+          _end: string
+          _type?: Database["public"]["Enums"]["transaction_type"]
+          _category_id?: string
+          _member_id?: string
+          _memo_pattern?: string
+          _min_amount?: number
+          _max_amount?: number
+        }
+        Returns: { date: string; income: number; expense: number; count: number }[]
+      }
       confirm_transaction_import: {
         Args: {
           _household_id: string

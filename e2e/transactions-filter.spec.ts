@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
@@ -73,6 +75,26 @@ test.describe("収支の検索・絞り込み", () => {
     await expect(rowBy(memoFood)).toHaveCount(0);
     await expect(rowBy(memoIncome)).toHaveCount(0);
     await expect(rowBy(memoDaily)).toBeVisible();
+
+    // 絞り込んだ記録だけをCSVに出力する
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("link", { name: "CSV出力" }).click();
+    const downloadedPath = await (await downloadPromise).path();
+    if (!downloadedPath) throw new Error("CSV download is unavailable");
+    const csv = readFileSync(downloadedPath, "utf8");
+    expect(csv).toContain(memoDaily);
+    expect(csv).not.toContain(memoFood);
+    expect(csv).not.toContain(memoIncome);
+
+    // カレンダーへ切り替えて戻っても検索条件と表示対象を維持する
+    await page.getByRole("link", { name: "カレンダー", exact: true }).click();
+    await expect(page).toHaveURL(/\/calendar\?.*q=/);
+    await expect(page.getByText(memoDaily, { exact: true })).toBeVisible();
+    await expect(page.getByText(memoFood, { exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "リスト", exact: true }).click();
+    await expect(page).toHaveURL(/\/transactions\?.*q=/);
+    await expect(rowBy(memoDaily)).toBeVisible();
+    await expect(rowBy(memoFood)).toHaveCount(0);
 
     // 検索語をクリアして金額下限 1000 円で絞り込むと 800 円の行が消える
     await page.getByRole("button", { name: "クリア" }).click();

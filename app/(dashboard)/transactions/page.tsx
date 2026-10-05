@@ -41,7 +41,6 @@ import {
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import {
   fetchTransactionPage,
-  fetchTransactionsInRange,
 } from "@/lib/queries/transactions";
 import {
   buildFilterQueryString,
@@ -55,7 +54,7 @@ import {
   proxyLabel,
 } from "@/lib/transactions/attribution";
 import { cn } from "@/lib/utils";
-import { calculateDailyTotals } from "@/lib/transactions/daily-totals";
+import { fetchTransactionSummary } from "@/lib/queries/transaction-summary";
 
 export default async function TransactionsPage({
   searchParams,
@@ -81,23 +80,17 @@ export default async function TransactionsPage({
 
   // 編集ダイアログ（spec 40）に必要な値もここで揃える。カテゴリは絞り込みバーと共用し、
   // 所属グループ一覧は layout で cache() 済みのため追加の DB 往復は発生しない。
-  const [transactions, transactionPage, members, categoryOptions, households] =
+  const [summary, transactionPage, members, categoryOptions, households] =
     await Promise.all([
-      fetchTransactionsInRange(supabase, householdId, range, { filter }),
+      fetchTransactionSummary(supabase, householdId, range, filter),
       fetchTransactionPage(supabase, householdId, range, { filter, cursor }),
       getHouseholdMemberNames(householdId),
       fetchHouseholdCategories(supabase, householdId),
       getUserHouseholds(),
     ]);
   const otherHouseholds = households.filter((h) => h.id !== householdId);
-  const income = transactions
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + t.amount, 0);
-  const expense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((s, t) => s + t.amount, 0);
+  const { income, expense, dailyTotals } = summary;
   const groups = groupByDate(transactionPage.items);
-  const dailyTotals = calculateDailyTotals(transactions);
 
   // 前月/翌月リンクにはフィルタ条件を引き継ぐ（期間移動で条件が消えないように）
   const filterQs = buildFilterQueryString(filter);
@@ -108,7 +101,7 @@ export default async function TransactionsPage({
   const pageHref = (pageCursor: string) => {
     const params = new URLSearchParams(filterQs);
     if (ref) params.set("ref", ref);
-    if (pageCursor !== "0") params.set("cursor", pageCursor);
+    params.set("cursor", pageCursor);
     const query = params.toString();
     return `/transactions${query ? `?${query}` : ""}`;
   };
@@ -142,14 +135,14 @@ export default async function TransactionsPage({
         <PageHeader
           eyebrow="記録"
           title="収支"
-          meta={`${transactions.length}件の記録`}
+          meta={`${summary.count}件の記録`}
           className={reveal}
           actions={
             <>
               {/* Route Handler（CSV）へは素の <a> を使う。<Link> だと RSC を
                   プリフェッチしようとして "unexpected response" エラーになる。 */}
               <a
-                href={`/transactions/export?ref=${toISODate(range.start)}`}
+                href={`/transactions/export?ref=${toISODate(range.start)}${filterSuffix}`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 <Download className="size-4" aria-hidden />
@@ -190,7 +183,7 @@ export default async function TransactionsPage({
           className={cn("flex flex-col items-center gap-3", reveal)}
           style={{ animationDelay: "60ms" }}
         >
-          <ViewToggle active="list" currentRef={toISODate(range.start)} />
+          <ViewToggle active="list" currentRef={toISODate(range.start)} filter={filter} />
           <MonthNav
             label={formatPeriodLabel(range)}
             prevHref={prevHref}
@@ -379,30 +372,24 @@ export default async function TransactionsPage({
                 </section>
               );
             })}
-            {transactionPage.previousCursor || transactionPage.nextCursor ? (
-              <nav className="flex items-center justify-center gap-3" aria-label="収支一覧ページ">
-                {transactionPage.previousCursor !== null ? (
-                  <Link
-                    href={pageHref(transactionPage.previousCursor)}
-                    className={buttonVariants({ variant: "outline", size: "sm" })}
-                  >
-                    <ChevronLeft className="size-4" aria-hidden />
-                    前へ
-                  </Link>
-                ) : null}
-                {transactionPage.nextCursor !== null ? (
-                  <Link
-                    href={pageHref(transactionPage.nextCursor)}
-                    className={buttonVariants({ variant: "outline", size: "sm" })}
-                  >
-                    次へ
-                    <ChevronRight className="size-4" aria-hidden />
-                  </Link>
-                ) : null}
-              </nav>
-            ) : null}
           </div>
         )}
+        {transactionPage.previousCursor || transactionPage.nextCursor ? (
+          <nav className="flex items-center justify-center gap-3" aria-label="収支一覧ページ">
+            {transactionPage.previousCursor !== null ? (
+              <Link href={pageHref(transactionPage.previousCursor)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                <ChevronLeft className="size-4" aria-hidden />
+                前へ
+              </Link>
+            ) : null}
+            {transactionPage.nextCursor !== null ? (
+              <Link href={pageHref(transactionPage.nextCursor)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                次へ
+                <ChevronRight className="size-4" aria-hidden />
+              </Link>
+            ) : null}
+          </nav>
+        ) : null}
       </main>
     </TransactionDialogProvider>
   );

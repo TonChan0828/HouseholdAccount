@@ -119,3 +119,7 @@ describe("buildFilterQueryString", () => {
     expect(params.get("max")).toBe("500");
   });
 });
+
+it("金額に安全な整数を超える値を渡した場合は条件へ含めない", () => {
+  expect(parseTransactionFilter({ min: "9007199254740992", max: "9".repeat(400) })).toEqual({});
+});

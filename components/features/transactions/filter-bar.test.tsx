@@ -168,3 +168,12 @@ describe("FilterBar", () => {
     expect(url).toBe("/transactions?ref=2026-07-01");
   });
 });
+
+it("カレンダーの条件変更とクリアはカレンダー内で行う", () => {
+  render(<FilterBar filter={{ type: "expense", memoQuery: "ランチ" }} currentRef="2026-10-01" categories={categories} members={members} basePath="/calendar" />);
+  fireEvent.click(screen.getByRole("button", { name: "収入" }));
+  expect(state.replaceCalls.at(-1)).toContain("/calendar?");
+  expect(lastUrlParams().get("q")).toBe("ランチ");
+  fireEvent.click(screen.getByRole("button", { name: /クリア/ }));
+  expect(state.replaceCalls.at(-1)).toBe("/calendar?ref=2026-10-01");
+});

@@ -8,9 +8,10 @@ import {
 } from "@/lib/household";
 import { logServerError } from "@/lib/observability";
 import { getPeriodRange, toISODate } from "@/lib/period";
+import { parseTransactionFilter, escapeLike } from "@/lib/transaction-filter";
 import { unwrapData } from "@/lib/queries/result";
 import { createClient } from "@/lib/supabase/server";
-import { attributedTo } from "@/lib/transactions/attribution";
+import { attributedTo, attributionOrFilter } from "@/lib/transactions/attribution";
 
 type TransactionRow = {
   id: string;
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
     const range = getPeriodRange(refFromParam(ref), startDay);
     const isoStart = toISODate(range.start);
     const isoEnd = toISODate(range.end);
+    const filter = parseTransactionFilter(Object.fromEntries(request.nextUrl.searchParams));
 
     // 取得上限が設定されていても、実際に受け取った件数から次の範囲を取得する。
     // 正確な総件数と一意な並び順で、途中の欠落・重複を検出する。
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
     const seenIds = new Set<string>();
     let expectedCount: number | null = null;
     do {
-      const transactionResult = await supabase
+      let query = supabase
         .from("transactions")
         .select(
           "id, amount, type, date, memo, created_by, on_behalf_of, category:categories(name)",
@@ -69,8 +71,14 @@ export async function GET(request: NextRequest) {
         )
         .eq("household_id", householdId)
         .gte("date", isoStart)
-        .lt("date", isoEnd)
-        .order("date", { ascending: true })
+        .lt("date", isoEnd);
+      if (filter.type) query = query.eq("type", filter.type);
+      if (filter.categoryId) query = query.eq("category_id", filter.categoryId);
+      if (filter.createdBy) query = query.or(attributionOrFilter(filter.createdBy));
+      if (filter.memoQuery) query = query.ilike("memo", `%${escapeLike(filter.memoQuery)}%`);
+      if (filter.minAmount !== undefined) query = query.gte("amount", filter.minAmount);
+      if (filter.maxAmount !== undefined) query = query.lte("amount", filter.maxAmount);
+      const transactionResult = await query.order("date", { ascending: true })
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })
         .range(transactions.length, transactions.length + 499)

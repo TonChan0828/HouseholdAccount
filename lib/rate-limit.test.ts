@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { logServerError, rpc } = vi.hoisted(() => ({
   logServerError: vi.fn(),
@@ -15,6 +15,8 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { consumeRateLimit } from "./rate-limit";
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("consumeRateLimit", () => {
   beforeEach(() => {
@@ -62,4 +64,19 @@ describe("consumeRateLimit", () => {
       { bucket: "auth.login" },
     );
   });
+});
+
+it("本番の秘密値が未設定・短い場合は制限を無効化せず拒否する", async () => {
+  vi.stubEnv("NODE_ENV", "production");
+  for (const secret of ["", "short"]) {
+    vi.stubEnv("RATE_LIMIT_SECRET", secret);
+    rpc.mockClear();
+    await expect(consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 })).resolves.toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  }
+});
+it("開発時の未設定はログを残して続行する", async () => {
+  vi.stubEnv("NODE_ENV", "development");
+  vi.stubEnv("RATE_LIMIT_SECRET", "");
+  await expect(consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 })).resolves.toBe(true);
 });
