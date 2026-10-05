@@ -123,6 +123,9 @@ test.describe("収支の代理入力（名義人）", () => {
 
     // 名義人は削除もできる
     await memberRow.getByRole("button", { name: "削除" }).click();
+    const deleteDialog = memberPage.getByRole("dialog", { name: "収支を削除しますか？" });
+    await expect(deleteDialog).toContainText(memo);
+    await deleteDialog.getByRole("button", { name: "削除する", exact: true }).click();
     await expect(
       memberPage
         .locator('[data-testid="transaction-row"]')

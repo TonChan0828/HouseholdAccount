@@ -5,13 +5,12 @@ import {
   Download,
   ReceiptText,
   Repeat,
-  Trash2,
   Upload,
 } from "lucide-react";
 
-import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
 import { SummaryCards } from "@/components/features/dashboard/summary-cards";
 import { CategoryBadge } from "@/components/features/transactions/category-badge";
+import { DeleteTransactionButton } from "@/components/features/transactions/delete-transaction-button";
 import { FilterBar } from "@/components/features/transactions/filter-bar";
 import { MonthNav } from "@/components/features/transactions/month-nav";
 import {
@@ -20,7 +19,7 @@ import {
   TransactionDialogProvider,
 } from "@/components/features/transactions/transaction-dialog";
 import { ViewToggle } from "@/components/features/transactions/view-toggle";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Amount } from "@/components/shared/amount";
 import { PageHeader } from "@/components/shared/page-header";
@@ -43,7 +42,6 @@ import { getHouseholdMemberNames } from "@/lib/queries/members";
 import {
   fetchTransactionPage,
   fetchTransactionsInRange,
-  type TransactionRow,
 } from "@/lib/queries/transactions";
 import {
   buildFilterQueryString,
@@ -57,17 +55,7 @@ import {
   proxyLabel,
 } from "@/lib/transactions/attribution";
 import { cn } from "@/lib/utils";
-
-/** 1 日分の収入・支出小計を求める。 */
-function daySums(items: TransactionRow[]) {
-  let income = 0;
-  let expense = 0;
-  for (const t of items) {
-    if (t.type === "income") income += t.amount;
-    else expense += t.amount;
-  }
-  return { income, expense };
-}
+import { calculateDailyTotals } from "@/lib/transactions/daily-totals";
 
 export default async function TransactionsPage({
   searchParams,
@@ -109,6 +97,7 @@ export default async function TransactionsPage({
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + t.amount, 0);
   const groups = groupByDate(transactionPage.items);
+  const dailyTotals = calculateDailyTotals(transactions);
 
   // 前月/翌月リンクにはフィルタ条件を引き継ぐ（期間移動で条件が消えないように）
   const filterQs = buildFilterQueryString(filter);
@@ -265,7 +254,7 @@ export default async function TransactionsPage({
             style={{ animationDelay: "180ms" }}
           >
             {groups.map((group) => {
-              const sums = daySums(group.items);
+              const sums = dailyTotals.get(group.date) ?? { income: 0, expense: 0 };
               return (
                 <section key={group.date} className="space-y-2">
                   {/* 台帳の日付見出し。スクロール時はヘッダー直下に貼り付く。 */}
@@ -274,6 +263,9 @@ export default async function TransactionsPage({
                       {formatDayLabel(group.date)}
                     </span>
                     <span className="flex items-center gap-2 text-[11px] font-medium tabular-nums">
+                      <span className="text-muted-foreground">
+                        {filtering ? "条件内の日計" : "日計"}
+                      </span>
                       {sums.income > 0 ? (
                         <Amount
                           value={sums.income}
@@ -365,22 +357,15 @@ export default async function TransactionsPage({
                                           is_shared: t.is_shared,
                                         }}
                                       />
-                                      <form action={deleteTransaction}>
-                                        <input
-                                          type="hidden"
-                                          name="id"
-                                          value={t.id}
-                                        />
-                                        <Button
-                                          type="submit"
-                                          variant="ghost"
-                                          size="icon"
-                                          aria-label="削除"
-                                          className="size-8 text-muted-foreground hover:text-destructive"
-                                        >
-                                          <Trash2 className="size-4" aria-hidden />
-                                        </Button>
-                                      </form>
+                                      <DeleteTransactionButton
+                                        transaction={{
+                                          id: t.id,
+                                          date: t.date,
+                                          amount: t.amount,
+                                          type: t.type,
+                                          memo: t.memo,
+                                        }}
+                                      />
                                     </div>
                                   ) : null}
                                 </div>

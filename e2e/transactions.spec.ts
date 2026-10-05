@@ -49,8 +49,19 @@ test.describe("収支記録", () => {
       .filter({ hasText: memo });
     await expect(editedRow).toContainText("¥3,500");
 
-    // 削除すると一覧から消える
+    // 確認前とキャンセル後は記録を保持する
     await editedRow.getByRole("button", { name: "削除" }).click();
+    const deleteDialog = page.getByRole("dialog", { name: "収支を削除しますか？" });
+    await expect(deleteDialog).toContainText(memo);
+    await expect(deleteDialog).toContainText("¥3,500");
+    await expect(editedRow).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "キャンセル" }).click();
+    await expect(deleteDialog).toBeHidden();
+    await expect(editedRow).toBeVisible();
+
+    // 確定すると一覧から消える
+    await editedRow.getByRole("button", { name: "削除" }).click();
+    await deleteDialog.getByRole("button", { name: "削除する", exact: true }).click();
     await expect(page).toHaveURL(/\/transactions$/);
     await expect(
       page.locator('[data-testid="transaction-row"]').filter({ hasText: memo }),
