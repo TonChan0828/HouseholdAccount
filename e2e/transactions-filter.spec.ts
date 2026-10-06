@@ -87,11 +87,11 @@ test.describe("収支の検索・絞り込み", () => {
     expect(csv).not.toContain(memoIncome);
 
     // カレンダーへ切り替えて戻っても検索条件と表示対象を維持する
-    await page.getByRole("link", { name: "カレンダー", exact: true }).click();
+    await page.getByRole("main").getByRole("link", { name: "カレンダー", exact: true }).click();
     await expect(page).toHaveURL(/\/calendar\?.*q=/);
     await expect(page.getByText(memoDaily, { exact: true })).toBeVisible();
     await expect(page.getByText(memoFood, { exact: true })).toHaveCount(0);
-    await page.getByRole("link", { name: "リスト", exact: true }).click();
+    await page.getByRole("main").getByRole("link", { name: "リスト", exact: true }).click();
     await expect(page).toHaveURL(/\/transactions\?.*q=/);
     await expect(rowBy(memoDaily)).toBeVisible();
     await expect(rowBy(memoFood)).toHaveCount(0);
