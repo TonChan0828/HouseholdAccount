@@ -35,7 +35,8 @@ test.describe("カレンダービュー", () => {
 
     // 初期選択（今日）の明細に登録した収支が表示される
     await expect(page.getByText(memo)).toBeVisible();
-    await expect(page.getByText("食費").first()).toBeVisible();
+    const detailRow = page.getByRole("main").getByRole("listitem").filter({ hasText: memo });
+    await expect(detailRow.getByText("食費", { exact: true })).toBeVisible();
 
     // 翌月へ移動すると ?ref= が付き、当該月初には収支が無いため空状態になる
     await page.getByRole("link", { name: "次の期間" }).click();
