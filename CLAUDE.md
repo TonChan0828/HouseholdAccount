@@ -214,7 +214,7 @@ E2E は「仕様 → ユーザーストーリー → それを検証する E2E�
 - 認証チェックは `proxy.ts`（ルート直下。セッション更新は `lib/supabase/middleware.ts#updateSession`）で一括管理し、`(auth)` グループは除外する
 - Server Actions 優先。`/api` Route Handler は外部連携が必要な場合のみ使う
 - shadcn/ui は `npx shadcn@latest add` で追加し、`components/ui/` を直接編集しない
-- DB スキーマ変更は `supabase/migrations/` でマイグレーション管理する
+- DB スキーマ変更は `supabase/migrations/` でマイグレーション管理する。本番適用は手動（`supabase db push --linked`）のため、マイグレーションを含む PR はマージ前に本番へ適用する（CI の Migration Drift ワークフローが未適用を検知する）
 - 定期収支は Vercel Cron → `/api/cron/recurring` → service-role 専用 RPC で毎日生成する。Server Component の描画中に更新しない
 - `SUPABASE_SERVICE_ROLE_KEY` は `lib/supabase/admin.ts` 以外のアプリコードから使わず、ブラウザへ公開しない
 
