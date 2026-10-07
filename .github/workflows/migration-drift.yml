@@ -1,0 +1,41 @@
+name: Migration Drift
+
+# main への push で Vercel は自動デプロイされるが、本番DBのマイグレーションは手動適用。
+# リポジトリと本番DBの適用状況がずれていないかを PR・main・毎日の定期実行で検知する。
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * *" # 09:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: bkljkdkldaiemwpnjuks
+    steps:
+      - name: Require Supabase access token
+        if: env.SUPABASE_ACCESS_TOKEN == ''
+        run: |
+          echo "::error title=Missing secret::SUPABASE_ACCESS_TOKEN is not set. Add a Supabase personal access token to the repository secrets."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+      - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Compare local and production migrations
+        run: supabase migration list --linked | node scripts/check-migration-drift.mjs
