@@ -1,5 +1,5 @@
 // 固定コードのみを実行し、入力バイト列はworkerDataで渡す。
-// require.resolveは呼び出し側に置き、Next.jsの配布物にも依存を含める。
+// Node.jsで解決した実パスを呼び出し側から受け取り、バンドラー内部の識別子を使わない。
 export const WORKBOOK_WORKER_SOURCE = String.raw`
 const { parentPort, workerData } = require('node:worker_threads');
 const { StringDecoder } = require('node:string_decoder');
