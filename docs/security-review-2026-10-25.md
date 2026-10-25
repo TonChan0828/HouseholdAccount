@@ -24,6 +24,12 @@
 - 本番ビルドは `npm run build -- --webpack` で成功しました。Excel解析スレッドが必要とする依存パッケージが、配布物の追跡対象に含まれることも確認しました。
 - 標準の `npm run build` は、Turbopackの内部処理がこの実行環境でポートを開けず停止しました。Webpackでの成功は、標準のTurbopackビルドが成功したという意味ではありません。
 
+### Playwright CIで判明したTurbopack互換性の修正
+
+PR #106の初回Playwright CIでは、正常なExcel取り込みの2テストが失敗しました。Turbopackが `require.resolve()` を内部用のモジュール識別子に置き換え、Node.jsの別スレッドがその識別子を読み込めなかったことが原因です。Next.jsだけを使う最小再現環境で、同じ `MODULE_NOT_FOUND` を確認しました。
+
+実ファイルの追跡用の静的な参照を残しつつ、内部識別子の場合はNode.jsの実行時のモジュール解決で実パスを取得するよう修正しました。Turbopackで正常なExcelの読み込みと過大なExcelの拒否を確認しました。4パッケージの実パス解決の回帰テストを追加し、関連する47テストと静的検査・型検査が成功しています。[根拠：モジュール解決](../lib/import/parse-workbook.ts)、[根拠：回帰テスト](../lib/import/parse-workbook.test.ts)
+
 ## 本番反映の手順と運用上の注意
 
 1. バックアップと検証環境での確認後、[0033の追加SQL](../supabase/migrations/20261025120000_0033_secure_settlement_creation.sql)を先に適用し、`create_settlement(uuid,date)` を利用できる状態にします。このSQLは再実行できる定義です。

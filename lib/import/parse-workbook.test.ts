@@ -1,7 +1,8 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { expect, it } from "vitest";
-import { parseWorkbook, WORKBOOK_LIMITS } from "./parse-workbook";
+import { isAbsolute } from "node:path";
+import { parseWorkbook, resolveWorkbookModule, WORKBOOK_LIMITS } from "./parse-workbook";
 
 async function workbook(item = "食費") {
   const wb = new ExcelJS.Workbook();
@@ -16,6 +17,12 @@ async function alter(edit: (zip: JSZip) => Promise<void> | void) {
   await edit(zip);
   return zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
 }
+
+it.each(["exceljs", "yauzl", "saxes", "jszip"])("Turbopackの内部識別子ではなく%sの実パスをスレッドへ渡す", (name) => {
+  const resolved = resolveWorkbookModule(name, "[externals]/" + name + " [external]");
+  expect(isAbsolute(resolved)).toBe(true);
+  expect(resolved).toBe(require.resolve(name));
+});
 
 it("通常のブックと文字数上限ちょうどのセルを読み込める", async () => {
   expect((await parseWorkbook(await workbook()))[0].rows[0]).toMatchObject({ item: "食費", amount: 100 });
