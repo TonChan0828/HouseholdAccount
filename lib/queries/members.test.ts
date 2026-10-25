@@ -32,13 +32,14 @@ vi.mock("@/lib/supabase/server", () => ({
             error: state.profileError,
           });
         },
-        order: () =>
+        order: () => query,
+        then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
           Promise.resolve({
             data: state.members
               .filter((m) => m.household_id === filters.eq?.[1])
               .sort((a, b) => a.joined_at.localeCompare(b.joined_at)),
             error: state.memberError,
-          }),
+          }).then(resolve, reject),
       };
       return query;
     },

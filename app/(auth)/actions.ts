@@ -6,7 +6,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/observability";
 import { throwIfError } from "@/lib/queries/result";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import {
+  consumeRateLimit,
+  RATE_LIMIT_UNAVAILABLE_MESSAGE,
+} from "@/lib/rate-limit";
 import { safeNextPath } from "@/lib/route-access";
 import {
   loginSchema,
@@ -50,15 +53,18 @@ export async function signIn(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  if (
-    !(await consumeRateLimit({
-      bucket: "auth.login",
-      subject: parsed.data.email,
-      limit: 10,
-      windowSeconds: 15 * 60,
-    }))
-  ) {
-    return { error: "試行回数が多すぎます。しばらく待ってからお試しください" };
+  const rateLimit = await consumeRateLimit({
+    bucket: "auth.login",
+    subject: parsed.data.email,
+    limit: 10,
+    windowSeconds: 15 * 60,
+  });
+  if (rateLimit !== "allowed") {
+    return {
+      error: rateLimit === "unavailable"
+        ? RATE_LIMIT_UNAVAILABLE_MESSAGE
+        : "試行回数が多すぎます。しばらく待ってからお試しください",
+    };
   }
 
   const supabase = await createClient();
@@ -88,15 +94,18 @@ export async function signUp(
     return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
   }
 
-  if (
-    !(await consumeRateLimit({
-      bucket: "auth.signup",
-      subject: parsed.data.email,
-      limit: 5,
-      windowSeconds: 60 * 60,
-    }))
-  ) {
-    return { error: "試行回数が多すぎます。しばらく待ってからお試しください" };
+  const rateLimit = await consumeRateLimit({
+    bucket: "auth.signup",
+    subject: parsed.data.email,
+    limit: 5,
+    windowSeconds: 60 * 60,
+  });
+  if (rateLimit !== "allowed") {
+    return {
+      error: rateLimit === "unavailable"
+        ? RATE_LIMIT_UNAVAILABLE_MESSAGE
+        : "試行回数が多すぎます。しばらく待ってからお試しください",
+    };
   }
 
   const origin = await resolveOrigin();
@@ -141,12 +150,12 @@ export async function resendConfirmation(
   }
 
   if (
-    !(await consumeRateLimit({
+    (await consumeRateLimit({
       bucket: "auth.confirmation_resend",
       subject: parsed.data.email,
       limit: 5,
       windowSeconds: 60 * 60,
-    }))
+    })) !== "allowed"
   ) {
     return { success: true };
   }
@@ -191,12 +200,12 @@ export async function requestPasswordReset(
   }
 
   if (
-    !(await consumeRateLimit({
+    (await consumeRateLimit({
       bucket: "auth.password_reset",
       subject: parsed.data.email,
       limit: 5,
       windowSeconds: 60 * 60,
-    }))
+    })) !== "allowed"
   ) {
     return { success: true };
   }

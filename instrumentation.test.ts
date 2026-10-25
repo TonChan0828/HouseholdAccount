@@ -1,8 +1,19 @@
 import { afterEach, expect, it, vi } from "vitest";
 const { log } = vi.hoisted(() => ({ log: vi.fn() }));
 vi.mock("@/lib/observability", () => ({ logServerError: log }));
-import { register } from "./instrumentation";
+import { register, onRequestError } from "./instrumentation";
 afterEach(() => { vi.unstubAllEnvs(); log.mockClear(); });
+it("招待画面の例外でもトークンを記録しない", () => {
+  onRequestError(new Error("sensitive"), {
+    method: "GET", path: "/invite/private-token?key=private-token", headers: {},
+  }, {
+    routerKind: "App Router", routePath: "/invite/[token]", routeType: "render",
+    renderSource: "react-server-components", revalidateReason: undefined,
+  });
+  expect(JSON.stringify(log.mock.calls)).not.toContain("private-token");
+  expect(log).toHaveBeenCalledWith("next.request.error", expect.any(Error),
+    expect.objectContaining({ path: "/invite/[token]" }));
+});
 it("本番起動で秘密値不足を検知し、その値をログへ出さない", async () => {
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("NEXT_RUNTIME", "nodejs");

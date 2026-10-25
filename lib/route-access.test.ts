@@ -54,6 +54,9 @@ describe("isPublicPath", () => {
 });
 
 describe("safeNextPath", () => {
+  it.each(["/\t/example.invalid", "/\n/example.invalid", "/\r/example.invalid", "/a\\b", "/a\u0000b", "/a/..//example.invalid"])("正規化で外部誘導になる入力を拒否する: %j", (value) => {
+    expect(safeNextPath(value, "/households")).toBe("/households");
+  });
   it("単一スラッシュ始まりの相対パスはそのまま許可する", () => {
     expect(safeNextPath("/reset-password")).toBe("/reset-password");
     expect(safeNextPath("/households")).toBe("/households");

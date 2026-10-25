@@ -42,8 +42,17 @@ export function safeNextPath(
     return fallback;
   }
   // 単一スラッシュ始まりのみ許可。`//`（プロトコル相対）と `/\`（バックスラッシュ）は外部誘導になりうるため拒否。
-  if (next[0] !== "/" || next[1] === "/" || next[1] === "\\") {
+  if (next[0] !== "/" || /[\x00-\x20\x7f\\]/.test(next)) {
     return fallback;
   }
-  return next;
+  try {
+    const base = new URL("https://internal.invalid");
+    const target = new URL(next, base);
+    if (target.origin !== base.origin) return fallback;
+    // 正規化で先頭に // が現れるパスも、次の解釈で外部URLになるため拒否する。
+    if (target.pathname.startsWith("//")) return fallback;
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return fallback;
+  }
 }

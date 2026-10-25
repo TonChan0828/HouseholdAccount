@@ -34,7 +34,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
-  consumeRateLimit: async () => true,
+  consumeRateLimit: async () => "allowed",
+  RATE_LIMIT_UNAVAILABLE_MESSAGE: "一時的に利用できません",
 }));
 
 vi.mock("@/lib/supabase/server", () => ({

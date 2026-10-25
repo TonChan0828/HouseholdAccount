@@ -12,6 +12,7 @@ import {
 } from "@/lib/import/excel";
 import { parseWorkbook } from "@/lib/import/parse-workbook";
 import { requireDashboardContext } from "@/lib/household";
+import { consumeRateLimit, RATE_LIMIT_UNAVAILABLE_MESSAGE } from "@/lib/rate-limit";
 
 /** 取り込みの上限行数（過大ファイル対策）。 */
 const MAX_ROWS = 500;
@@ -41,7 +42,7 @@ export async function parseImportFile(
   _prev: ImportPreviewState,
   formData: FormData,
 ): Promise<ImportPreviewState> {
-  await requireDashboardContext();
+  const { user } = await requireDashboardContext();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -52,6 +53,15 @@ export async function parseImportFile(
   }
   if (!file.name.toLowerCase().endsWith(".xlsx")) {
     return { ok: false, error: "Excel ファイル（.xlsx）を選択してください" };
+  }
+
+  const rateLimit = await consumeRateLimit({
+    bucket: "import.parse", subject: user.id, limit: 5,
+    windowSeconds: 10 * 60, includeIp: false,
+  });
+  if (rateLimit !== "allowed") {
+    return { ok: false, error: rateLimit === "unavailable"
+      ? RATE_LIMIT_UNAVAILABLE_MESSAGE : "取り込み回数が多すぎます。しばらくお待ちください" };
   }
 
   let sheets: SheetPreview[];

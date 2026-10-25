@@ -1,6 +1,7 @@
 import type { Instrumentation } from "next";
 
 import { logServerError } from "@/lib/observability";
+import { safeLogLocation } from "@/lib/log-location";
 
 /** Next.js が捕捉した未処理のサーバー障害を、外部サービス不要の構造化ログへ送る。 */
 export const onRequestError: Instrumentation.onRequestError = (
@@ -10,7 +11,7 @@ export const onRequestError: Instrumentation.onRequestError = (
 ) => {
   logServerError("next.request.error", error, {
     method: request.method,
-    path: request.path.split("?", 1)[0],
+    path: safeLogLocation(request.path),
     routePath: context.routePath,
     routeType: context.routeType,
   });
