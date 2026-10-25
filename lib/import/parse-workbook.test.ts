@@ -23,6 +23,11 @@ it.each(["exceljs", "yauzl", "saxes", "jszip"])("Turbopackの内部識別子で�
   expect(isAbsolute(resolved)).toBe(true);
   expect(resolved).toBe(require.resolve(name));
 });
+it.each(["exceljs", "yauzl", "saxes", "jszip"])("本番ビルドの数値IDではなく%sの実パスをスレッドへ渡す", (name) => {
+  const resolved = resolveWorkbookModule(name, 6928);
+  expect(isAbsolute(resolved)).toBe(true);
+  expect(resolved).toBe(require.resolve(name));
+});
 
 it("通常のブックと文字数上限ちょうどのセルを読み込める", async () => {
   expect((await parseWorkbook(await workbook()))[0].rows[0]).toMatchObject({ item: "食費", amount: 100 });
