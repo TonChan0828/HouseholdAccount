@@ -10,8 +10,9 @@ import { WORKBOOK_WORKER_SOURCE } from "./workbook-worker-source";
 // Turbopackの内部識別子はNode.jsの実行時の解決結果へ置き換える。
 const runtimeRequire = createRequire(import.meta.url);
 
-export function resolveWorkbookModule(name: string, bundledPath: string): string {
-  if (isAbsolute(bundledPath)) return bundledPath;
+export function resolveWorkbookModule(name: string, bundledPath: unknown): string {
+  // 開発時の識別子は文字列、本番ビルドでは数値になる場合がある。
+  if (typeof bundledPath === "string" && isAbsolute(bundledPath)) return bundledPath;
   // createRequire().resolve("literal")もTurbopackが書き換えるため、
   // 関数として呼び出し、Node.jsのモジュール解決を実行時まで保持する。
   return Reflect.apply(runtimeRequire.resolve, runtimeRequire, [name]);
