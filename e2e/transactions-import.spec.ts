@@ -58,6 +58,19 @@ async function buildMultiSheetXlsx(): Promise<string> {
 }
 
 test.describe("Excel取り込み", () => {
+  test("過大展開するExcelを拒否し、その後も通常の画面を利用できる", async ({ page }) => {
+    await createHousehold(page, ephemeralName("展開制限"));
+    const wb = new ExcelJS.Workbook();
+    const ws = addBudgetSheet(wb, "2026年10月", 100, 100);
+    ws.getCell("B14").value = "x".repeat(8 * 1024 * 1024);
+    const path = await writeXlsx(wb, "oversized.xlsx");
+    await page.goto("/transactions/import");
+    await page.getByLabel("Excel ファイル（.xlsx）").setInputFiles(path);
+    await page.getByRole("button", { name: "ファイルを読み込む" }).click();
+    await expect(page.getByText("ファイルを読み込めませんでした。形式を確認してください")).toBeVisible();
+    await page.goto("/transactions");
+    await expect(page.getByRole("heading", { name: "収支", exact: true })).toBeVisible();
+  });
   test("Excelをアップロード→プレビュー→確定で収支に反映される", async ({
     page,
   }) => {

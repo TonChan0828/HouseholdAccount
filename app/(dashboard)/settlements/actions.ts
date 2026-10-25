@@ -2,16 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  getHouseholdSettings,
-  requireDashboardContext,
-} from "@/lib/household";
-import { getPeriodRange, refFromParam, toISODate } from "@/lib/period";
-import { getHouseholdMemberNames } from "@/lib/queries/members";
+import { requireDashboardContext } from "@/lib/household";
+import { refFromParam, toISODate } from "@/lib/period";
 import { throwIfError } from "@/lib/queries/result";
-import { fetchTransactionsInRange } from "@/lib/queries/transactions";
-import { buildSettlement } from "@/lib/settlement";
-import type { Json } from "@/types/database";
 
 export type SettlementActionState = { error: string } | undefined;
 
@@ -24,38 +17,20 @@ export async function createSettlement(
   formData: FormData,
 ): Promise<SettlementActionState> {
   const ref = String(formData.get("ref") ?? "");
-
-  const { user, householdId, supabase } = await requireDashboardContext();
-  const { periodStartDay } = await getHouseholdSettings(householdId);
-  const range = getPeriodRange(refFromParam(ref || undefined), periodStartDay);
-
-  const [txs, members] = await Promise.all([
-    fetchTransactionsInRange(supabase, householdId, range),
-    getHouseholdMemberNames(householdId),
-  ]);
-
-  if (members.length < 2) {
-    return { error: "精算にはメンバーが2人以上必要です" };
-  }
-
-  const result = buildSettlement(txs, members);
-  if (result.total === 0) {
-    return { error: "この期間に精算対象の支出はありません" };
-  }
-
-  const { error } = await supabase.from("settlements").insert({
-    household_id: householdId,
-    period_start: toISODate(range.start),
-    settled_by: user.id,
-    snapshot: result as unknown as Json,
+  const { householdId, supabase } = await requireDashboardContext();
+  const reference = refFromParam(ref || undefined);
+  if (!Number.isFinite(reference.getTime())) return { error: "対象期間が不正です" };
+  const { data, error } = await supabase.rpc("create_settlement", {
+    _household_id: householdId,
+    _ref: toISODate(reference),
   });
-
   if (error) {
-    if (error.code === "23505") {
-      return { error: "すでに精算済みです" };
-    }
+    if (error.code === "23505") return { error: "すでに精算済みです" };
+    if (error.message === "settlement_members_required") return { error: "精算にはメンバーが2人以上必要です" };
+    if (error.message === "settlement_no_expenses") return { error: "この期間に精算対象の支出はありません" };
     return { error: "精算の記録に失敗しました" };
   }
+  if (typeof data !== "string") return { error: "精算の記録に失敗しました" };
 
   revalidatePath("/settlements");
   return undefined;

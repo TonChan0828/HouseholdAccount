@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { logServerError, rpc } = vi.hoisted(() => ({
+const { logServerError, rpc, address } = vi.hoisted(() => ({
   logServerError: vi.fn(),
   rpc: vi.fn(),
+  address: { value: "203.0.113.10" },
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ "x-real-ip": "203.0.113.10" }),
+  headers: async () => new Headers({ "x-real-ip": address.value }),
 }));
 vi.mock("@/lib/observability", () => ({ logServerError }));
 vi.mock("@/lib/supabase/admin", () => ({
@@ -23,6 +24,22 @@ describe("consumeRateLimit", () => {
     vi.stubEnv("RATE_LIMIT_SECRET", "test-only-secret");
     rpc.mockReset();
     logServerError.mockReset();
+    address.value = "203.0.113.10";
+  });
+
+  it("IPを変更しても認証のアカウント制限キーを変えない", async () => {
+    rpc.mockResolvedValue({ data: true, error: null });
+    const options = { bucket: "auth.login", subject: "USER@example.com", limit: 10, windowSeconds: 900 };
+    expect(await consumeRateLimit(options)).toBe("allowed");
+    address.value = "203.0.113.99";
+    await consumeRateLimit({ ...options, subject: "user@example.com" });
+    expect(rpc.mock.calls[0][1]._key_hash).toBe(rpc.mock.calls[1][1]._key_hash);
+  });
+
+  it.each([null, 1, "true"])("不正な判定応答 %j を障害として拒否する", async (data) => {
+    rpc.mockResolvedValue({ data, error: null });
+    expect(await consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 }))
+      .toBe("unavailable");
   });
 
   it("生の識別子を送らず RPC の判定を返す", async () => {
@@ -35,7 +52,7 @@ describe("consumeRateLimit", () => {
         limit: 10,
         windowSeconds: 900,
       }),
-    ).resolves.toBe(false);
+    ).resolves.toBe("limited");
 
     expect(rpc).toHaveBeenCalledWith("consume_rate_limit", {
       _bucket: "auth.login",
@@ -47,7 +64,7 @@ describe("consumeRateLimit", () => {
     expect(JSON.stringify(rpc.mock.calls)).not.toContain("203.0.113.10");
   });
 
-  it("DB 障害時は処理を継続し、安全なログを残す", async () => {
+  it("DB 障害時は拒否し、安全なログを残す", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "sensitive" } });
 
     await expect(
@@ -57,7 +74,7 @@ describe("consumeRateLimit", () => {
         limit: 10,
         windowSeconds: 900,
       }),
-    ).resolves.toBe(true);
+    ).resolves.toBe("unavailable");
     expect(logServerError).toHaveBeenCalledWith(
       "rate_limit.consume_failed",
       expect.anything(),
@@ -71,12 +88,12 @@ it("本番の秘密値が未設定・短い場合は制限を無効化せず拒�
   for (const secret of ["", "short"]) {
     vi.stubEnv("RATE_LIMIT_SECRET", secret);
     rpc.mockClear();
-    await expect(consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 })).resolves.toBe(false);
+    await expect(consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 })).resolves.toBe("unavailable");
     expect(rpc).not.toHaveBeenCalled();
   }
 });
 it("開発時の未設定はログを残して続行する", async () => {
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("RATE_LIMIT_SECRET", "");
-  await expect(consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 })).resolves.toBe(true);
+  await expect(consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 })).resolves.toBe("allowed");
 });

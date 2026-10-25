@@ -12,6 +12,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["exceljs", "yauzl", "saxes", "jszip"],
   experimental: {
     // バレル import のツリーシェイクを強化し、初期 JS を削減する。
     optimizePackageImports: ["recharts", "lucide-react"],

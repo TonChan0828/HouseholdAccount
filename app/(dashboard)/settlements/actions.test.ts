@@ -1,166 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { createSettlement, deleteSettlement } from "./actions";
 
-type QueryCall = {
-  table: string;
-  method: string;
-  values?: unknown;
-  filters: Record<string, string>;
-};
-
 const state = vi.hoisted(() => ({
-  householdId: null as string | null,
-  members: [] as { user_id: string; display_name: string }[],
-  txs: [] as unknown[],
-  insertError: null as { code?: string; message: string } | null,
-  calls: [] as QueryCall[],
+  householdId: "h-1" as string | null,
+  rpc: vi.fn(),
+  deleteFilters: {} as Record<string, string>,
 }));
-
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-
 vi.mock("@/lib/household", () => ({
   requireDashboardContext: async () => {
-    if (!state.householdId) {
-      throw new Error("NEXT_REDIRECT:/households");
-    }
-    const { createClient } = await import("@/lib/supabase/server");
-    return {
-      user: { id: "u-1" },
-      householdId: state.householdId,
-      supabase: await createClient(),
+    if (!state.householdId) throw new Error("NEXT_REDIRECT:/households");
+    const query = {
+      delete: () => query,
+      eq: (key: string, value: string) => { state.deleteFilters[key] = value; return query; },
+      then: (resolve: (value: unknown) => unknown) => Promise.resolve({ error: null }).then(resolve),
     };
+    return { householdId: state.householdId, supabase: { rpc: state.rpc, from: () => query } };
   },
-  getHouseholdSettings: async () => ({ periodStartDay: 1 }),
 }));
-
-vi.mock("@/lib/queries/members", () => ({
-  getHouseholdMemberNames: async () => state.members,
-}));
-
-vi.mock("@/lib/queries/transactions", () => ({
-  fetchTransactionsInRange: async () => state.txs,
-}));
-
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    from: (table: string) => {
-      const call: QueryCall = { table, method: "", filters: {} };
-      state.calls.push(call);
-      const query = {
-        insert(values: unknown) {
-          call.method = "insert";
-          call.values = values;
-          return Promise.resolve({ error: state.insertError });
-        },
-        delete() {
-          call.method = "delete";
-          return query;
-        },
-        eq(column: string, value: string) {
-          call.filters[column] = value;
-          return query;
-        },
-        then(
-          onFulfilled: (value: unknown) => unknown,
-          onRejected?: (reason: unknown) => unknown,
-        ) {
-          return Promise.resolve({ error: null }).then(onFulfilled, onRejected);
-        },
-      };
-      return query;
-    },
-  }),
-}));
-
-function settleFormData(ref = "2026-07-01") {
-  const formData = new FormData();
-  formData.set("ref", ref);
-  return formData;
-}
-
 beforeEach(() => {
   state.householdId = "h-1";
-  state.members = [
-    { user_id: "u-1", display_name: "太郎" },
-    { user_id: "u-2", display_name: "花子" },
-  ];
-  state.txs = [
-    { amount: 3000, type: "expense", created_by: "u-1", is_shared: true },
-    { amount: 1000, type: "expense", created_by: "u-2", is_shared: true },
-  ];
-  state.insertError = null;
-  state.calls = [];
+  state.rpc.mockReset().mockResolvedValue({ data: "settlement-id", error: null });
+  state.deleteFilters = {};
 });
+function form(ref = "2026-07-01") { const f = new FormData(); f.set("ref", ref); return f; }
 
 describe("createSettlement", () => {
-  it("再計算した snapshot を household・period_start・settled_by とともに insert する", async () => {
-    const result = await createSettlement(undefined, settleFormData());
-
-    expect(result).toBeUndefined();
-    const insert = state.calls.find((c) => c.method === "insert");
-    expect(insert?.table).toBe("settlements");
-    expect(insert?.values).toMatchObject({
-      household_id: "h-1",
-      period_start: "2026-07-01",
-      settled_by: "u-1",
-    });
-    const snapshot = (insert?.values as { snapshot: { total: number } })
-      .snapshot;
-    expect(snapshot.total).toBe(4000);
+  it("対象グループと日付だけを送り、計算結果や操作者を入力から受け取らない", async () => {
+    const f = form(); f.set("snapshot", '{"total":1}'); f.set("settled_by", "other");
+    expect(await createSettlement(undefined, f)).toBeUndefined();
+    expect(state.rpc).toHaveBeenCalledExactlyOnceWith("create_settlement", { _household_id: "h-1", _ref: "2026-07-01" });
   });
-
-  it("unique 違反（23505）は「すでに精算済みです」を返す", async () => {
-    state.insertError = { code: "23505", message: "duplicate" };
-
-    const result = await createSettlement(undefined, settleFormData());
-
-    expect(result?.error).toBe("すでに精算済みです");
+  it.each([
+    ["23505", "duplicate", "すでに精算済みです"],
+    ["P0001", "settlement_members_required", "精算にはメンバーが2人以上必要です"],
+    ["P0001", "settlement_no_expenses", "この期間に精算対象の支出はありません"],
+    ["42501", "private details", "精算の記録に失敗しました"],
+  ])("DBの失敗を安全なエラーに変換する: %s %s", async (code, message, expected) => {
+    state.rpc.mockResolvedValue({ data: null, error: { code, message } });
+    expect(await createSettlement(undefined, form())).toEqual({ error: expected });
   });
-
-  it("メンバーが1人ならエラーを返し insert しない", async () => {
-    state.members = [{ user_id: "u-1", display_name: "太郎" }];
-
-    const result = await createSettlement(undefined, settleFormData());
-
-    expect(result?.error).toBeTruthy();
-    expect(state.calls.find((c) => c.method === "insert")).toBeUndefined();
-  });
-
-  it("精算対象の支出が0件ならエラーを返し insert しない", async () => {
-    state.txs = [];
-
-    const result = await createSettlement(undefined, settleFormData());
-
-    expect(result?.error).toBe("この期間に精算対象の支出はありません");
-    expect(state.calls.find((c) => c.method === "insert")).toBeUndefined();
-  });
-
-  it("グループ未選択の場合は /households にリダイレクトする", async () => {
+  it("グループ未選択では呼び出さない", async () => {
     state.householdId = null;
-
-    await expect(
-      createSettlement(undefined, settleFormData()),
-    ).rejects.toThrow("NEXT_REDIRECT:/households");
-    expect(state.calls).toHaveLength(0);
+    await expect(createSettlement(undefined, form())).rejects.toThrow("NEXT_REDIRECT:/households");
+    expect(state.rpc).not.toHaveBeenCalled();
+  });
+  it("存在しない月を拒否する", async () => {
+    expect(await createSettlement(undefined, form("2026-99-01"))).toEqual({ error: "対象期間が不正です" });
+    expect(state.rpc).not.toHaveBeenCalled();
   });
 });
-
 describe("deleteSettlement", () => {
-  it("id と household_id でスコープして削除する", async () => {
-    const formData = new FormData();
-    formData.set("id", "s-1");
-
-    await deleteSettlement(formData);
-
-    const del = state.calls.find((c) => c.method === "delete");
-    expect(del?.table).toBe("settlements");
-    expect(del?.filters).toEqual({ id: "s-1", household_id: "h-1" });
+  it("idと現在のグループで削除を絞る", async () => {
+    const f = new FormData(); f.set("id", "s-1");
+    await deleteSettlement(f);
+    expect(state.deleteFilters).toEqual({ id: "s-1", household_id: "h-1" });
   });
-
-  it("id が無ければ何もしない", async () => {
+  it("idがなければ削除しない", async () => {
     await deleteSettlement(new FormData());
-
-    expect(state.calls).toHaveLength(0);
+    expect(state.deleteFilters).toEqual({});
   });
 });

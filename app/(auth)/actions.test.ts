@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resendConfirmation, signIn, signOut, signUp } from "./actions";
 
 const state = vi.hoisted(() => ({
+  rateLimit: "allowed" as "allowed" | "limited" | "unavailable",
   signUpError: null as { message: string } | null,
   signUpArgs: null as unknown,
   signInArgs: null as unknown,
@@ -42,7 +43,8 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 vi.mock("@/lib/rate-limit", () => ({
-  consumeRateLimit: async () => true,
+  consumeRateLimit: async () => state.rateLimit,
+  RATE_LIMIT_UNAVAILABLE_MESSAGE: "一時的に利用できません",
 }));
 
 function formDataWith(entries: Record<string, string>) {
@@ -56,10 +58,25 @@ function formDataWith(entries: Record<string, string>) {
 const validForm = { email: "new@example.com", password: "Password1!" };
 
 beforeEach(() => {
+  state.rateLimit = "allowed";
   state.signUpError = null;
   state.signUpArgs = null;
   state.signInArgs = null;
   state.resendArgs = null;
+});
+
+it("制限基盤の障害時は認証処理を実行しない", async () => {
+  state.rateLimit = "unavailable";
+  expect(await signIn(undefined, formDataWith(validForm))).toEqual({ error: "一時的に利用できません" });
+  expect(await signUp(undefined, formDataWith(validForm))).toEqual({ error: "一時的に利用できません" });
+  expect(state.signInArgs).toBeNull();
+  expect(state.signUpArgs).toBeNull();
+});
+
+it("制限基盤の障害時も確認メールの再送では存在を明かさない", async () => {
+  state.rateLimit = "unavailable";
+  expect(await resendConfirmation(undefined, formDataWith({ email: validForm.email }))).toEqual({ success: true });
+  expect(state.resendArgs).toBeNull();
 });
 
 describe("signIn", () => {

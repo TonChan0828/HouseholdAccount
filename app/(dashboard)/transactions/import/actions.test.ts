@@ -5,6 +5,7 @@ import { confirmImport, parseImportFile } from "./actions";
 const state = vi.hoisted(() => ({
   parseWorkbookCalls: 0,
   rpc: vi.fn(),
+  rateLimit: "allowed" as "allowed" | "limited" | "unavailable",
 }));
 
 vi.mock("@/lib/household", () => ({
@@ -13,6 +14,11 @@ vi.mock("@/lib/household", () => ({
     householdId: "h-1",
     supabase: { rpc: (...args: unknown[]) => state.rpc(...args) },
   }),
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  consumeRateLimit: async () => state.rateLimit,
+  RATE_LIMIT_UNAVAILABLE_MESSAGE: "一時的に利用できません",
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -44,12 +50,18 @@ function formDataWithFile(file: File): FormData {
 }
 
 beforeEach(() => {
+  state.rateLimit = "allowed";
   state.parseWorkbookCalls = 0;
   state.rpc.mockReset();
   state.rpc.mockResolvedValue({ data: 1, error: null });
 });
 
 describe("parseImportFile", () => {
+  it.each(["limited", "unavailable"] as const)("制限の判定が%sなら解析しない", async (status) => {
+    state.rateLimit = status;
+    expect(await parseImportFile(undefined, formDataWithFile(fileOfSize(100)))).toMatchObject({ ok: false });
+    expect(state.parseWorkbookCalls).toBe(0);
+  });
   it("ファイルサイズが上限（5MB）を超える場合はエラーを返し parseWorkbook を呼ばない", async () => {
     const result = await parseImportFile(
       undefined,

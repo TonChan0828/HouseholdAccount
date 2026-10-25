@@ -3,6 +3,18 @@ import { expect, test } from "@playwright/test";
 import { E2E_USER } from "./constants";
 
 test.describe("認証ルーティング", () => {
+  test("制御文字を含む移動先でログインしても外部へ誘導されない", async ({ page }) => {
+    const external: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).hostname === "example.invalid") external.push(request.url());
+    });
+    await page.goto("/login?next=/%09/example.invalid");
+    await page.getByLabel("メールアドレス").fill(E2E_USER.email);
+    await page.getByLabel("パスワード").fill(E2E_USER.password);
+    await page.getByRole("button", { name: "ログイン", exact: true }).click();
+    await expect(page).toHaveURL(/\/households$/);
+    expect(external).toEqual([]);
+  });
   test("未認証でダッシュボードにアクセスするとログインへリダイレクトされる", async ({
     page,
   }) => {

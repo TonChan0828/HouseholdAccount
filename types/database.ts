@@ -468,6 +468,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_settlement: {
+        Args: { _household_id: string; _ref: string }
+        Returns: string
+      }
       delete_own_account: { Args: never; Returns: undefined }
       generate_due_recurring: { Args: { _household_id: string }; Returns: number }
       generate_all_due_recurring: {
