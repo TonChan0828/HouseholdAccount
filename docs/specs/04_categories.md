@@ -50,7 +50,11 @@
 
 - 名前が空・50字超ならエラーメッセージを表示して送信しない
 - 同じグループ・種別内では、前後空白と大文字小文字を無視した同名カテゴリを登録できない（DBでも検証）
-- 削除はカスタムのみ。`confirm()` で「紐づく取引は未分類になります。削除しますか？」を確認してから実行
+- 削除はカスタムのみ。確認ダイアログ「カテゴリを削除しますか？」（説明: このカテゴリを使用している収支は「未選択」に変更されます。）で「削除する」を押すと実行し、「キャンセル」では何もしない
+- 削除の成否は Server Action が実際に削除した行（`.select("id")`）で判定する。PostgREST の DELETE は 0 件でもエラーを返さないため、0 件（既に削除済み・デフォルト・他グループ）は失敗として扱う
+  - 成功: 全画面を再検証して `/categories?deleted=1` へ遷移し、「カテゴリを削除しました。」を `role="status"` で表示する
+  - 0 件: 「このカテゴリは削除できませんでした（既に削除済み、またはデフォルトカテゴリです）。一覧を再読み込みしてください。」をダイアログ内に `role="alert"` で表示する
+  - DB エラー・通信失敗: 「カテゴリの削除に失敗しました。時間をおいて再度お試しください。」をダイアログ内に表示する。いずれも成功に見せない
 - 削除後の取引は DB の `on delete set null` により「未分類」になる（取引自体は残る）
 - デフォルトカテゴリへの update/delete は Server Action 側でも拒否する（二重防御）
 - 重複名のDBエラー（SQLSTATE `23505`）は、追加・編集画面で利用者向けメッセージに変換する
@@ -113,7 +117,7 @@ deleteCategory(formData); // id + household_id + is_default=false でスコー�
 ## コンポーネント
 
 - `components/features/categories/category-form.tsx` — 名前・色・種別のフォーム（presentational、`TransactionForm` と同型。追加/編集で共用）
-- `components/features/categories/delete-category-button.tsx` — `"use client"`、confirm 付き削除ボタン
+- `components/features/categories/delete-category-button.tsx` — `"use client"`、確認ダイアログ付き削除ボタン（`useActionState`。失敗はダイアログ内に表示）
 - `/categories` — 種別内の並び替えフォームを表示。DB RPC が対象 ID 全件を検証して保存する
 - 一覧はページ内でレンダリング
 - 収支・定期収支・予算のカテゴリ候補も保存済み順を使う。金額などの分析ランキングは変更しない
@@ -121,8 +125,9 @@ deleteCategory(formData); // id + household_id + is_default=false でスコー�
 ## テスト
 
 - Unit: 入力バリデーション（name 空・51字・type 不正・color パレット外）
-- Component: `CategoryForm`（入力と初期値の表示）、`CategoryBadge`（設定アイコンの表示）、`DeleteCategoryButton`（confirm キャンセル時に送信しない）
-- E2E（`e2e/categories.spec.ts`）: グループ作成 → アイコン付きカテゴリ追加 → 一覧表示 → 収支フォームの選択肢に反映 → アイコン変更を含む編集 → 削除（confirm 承諾）→ 一覧から消える。デフォルトカテゴリに操作ボタンが無いことも確認
+- Component: `CategoryForm`（入力と初期値の表示）、`CategoryBadge`（設定アイコンの表示）、`DeleteCategoryButton`（キャンセル時に送信しない・id を送信・エラー state と例外をダイアログ内に表示）
+- Unit: `deleteCategory`（id・household_id・is_default でスコープ、削除行 0 件と DB エラーを失敗として返す、成功時の再検証と遷移）
+- E2E（`e2e/categories.spec.ts`）: グループ作成 → アイコン付きカテゴリ追加 → 一覧表示 → 収支フォームの選択肢に反映 → アイコン変更を含む編集 → 削除（ダイアログで「削除する」）→ 成功表示 → 再読み込み後も消えたまま。デフォルトカテゴリに操作ボタンが無いことも確認。別シナリオで、収支に使われているカテゴリのキャンセル→削除→再読み込み・画面遷移後も復活しない→収支は「未分類」（編集フォームは「未選択」）→収支登録フォームとカテゴリ絞り込みの選択肢に出ないことを確認
 - E2E（`e2e/categories-order.spec.ts`）: type 内の上下移動、再読み込み後の永続化、収支・定期収支のカテゴリ候補への反映を確認
 - Database（`supabase/tests/database/category_sort_order.sql`）: RPC権限、member/household境界、全件順序の置換、部分・重複・別household IDの拒否、新規作成・種別変更時の末尾追加を確認
 
