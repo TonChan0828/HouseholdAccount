@@ -51,7 +51,10 @@ type DemoContextValue = {
   deleteTransactionAction: (formData: FormData) => void;
   createCategoryAction: CategoryAction;
   updateCategoryAction: CategoryAction;
-  deleteCategoryAction: (formData: FormData) => void;
+  deleteCategoryAction: (
+    prevState: CategoryActionState,
+    formData: FormData,
+  ) => CategoryActionState;
 };
 
 const DemoContext = createContext<DemoContextValue | null>(null);
@@ -155,11 +158,12 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   );
 
   const deleteCategoryAction = useCallback(
-    (formData: FormData) => {
+    (_prevState: CategoryActionState, formData: FormData) => {
       const id = String(formData.get("id") ?? "");
-      if (!id) return;
+      if (!id) return { error: "対象が指定されていません" };
       setState((s) => removeCategory(s, id));
       router.push("/demo/categories");
+      return undefined;
     },
     [router],
   );

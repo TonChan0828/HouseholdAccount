@@ -79,6 +79,7 @@ export default function DemoCategoriesPage() {
                           <DeleteCategoryButton
                             action={deleteCategoryAction}
                             categoryId={c.id}
+                            categoryName={c.name}
                           />
                         </span>
                       )}
