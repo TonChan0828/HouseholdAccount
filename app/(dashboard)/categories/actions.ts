@@ -146,22 +146,46 @@ export async function reorderCategories(formData: FormData): Promise<void> {
   revalidatePath("/categories");
 }
 
-/** カスタムカテゴリを削除する。紐づく取引は on delete set null で未分類になる。 */
-export async function deleteCategory(formData: FormData): Promise<void> {
+/**
+ * カスタムカテゴリを削除する。紐づく取引は on delete set null で未分類になる。
+ *
+ * PostgREST の DELETE は条件に合う行が 0 件（RLS で除外・デフォルトカテゴリ・
+ * 他グループの id）でもエラーを返さない。削除した行を受け取って件数を確かめ、
+ * 0 件を成功として扱わない。
+ */
+export async function deleteCategory(
+  _prevState: CategoryActionState,
+  formData: FormData,
+): Promise<CategoryActionState> {
   const id = String(formData.get("id") ?? "");
   if (!id) {
-    return;
+    return { error: "対象が指定されていません" };
   }
 
   const { householdId, supabase } = await requireDashboardContext();
-  const result = await supabase
+  const { data, error } = await supabase
     .from("categories")
     .delete()
     .eq("id", id)
     .eq("household_id", householdId)
-    .eq("is_default", false);
-  throwIfError(result, "deleteCategory");
+    .eq("is_default", false)
+    .select("id");
 
-  revalidatePath("/categories");
-  redirect("/categories");
+  if (error) {
+    console.error("deleteCategory failed", error);
+    return { error: "カテゴリの削除に失敗しました。時間をおいて再度お試しください。" };
+  }
+
+  if (!data || data.length === 0) {
+    // 一覧が古い可能性があるため最新の状態を表示させる。
+    revalidatePath("/categories");
+    return {
+      error:
+        "このカテゴリは削除できませんでした（既に削除済み、またはデフォルトカテゴリです）。一覧を再読み込みしてください。",
+    };
+  }
+
+  // 収支・予算・定期収支など、カテゴリを表示する全画面を再検証する。
+  revalidatePath("/", "layout");
+  redirect("/categories?deleted=1");
 }

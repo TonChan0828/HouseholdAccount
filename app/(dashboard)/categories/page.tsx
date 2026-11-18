@@ -41,9 +41,9 @@ function moveCategoryIds(
 export default async function CategoriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sortError?: string }>;
+  searchParams: Promise<{ sortError?: string; deleted?: string }>;
 }) {
-  const [{ sortError }, { householdId, supabase }] = await Promise.all([
+  const [{ sortError, deleted }, { householdId, supabase }] = await Promise.all([
     searchParams,
     requireDashboardContext(),
   ]);
@@ -83,6 +83,16 @@ export default async function CategoriesPage({
           {sortError === "conflict"
             ? "カテゴリ一覧が更新されたため、並び替えを保存できませんでした。最新の一覧からやり直してください。"
             : "カテゴリの並び替え内容を確認できませんでした。最新の一覧からやり直してください。"}
+        </p>
+      ) : null}
+
+      {deleted === "1" ? (
+        <p
+          role="status"
+          data-testid="category-deleted-notice"
+          className="rounded-xl bg-secondary px-3 py-2.5 text-sm text-secondary-foreground"
+        >
+          カテゴリを削除しました。
         </p>
       ) : null}
 
@@ -207,6 +217,7 @@ export default async function CategoriesPage({
                             <DeleteCategoryButton
                               action={deleteCategory}
                               categoryId={c.id}
+                              categoryName={c.name}
                             />
                           </>
                         )}
