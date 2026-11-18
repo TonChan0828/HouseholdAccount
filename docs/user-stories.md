@@ -24,7 +24,7 @@ E2E は CI と同条件（`--workers=1`）で全通過することを基準と�
 | 01 | auth | ユーザーとして、ログアウトしてセッションを終了したい | Unit | `app/(auth)/actions.test.ts`（※E2Eは共有セッション失効のため不可） |
 | 02 | transactions | メンバーとして、収支を追加・編集・削除し、連続登録もしたい | E2E | `transactions.spec.ts` |
 | 03 | dashboard | メンバーとして、当期サマリーと最近の取引を見て全体/自分・期間を切り替えたい | E2E | `dashboard.spec.ts` |
-| 04 | categories | メンバーとして、カスタムカテゴリを追加・編集・削除し収支フォームに反映したい | E2E | `categories.spec.ts` |
+| 04 | categories | メンバーとして、カスタムカテゴリを追加・編集・削除し収支フォームに反映したい。削除したカテゴリは再読み込み後も復活せず、使っていた収支は未選択になり、削除の成否を画面で確認したい | E2E + Component + Unit | `categories.spec.ts`（ダイアログでの削除→成功表示→再読み込み・画面遷移後も消えたまま→収支が未分類／未選択→収支フォーム・絞り込みの選択肢から消える）/ 失敗表示は `delete-category-button.test.tsx`、0 件・DB エラーを失敗とする判定は `categories/actions.test.ts` |
 | 05 | analytics | メンバーとして、収支を月次推移とカテゴリ内訳で確認し期間移動したい | E2E | `analytics.spec.ts` |
 | 06 | household | ユーザーとして、グループを作成・切り替え・招待リンク発行したい／招待されたユーザーとして、リンクから参加したい | E2E | `household.spec.ts`（作成・切替・発行に加え、第2ユーザーが招待リンクから参加→脱退） |
 | 07 | member_activity | メンバーとして、各メンバーの当期集計と取引明細を確認したい | E2E | `members.spec.ts` |
