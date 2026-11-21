@@ -25,7 +25,8 @@ export async function loadDashboardData(
       .from("categories")
       .select("id, name")
       .eq("household_id", householdId)
-      .eq("reminder_enabled", true);
+      .eq("reminder_enabled", true)
+      .eq("is_hidden", false);
     return unwrapData(result, "fetchReminderCategories") ?? [];
   };
 

@@ -113,6 +113,7 @@ export function addCategory(
     type: input.type,
     icon: input.icon,
     is_default: false,
+    is_hidden: false,
     reminder_enabled: false,
     sort_order:
       Math.max(

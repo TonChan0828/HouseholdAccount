@@ -315,3 +315,69 @@ test.describe("カテゴリ管理", () => {
     ).toHaveCount(0);
   });
 });
+
+test("非表示のプリセットを履歴に残し、管理画面から再表示できる", async ({ page }) => {
+  await createHousehold(page, ephemeralName("プリセット表示"));
+  await page.goto("/transactions/new");
+  await page.getByLabel("金額").fill("1250");
+  await page.getByRole("radio", { name: "食費", exact: true }).check();
+  await page.getByRole("button", { name: "登録する" }).click();
+  await expect(page).toHaveURL(/\/transactions$/);
+
+  await page.goto("/categories");
+  await page.setViewportSize({ width: 375, height: 812 });
+  const preset = page.getByTestId("category-row").filter({ hasText: "食費" });
+  const name = preset.getByText("食費", { exact: true });
+  const hideButton = preset.getByRole("button", { name: "食費を非表示" });
+  await expect(name).toBeVisible();
+  const [cardBounds, nameBounds, buttonBounds] = await Promise.all([
+    preset.boundingBox(), name.boundingBox(), hideButton.boundingBox(),
+  ]);
+  expect(nameBounds!.width).toBeGreaterThan(0);
+  expect(buttonBounds!.x + buttonBounds!.width).toBeLessThanOrEqual(cardBounds!.x + cardBounds!.width);
+  await page.getByRole("button", { name: "食費を非表示" }).click();
+  await expect(page.getByTestId("category-row").filter({ hasText: "食費" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("非表示のカテゴリ（1件）")).toBeVisible();
+
+  await page.goto("/transactions/new");
+  await expect(page.getByRole("radio", { name: "食費", exact: true })).toHaveCount(0);
+  await page.goto("/transactions");
+  const row = page.getByTestId("transaction-row").filter({ hasText: "食費" });
+  await expect(row).toBeVisible();
+  await row.getByRole("button", { name: "編集" }).click();
+  await expect(page.getByRole("radio", { name: "食費", exact: true })).toBeChecked();
+
+  await page.goto("/categories");
+  await page.getByText("非表示のカテゴリ（1件）").click();
+  await page.getByRole("button", { name: "食費を再表示" }).click();
+  await expect(page.getByTestId("category-row").filter({ hasText: "食費" })).toBeVisible();
+});
+
+test("移行先を選び、元カテゴリの収支を保ったまま統合できる", async ({ page }) => {
+  await createHousehold(page, ephemeralName("カテゴリ統合"));
+  await page.goto("/categories/new");
+  await page.getByLabel("カテゴリ名").fill("統合元");
+  await page.getByRole("radio", { name: "支出" }).check();
+  await page.getByRole("button", { name: "追加する" }).click();
+  await expect(page).toHaveURL(/\/categories$/);
+  await page.goto("/transactions/new");
+  await page.getByLabel("金額").fill("1250");
+  await page.getByRole("radio", { name: "統合元", exact: true }).check();
+  await page.getByRole("button", { name: "登録する" }).click();
+  await expect(page).toHaveURL(/\/transactions$/);
+
+  await page.goto("/categories");
+  const dialog = page.getByRole("dialog", { name: "カテゴリを削除しますか？" });
+  await expect(async () => {
+    await page.getByRole("button", { name: "統合元を削除" }).click();
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15000 });
+  await expect(dialog.getByText("収支 1件・定期収支 0件・予算 0件")).toBeVisible();
+  await dialog.getByLabel("移行先カテゴリ").selectOption({ label: "食費" });
+  await dialog.getByRole("button", { name: "統合する" }).click();
+  await expect(page.getByRole("status")).toContainText("カテゴリを統合しました");
+  await expect(page.getByTestId("category-row").filter({ hasText: "統合元" })).toHaveCount(0);
+  await page.goto("/transactions");
+  await expect(page.getByTestId("transaction-row").filter({ hasText: "食費" })).toContainText("¥1,250");
+});

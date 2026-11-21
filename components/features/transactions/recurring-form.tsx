@@ -75,7 +75,7 @@ export function RecurringForm({
   };
 
   const options = categories.filter(
-    (c) => c.type === type || c.type === "both",
+    (c) => (!c.is_hidden || c.id === defaultValues?.category_id) && (c.type === type || c.type === "both"),
   );
 
   const selectType = (t: TransactionType) => {

@@ -107,6 +107,7 @@ export type Database = {
           icon: string | null
           id: string
           is_default: boolean
+          is_hidden: boolean
           name: string
           reminder_enabled: boolean
           sort_order: number
@@ -118,6 +119,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_default?: boolean
+          is_hidden?: boolean
           name: string
           reminder_enabled?: boolean
           sort_order?: number
@@ -129,6 +131,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_default?: boolean
+          is_hidden?: boolean
           name?: string
           reminder_enabled?: boolean
           sort_order?: number
@@ -461,6 +464,18 @@ export type Database = {
       confirm_transaction_import_v2: {
         Args: Database["public"]["Functions"]["confirm_transaction_import"]["Args"] & { _member_id: string | null }
         Returns: number
+      }
+      category_usage: {
+        Args: { _household_id: string }
+        Returns: { category_id: string; transactions: number; recurring: number; budgets: number }[]
+      }
+      merge_category: {
+        Args: { _household_id: string; _source_id: string; _destination_id: string }
+        Returns: undefined
+      }
+      set_preset_category_visibility: {
+        Args: { _household_id: string; _category_id: string; _hidden: boolean }
+        Returns: undefined
       }
       accept_invitation: { Args: { _token: string }; Returns: string }
       consume_rate_limit: {

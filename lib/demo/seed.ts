@@ -105,6 +105,7 @@ export function createSeedState(): DemoState {
     type: c.type,
     icon: null,
     is_default: c.is_default,
+    is_hidden: false,
     reminder_enabled: false,
     sort_order: i + 1,
   }));

@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { unstable_rethrow } from "next/navigation";
 
 import type { CategoryActionState } from "@/app/(dashboard)/categories/actions";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +23,8 @@ type Props = {
   ) => CategoryActionState | Promise<CategoryActionState>;
   categoryId: string;
   categoryName: string;
+  usage?: { transactions: number; recurring: number; budgets: number };
+  destinations?: { id: string; name: string }[];
 };
 
 const GENERIC_ERROR = "カテゴリの削除に失敗しました。時間をおいて再度お試しください。";
@@ -30,7 +33,8 @@ const GENERIC_ERROR = "カテゴリの削除に失敗しました。時間をお
  * 確認ダイアログを経てカテゴリを削除するボタン。
  * 成功時は action が redirect する。失敗はダイアログ内に表示し、成功に見せない。
  */
-export function DeleteCategoryButton({ action, categoryId, categoryName }: Props) {
+export function DeleteCategoryButton({ action, categoryId, categoryName, usage, destinations }: Props) {
+  const [destination, setDestination] = useState("");
   const [open, setOpen] = useState(false);
   const submitting = useRef(false);
   const [state, formAction, pending] = useActionState(
@@ -52,7 +56,10 @@ export function DeleteCategoryButton({ action, categoryId, categoryName }: Props
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!submitting.current) setOpen(nextOpen);
+        if (!submitting.current) {
+          setOpen(nextOpen);
+          if (!nextOpen) setDestination("");
+        }
       }}
     >
       <DialogTrigger
@@ -72,7 +79,9 @@ export function DeleteCategoryButton({ action, categoryId, categoryName }: Props
         <DialogHeader>
           <DialogTitle>カテゴリを削除しますか？</DialogTitle>
           <DialogDescription>
-            「{categoryName}」を削除します。このカテゴリを使用している収支は「未選択」に変更されます。
+            {destination
+              ? `「${categoryName}」の参照を移行先に移してから削除します。`
+              : `「${categoryName}」を削除します。このカテゴリを使用している収支は「未選択」に変更されます。`}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -86,6 +95,23 @@ export function DeleteCategoryButton({ action, categoryId, categoryName }: Props
           }}
         >
           <input type="hidden" name="id" value={categoryId} />
+          {usage && (
+            <p className="mb-3 text-sm">
+              収支 {usage.transactions}件・定期収支 {usage.recurring}件・予算 {usage.budgets}件
+            </p>
+          )}
+          {destinations && destinations.length > 0 && (
+            <div className="mb-4 grid gap-2">
+              <Label htmlFor={`merge-category-${categoryId}`}>移行先カテゴリ</Label>
+              <select id={`merge-category-${categoryId}`} name="destination"
+                className="w-full rounded-md border bg-background p-2 text-sm"
+                value={destination} onChange={(event) => setDestination(event.currentTarget.value)}
+              >
+                <option value="">移行せず削除</option>
+                {destinations.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+              </select>
+            </div>
+          )}
           {state?.error ? (
             <p role="alert" className="mb-4 text-sm text-destructive">
               {state.error}
@@ -96,13 +122,13 @@ export function DeleteCategoryButton({ action, categoryId, categoryName }: Props
               type="button"
               variant="outline"
               disabled={pending}
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); setDestination(""); }}
               autoFocus
             >
               キャンセル
             </Button>
             <Button type="submit" variant="destructive" disabled={pending}>
-              {pending ? "削除中…" : "削除する"}
+              {pending ? "処理中…" : destination ? "統合する" : "削除する"}
             </Button>
           </DialogFooter>
         </form>

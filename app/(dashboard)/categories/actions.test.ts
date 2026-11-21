@@ -7,6 +7,7 @@ import {
   deleteCategory,
   reorderCategories,
   toggleCategoryReminder,
+  setPresetCategoryVisibility,
 } from "./actions";
 
 const state = vi.hoisted(() => ({
@@ -30,6 +31,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/household", () => ({
+  isHouseholdOwner: async () => true,
   requireDashboardContext: async () => {
     const { createClient } = await import("@/lib/supabase/server");
     return {
@@ -264,4 +266,23 @@ describe("deleteCategory", () => {
     expect(result).toEqual({ error: "対象が指定されていません" });
     expect(state.deletes).toHaveLength(0);
   });
+});
+
+it("移行先を指定した削除を一括統合関数に渡す", async () => {
+  const from = "11111111-1111-4111-8111-111111111111";
+  const to = "22222222-2222-4222-8222-222222222222";
+  await expect(deleteCategory(undefined, formDataWith({ id: from, destination: to })))
+    .rejects.toThrow("redirect:/categories?merged=1");
+  expect(state.rpcCalls).toEqual([{ name: "merge_category", args: {
+    _household_id: "h-1", _source_id: from, _destination_id: to,
+  } }]);
+  expect(state.deletes).toHaveLength(0);
+});
+
+it("プリセットの表示設定を現在のグループに限定する", async () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  await setPresetCategoryVisibility(formDataWith({ id, hidden: "true" }));
+  expect(state.rpcCalls).toEqual([{ name: "set_preset_category_visibility", args: {
+    _household_id: "h-1", _category_id: id, _hidden: true,
+  } }]);
 });
