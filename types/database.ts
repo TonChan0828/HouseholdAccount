@@ -458,6 +458,10 @@ export type Database = {
         }
         Returns: number
       }
+      confirm_transaction_import_v2: {
+        Args: Database["public"]["Functions"]["confirm_transaction_import"]["Args"] & { _member_id: string | null }
+        Returns: number
+      }
       accept_invitation: { Args: { _token: string }; Returns: string }
       consume_rate_limit: {
         Args: {
@@ -467,6 +471,10 @@ export type Database = {
           _window_seconds: number
         }
         Returns: boolean
+      }
+      consume_rate_limit_with_reset: {
+        Args: Database["public"]["Functions"]["consume_rate_limit"]["Args"]
+        Returns: Json
       }
       create_settlement: {
         Args: { _household_id: string; _ref: string }

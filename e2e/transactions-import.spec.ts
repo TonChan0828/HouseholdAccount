@@ -67,7 +67,7 @@ test.describe("Excel取り込み", () => {
     await page.goto("/transactions/import");
     await page.getByLabel("Excel ファイル（.xlsx）").setInputFiles(path);
     await page.getByRole("button", { name: "ファイルを読み込む" }).click();
-    await expect(page.getByText("ファイルを読み込めませんでした。形式を確認してください")).toBeVisible();
+    await expect(page.getByText("Excelファイルが解析上限を超えています。行数やシート数を減らしてください")).toBeVisible();
     await page.goto("/transactions");
     await expect(page.getByRole("heading", { name: "収支", exact: true })).toBeVisible();
   });
@@ -185,4 +185,31 @@ test("500行のプレビューを操作してもファイルを再解析しな�
   expect(postCount).toBe(0);
   expect(Math.max(...latencies)).toBeLessThanOrEqual(1000);
   test.info().annotations.push({ type: "preview_max_ms", description: String(Math.max(...latencies)) });
+});
+
+test("数式と日付を保持し、未保存の数式を確認して除外できる", async ({ page }) => {
+  await createHousehold(page, ephemeralName("調整行取り込み"));
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("2024年02月");
+  sheet.getCell("B1").value = "1 か月の支出";
+  sheet.getCell("B2").value = "項目";
+  sheet.getCell("C2").value = "金額";
+  sheet.getCell("D2").value = "日付";
+  sheet.getCell("B3").value = "食費";
+  sheet.getCell("C3").value = { formula: "0-3500", result: -3500 };
+  sheet.getCell("D3").value = new Date("2024-02-29T00:00:00Z");
+  sheet.getCell("B4").value = "日用品";
+  sheet.getCell("C4").value = { formula: "1+1" };
+  await page.goto("/transactions/import");
+  await page.getByLabel(/Excel ファイル/).setInputFiles(await writeXlsx(workbook, "adjustment.xlsx"));
+  await page.getByRole("button", { name: "ファイルを読み込む" }).click();
+
+  await expect(page.getByText("2024-02-29", { exact: true })).toBeVisible();
+  await expect(page.getByText(/2024年02月 · C4.*計算結果/)).toBeVisible();
+  const confirm = page.getByRole("button", { name: "1 件を取り込む" });
+  await expect(confirm).toBeDisabled();
+  await page.getByRole("checkbox", { name: /エラーの 1 件を除いて/ }).check();
+  await confirm.click();
+  await expect(page).toHaveURL(/imported=1&duplicates=0/);
+  await expect(page.getByTestId("transaction-row").filter({ hasText: "食費" })).toContainText("-¥3,500");
 });

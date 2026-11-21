@@ -55,8 +55,8 @@ export async function parseWorkbook(buffer: ArrayBuffer, timeoutMs = 10_000): Pr
       else resolve(data!);
     };
     const timer = setTimeout(() => finish(new Error("WorkbookTimeout")), timeoutMs);
-    worker.once("message", (message: { ok: boolean; sheets?: SheetParse[] }) => {
-      if (!message.ok || !Array.isArray(message.sheets)) finish(new Error("InvalidWorkbook"));
+    worker.once("message", (message: { ok: boolean; limit?: boolean; sheets?: SheetParse[] }) => {
+      if (!message.ok || !Array.isArray(message.sheets)) finish(new Error(message.limit ? "WorkbookLimit" : "InvalidWorkbook"));
       else finish(undefined, message.sheets);
     });
     worker.once("error", () => finish(new Error("WorkbookWorkerFailed")));

@@ -39,6 +39,11 @@ describe("parseMonthFromFilename", () => {
 });
 
 describe("classifyRows", () => {
+  it.each([-2147483647, -1, 1, 2147483647])("符号付き整数の境界値 %i を受理する", (amount) => {
+    const result = classifyRows([{ section: "expense", item: "調整", amount, rowNumber: 1 }]);
+    expect(result.valid).toEqual([{ type: "expense", categoryName: "調整", amount }]);
+  });
+
   it("金額のある行は種別をセクションから決めて有効行にする", () => {
     const result = classifyRows([
       row({ section: "income", item: "給料", amount: 316719 }),
@@ -73,10 +78,10 @@ describe("classifyRows", () => {
     expect(result.errors[0].reason).toContain("整数");
   });
 
-  it("金額が負の行はエラーにする", () => {
-    const result = classifyRows([row({ amount: -100 })]);
+  it("整数範囲を超える負額はエラーにする", () => {
+    const result = classifyRows([row({ amount: -2_147_483_648 })]);
     expect(result.errors).toHaveLength(1);
-    expect(result.errors[0].reason).toContain("1円以上");
+    expect(result.errors[0].reason).toContain("2,147,483,647円以内");
   });
 
   it("項目名が空で金額がある行はエラーにする", () => {

@@ -137,7 +137,7 @@ export function TransactionDialogProvider({
               defaultValues={editing ?? undefined}
             />
 
-            {editing && otherHouseholds.length > 0 ? (
+            {editing && editing.amount >= 0 && otherHouseholds.length > 0 ? (
               <ReflectToGroups
                 transactionId={editing.id}
                 otherHouseholds={otherHouseholds}

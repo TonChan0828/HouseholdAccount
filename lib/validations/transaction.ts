@@ -42,6 +42,16 @@ export const transactionSchema = z.object({
   ),
 });
 
+/** 取り込みで作成された調整行の編集にだけ使う。 */
+export const importedAdjustmentSchema = transactionSchema.extend({
+  amount: z.preprocess(
+    (value) => typeof value === "string" ? evaluateAmount(value) : value,
+    z.number({ message: "金額を正しく入力してください" }).int()
+      .min(-2_147_483_647).max(2_147_483_647)
+      .refine((amount) => amount !== 0, "金額は0円以外にしてください"),
+  ),
+}).refine((entry) => entry.amount > 0 || !entry.is_shared, "負額の調整行は精算対象にできません");
+
 export type TransactionInput = z.infer<typeof transactionSchema>;
 
 /**

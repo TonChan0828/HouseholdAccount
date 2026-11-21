@@ -15,7 +15,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({ rpc }),
 }));
 
-import { consumeRateLimit } from "./rate-limit";
+import { consumeRateLimit, consumeRateLimitWithReset } from "./rate-limit";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -96,4 +96,13 @@ it("開発時の未設定はログを残して続行する", async () => {
   vi.stubEnv("NODE_ENV", "development");
   vi.stubEnv("RATE_LIMIT_SECRET", "");
   await expect(consumeRateLimit({ bucket: "auth.login", subject: "user@example.com", limit: 10, windowSeconds: 900 })).resolves.toBe("allowed");
+});
+
+it("取り込みの制限解除時刻をDBの判定から取得する", async () => {
+  vi.stubEnv("RATE_LIMIT_SECRET", "test-only-secret");
+  rpc.mockResolvedValue({ data: { allowed: false, resetAt: "2026-11-21T00:10:00+00:00" }, error: null });
+  await expect(consumeRateLimitWithReset({
+    bucket: "import.parse", subject: "user", limit: 5, windowSeconds: 600, includeIp: false,
+  })).resolves.toEqual({ status: "limited", resetAt: "2026-11-21T00:10:00.000Z" });
+  expect(rpc).toHaveBeenLastCalledWith("consume_rate_limit_with_reset", expect.any(Object));
 });

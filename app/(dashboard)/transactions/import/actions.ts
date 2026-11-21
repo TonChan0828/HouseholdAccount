@@ -10,10 +10,10 @@ import {
   parseMonthFromFilename,
   type ValidImportRow,
 } from "@/lib/import/excel";
-import { isIsoCalendarMonth } from "@/lib/period";
+import { isIsoCalendarDate, isIsoCalendarMonth } from "@/lib/period";
 import { parseWorkbook } from "@/lib/import/parse-workbook";
 import { requireDashboardContext } from "@/lib/household";
-import { consumeRateLimit, RATE_LIMIT_UNAVAILABLE_MESSAGE } from "@/lib/rate-limit";
+import { consumeRateLimitWithReset, RATE_LIMIT_UNAVAILABLE_MESSAGE } from "@/lib/rate-limit";
 
 /** 取り込みの上限行数（過大ファイル対策）。 */
 const MAX_ROWS = 500;
@@ -26,7 +26,7 @@ export type SheetPreview = { sheet: string; month: string; result: ClassifyResul
 
 export type ImportPreviewState =
   | { ok: true; sheets: SheetPreview[] }
-  | { ok: false; error: string }
+  | { ok: false; error: string; resetAt?: string }
   | undefined;
 
 /**
@@ -51,13 +51,15 @@ export async function parseImportFile(
     return { ok: false, error: "Excel ファイル（.xlsx）を選択してください" };
   }
 
-  const rateLimit = await consumeRateLimit({
+  const rateLimit = await consumeRateLimitWithReset({
     bucket: "import.parse", subject: user.id, limit: 5,
     windowSeconds: 10 * 60, includeIp: false,
   });
-  if (rateLimit !== "allowed") {
-    return { ok: false, error: rateLimit === "unavailable"
-      ? RATE_LIMIT_UNAVAILABLE_MESSAGE : "取り込み回数が多すぎます。しばらくお待ちください" };
+  if (rateLimit.status === "unavailable") {
+    return { ok: false, error: RATE_LIMIT_UNAVAILABLE_MESSAGE };
+  }
+  if (rateLimit.status === "limited") {
+    return { ok: false, error: "読み込みは10分間に5回までです。", resetAt: rateLimit.resetAt };
   }
 
   let sheets: SheetPreview[];
@@ -81,6 +83,9 @@ export async function parseImportFile(
       result: classifyRows(s.rows),
     }));
   } catch (error) {
+    if (error instanceof Error && error.message === "WorkbookLimit") {
+      return { ok: false, error: "Excelファイルが解析上限を超えています。行数やシート数を減らしてください" };
+    }
     if (error instanceof Error && error.message === "WorkbookTimeout") {
       return { ok: false, error: "ファイルの解析が10秒で終了しました。内容を確認して選び直してください" };
     }
@@ -99,12 +104,14 @@ export async function parseImportFile(
 
 const confirmSchema = z.object({
   month: z.string().refine(isIsoCalendarMonth, "対象月が不正です"),
+  member: z.uuid().nullable(),
   rows: z
     .array(
       z.object({
         type: z.enum(["income", "expense"]),
         categoryName: z.string().trim().min(1).max(50),
-        amount: z.coerce.number().int().min(1).max(2_147_483_647),
+        amount: z.number().int().min(-2_147_483_647).max(2_147_483_647).refine((amount) => amount !== 0),
+        date: z.string().refine(isIsoCalendarDate).optional(),
       }),
     )
     .min(1, "取り込む収支がありません")
@@ -127,6 +134,7 @@ export async function confirmImport(
   try {
     parsed = confirmSchema.parse({
       month: formData.get("month"),
+      member: formData.get("member") || null,
       rows: JSON.parse(String(formData.get("rows") ?? "[]")),
     });
   } catch {
@@ -136,11 +144,12 @@ export async function confirmImport(
   const { householdId, supabase } = await requireDashboardContext();
   const rows = parsed.rows as ValidImportRow[];
   const { data: importedCount, error } = await supabase.rpc(
-    "confirm_transaction_import",
+    "confirm_transaction_import_v2",
     {
       _household_id: householdId,
       _month: `${parsed.month}-01`,
       _rows: rows,
+      _member_id: parsed.member,
     },
   );
   if (
