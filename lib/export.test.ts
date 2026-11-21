@@ -125,3 +125,11 @@ describe("toTransactionsCsv", () => {
     });
   });
 });
+
+it("負額の金額は数値として出力し、同じ接頭辞のメモは無害化する", () => {
+  const csv = toTransactionsCsv([{
+    date: "2024-02-29", type: "expense", categoryName: null,
+    amount: -3500, memo: "-3500", memberName: null,
+  }]);
+  expect(csv).toContain("2024-02-29,支出,未分類,-3500,'-3500,不明");
+});

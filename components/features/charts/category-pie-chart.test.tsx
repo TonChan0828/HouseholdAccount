@@ -33,7 +33,7 @@ describe("CategoryPieChart", () => {
     render(
       <CategoryPieChart
         data={[
-          { categoryId: "c1", name: "食費", color: "#f00", amount: 32000 },
+          { categoryId: "c1", name: "食費", color: "#f00", amount: 32000, count: 1 },
         ]}
       />,
     );
@@ -47,7 +47,7 @@ describe("CategoryPieChart", () => {
     render(
       <CategoryPieChart
         data={[
-          { categoryId: "c1", name: "食費", color: "#f00", amount: 32000 },
+          { categoryId: "c1", name: "食費", color: "#f00", amount: 32000, count: 1 },
         ]}
       />,
     );

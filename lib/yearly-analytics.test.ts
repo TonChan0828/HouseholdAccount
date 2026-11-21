@@ -21,7 +21,7 @@ const slice = (
   categoryId: string | null,
   name: string,
   amount: number,
-): CategorySlice => ({ categoryId, name, color: "#abc", amount });
+): CategorySlice => ({ categoryId, name, color: "#abc", amount, count: 1 });
 
 describe("countElapsed", () => {
   const ranges = getYearRanges(2026, 1);

@@ -196,3 +196,20 @@ it("CSVへ種別・カテゴリ・名義人・メモ・金額の絞り込みを�
   expect(filters).toContainEqual(["gte", "amount", 0]);
   expect(filters).toContainEqual(["lte", "amount", 5000]);
 });
+
+describe("CSVの期間指定", () => {
+  it.each(["start=2024-02-29", "start=2025-02-29&end=2025-03-01", "start=2024-03-01&end=2024-02-29"])(
+    "無効な指定を拒否する: %s", async (query) => {
+      const response = await GET(new NextRequest(`http://localhost/transactions/export?${query}`));
+      expect(response.status).toBe(400);
+    },
+  );
+
+  it("うるう日の同日指定で両端を含める", async () => {
+    const response = await GET(new NextRequest("http://localhost/transactions/export?start=2024-02-29&end=2024-02-29"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(filters).toContainEqual(["gte", "date", "2024-02-29"]);
+    expect(filters).toContainEqual(["lte", "date", "2024-02-29"]);
+  });
+});

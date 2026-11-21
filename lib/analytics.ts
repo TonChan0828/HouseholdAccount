@@ -35,6 +35,7 @@ export type CategorySlice = {
   name: string;
   color: string;
   amount: number;
+  count: number;
 };
 
 /** カテゴリ別の期別支出推移（amounts は ranges と同じ並び・古い→新しい）。 */
@@ -94,6 +95,7 @@ export function summarizeCategoryExpense(txs: TxLite[]): CategorySlice[] {
     const existing = byCategory.get(key);
     if (existing) {
       existing.amount += t.amount;
+      existing.count += 1;
       continue;
     }
     byCategory.set(key, {
@@ -101,6 +103,7 @@ export function summarizeCategoryExpense(txs: TxLite[]): CategorySlice[] {
       name: t.category?.name ?? UNCATEGORIZED_NAME,
       color: t.category?.color ?? UNCATEGORIZED_COLOR,
       amount: t.amount,
+      count: 1,
     });
   }
 

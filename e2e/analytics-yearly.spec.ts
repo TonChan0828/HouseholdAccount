@@ -55,6 +55,8 @@ test.describe("年間分析", () => {
       categorySection.getByText("¥30,000", { exact: true }),
     ).toBeVisible();
 
+    await expect(categorySection.getByText("1件", { exact: true })).toBeVisible();
+
     // 前年同期比: 支出 ¥10,000 → ¥30,000（+¥20,000 / +200%）
     const yoy = page.getByTestId("yoy-total-expense");
     await expect(yoy.getByText("+¥20,000", { exact: true })).toBeVisible();
