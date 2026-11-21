@@ -108,3 +108,18 @@ it.each([false, true])("Excel日付を暦日として保持する (date1904=%s)"
   expect(sheet.rows[0]).toMatchObject({ amount: -3500, date: "2024-02-29" });
   expect(sheet.rows[1]).toMatchObject({ issue: { cell: "D4", reason: expect.stringContaining("日付") } });
 });
+
+it("Excelの1900年方式でシリアル値1・59・61を変換し、架空の日付60を拒否する", async () => {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("明細");
+  ws.addRow([null, "1 か月の支出"]);
+  ws.addRow([null, "項目", "金額", "日付"]);
+  for (const serial of [1, 59, 60, 61]) {
+    ws.addRow([null, `費目${serial}`, 100, serial]).getCell(4).numFmt = "yyyy-mm-dd";
+  }
+  const [sheet] = await parseWorkbook(await wb.xlsx.writeBuffer() as ArrayBuffer);
+  expect(sheet.rows.map((row) => row.date)).toEqual([
+    "1900-01-01", "1900-02-28", undefined, "1900-03-01",
+  ]);
+  expect(sheet.rows[2].issue).toEqual({ cell: "D5", reason: expect.stringContaining("存在しない日付") });
+});

@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(20);
 
 select ok(not has_function_privilege('anon', 'public.confirm_transaction_import_v2(uuid,date,jsonb,uuid)', 'EXECUTE'),
   'anonymous callers cannot confirm import');
@@ -22,6 +22,16 @@ select is(public.confirm_transaction_import(
   '30000000-0000-0000-0000-000000000001', '2024-02-01',
   '[{"type":"expense","categoryName":"Import adjustment","amount":3500}]'
 ), 1, 'old app still imports its usual rows');
+reset role;
+-- マイグレーション適用前の旧形式キーを持つ本人の明細も残っている。
+insert into public.transactions (household_id, created_by, amount, type, date, import_key)
+values ('30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000a1',
+  120, 'expense', '2024-02-01', md5('2024-02-01|expense|legacy entry|120|1'));
+set local role authenticated;
+select is(public.confirm_transaction_import_v2(
+  '30000000-0000-0000-0000-000000000001', '2024-02-01',
+  '[{"type":"expense","categoryName":"Legacy entry","amount":120}]', null
+), 0, 'v2 recognizes a key already saved by the original implementation');
 select is(public.confirm_transaction_import_v2(
   '30000000-0000-0000-0000-000000000001', '2024-02-01',
   '[{"type":"expense","categoryName":"Import adjustment","amount":3500}]', null
@@ -31,6 +41,12 @@ select is(public.confirm_transaction_import_v2(
   '[{"type":"expense","categoryName":"Import adjustment","amount":3500},{"type":"expense","categoryName":"Import adjustment","amount":-3500,"date":"2024-02-29"}]',
   '00000000-0000-0000-0000-0000000000a2'
 ), 2, 'a different member and signed leap-day row are saved');
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', true);
+select is(public.confirm_transaction_import(
+  '30000000-0000-0000-0000-000000000001', '2024-02-01',
+  '[{"type":"expense","categoryName":"Import adjustment","amount":3500}]'
+), 0, 'the old client deduplicates records imported for the same subject by v2');
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 select is(public.confirm_transaction_import_v2(
   '30000000-0000-0000-0000-000000000001', '2024-03-01',
   '[{"type":"expense","categoryName":"Import adjustment","amount":-3500,"date":"2024-02-29"}]',
@@ -61,6 +77,17 @@ select throws_ok($$select public.confirm_transaction_import_v2(
   '22023', null, 'out-of-range amount rejects the complete batch');
 select is((select count(*) from public.categories where name = 'Unauthorized import'), 0::bigint,
   'failed import leaves no categories');
+select throws_ok($$update public.transactions set import_key = 'user-controlled' where amount = 3500 and on_behalf_of is null$$,
+  '42501', null, 'ordinary edits cannot change import idempotency metadata');
+reset role;
+update public.categories set name = 'Renamed imported category' where name = 'Import adjustment';
+set local role authenticated;
+select is(public.confirm_transaction_import_v2(
+  '30000000-0000-0000-0000-000000000001', '2024-02-01',
+  '[{"type":"expense","categoryName":"Import adjustment","amount":3500}]', null
+), 0, 'a retried import stays deduplicated after renaming the category');
+select is((select count(*) from public.categories where name = 'Import adjustment'), 0::bigint,
+  'retrying does not revive the previous category name');
 reset role;
 
 select is((

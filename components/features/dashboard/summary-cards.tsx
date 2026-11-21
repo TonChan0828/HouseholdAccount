@@ -247,6 +247,7 @@ export function SummaryCards({
   budgetSpent,
 }: Props) {
   const balance = income - expense;
+  const showRatios = income >= 0 && expense >= 0;
   const balancePositive = balance >= 0;
   const balanceDiff =
     prevIncome !== undefined && prevExpense !== undefined
@@ -291,10 +292,10 @@ export function SummaryCards({
             </p>
             <DiffChip label={balanceDiff} positive={balancePositive} />
           </div>
-          <SavingsRing income={income} balance={balance} />
+          {showRatios && <SavingsRing income={income} balance={balance} />}
         </div>
 
-        <ConsumptionBar income={income} expense={expense} />
+        {showRatios && <ConsumptionBar income={income} expense={expense} />}
 
         {budgetTotal !== undefined && budgetTotal > 0 && (
           <div className="space-y-1.5 border-t border-border/60 pt-3">

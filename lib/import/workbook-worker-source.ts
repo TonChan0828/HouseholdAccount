@@ -122,12 +122,22 @@ function readAmount(cell) {
   }
   return { amount: null, issue: { cell: cell.address, reason: '金額の値を読み取れません' } };
 }
-function readDate(cell) {
+function readDate(cell, date1904) {
   const { value, issue } = readCell(cell);
   if (issue) return { issue };
   if (value == null || value === '') return {};
-  const date = value instanceof Date && Number.isFinite(value.getTime()) ? value.toISOString().slice(0, 10)
-    : typeof value === 'string' ? value.trim() : '';
+  let date = typeof value === 'string' ? value.trim() : '';
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    date = value.toISOString().slice(0, 10);
+    // ExcelJS は1900年方式で1899-12-30を起点に変換する。
+    // Excelの架空のうるう日より前は1日繰り上げ、シリアル値60は拒否する。
+    if (!date1904 && date === '1900-02-28') {
+      return { issue: { cell: cell.address, reason: 'Excelの1900-02-29は存在しない日付です' } };
+    }
+    if (!date1904 && date >= '1899-12-31' && date < '1900-02-28') {
+      date = new Date(value.getTime() + 86_400_000).toISOString().slice(0, 10);
+    }
+  }
   if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date) && !date.startsWith('0000-')) {
     const parsed = new Date(date + 'T00:00:00Z');
     if (Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date) return { date };
@@ -175,7 +185,7 @@ function cellToText(value) {
       const money = readAmount(amountCell);
       if (item === '' && money.amount == null && !itemIssue && !money.issue) return;
       limit(++rowCount <= L.importRows);
-      const dated = dateColumn === null ? {} : readDate(row.getCell(dateColumn));
+      const dated = dateColumn === null ? {} : readDate(row.getCell(dateColumn), wb.properties.date1904);
       const issue = itemIssue || money.issue || dated.issue;
       rows.push({
         section, item: itemIssue ? '' : item, amount: money.amount, rowNumber,
