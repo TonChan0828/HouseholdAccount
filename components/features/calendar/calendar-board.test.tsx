@@ -76,6 +76,18 @@ describe("CalendarBoard", () => {
     expect(screen.getByText("+1,000")).toBeInTheDocument();
   });
 
+  it("収入が負額の日と支出が負額の日に符号付きの合計を表示する", () => {
+    const { container } = render(
+      <CalendarBoard
+        weeks={[[day("2026-06-01", { income: -1000 }), day("2026-06-02", { expense: -500 })]]}
+        transactionsByDate={{}}
+        initialSelected="2026-06-01"
+      />,
+    );
+    expect(container.querySelector('[data-date="2026-06-01"]')).toHaveTextContent("-1,000");
+    expect(container.querySelector('[data-date="2026-06-02"]')).toHaveTextContent("+500");
+  });
+
   it("当月外のセルは data-in-month=false を持つ", () => {
     const { container } = renderBoard();
     const cell = container.querySelector('[data-date="2026-05-31"]');

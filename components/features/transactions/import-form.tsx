@@ -11,6 +11,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { MemberInfo } from "@/lib/members";
 import { isIsoCalendarMonth } from "@/lib/period";
 import { yen } from "@/lib/format";
 import { type ClassifyResult, parseMonthFromFilename } from "@/lib/import/excel";
@@ -61,10 +62,18 @@ export function ImportPreview({
   month,
   result,
   onMonthChange,
+  sheet,
+  initialMember = "",
+  members = [],
+  onMemberChange,
   confirmAction,
 }: {
   month: string;
   onMonthChange?: (value: string) => void;
+  sheet?: string;
+  initialMember?: string;
+  members?: MemberInfo[];
+  onMemberChange?: (value: string) => void;
   result: ClassifyResult;
   confirmAction: ConfirmAction;
 }) {
@@ -74,8 +83,14 @@ export function ImportPreview({
   >(confirmAction, undefined);
 
   const [targetMonth, setTargetMonth] = useState(month);
+  const [member, setMember] = useState(initialMember);
+  const [acceptExclusions, setAcceptExclusions] = useState(false);
   const validMonth = isIsoCalendarMonth(targetMonth);
   const hasValid = result.valid.length > 0;
+  const outsideMonth = useMemo(
+    () => validMonth ? result.valid.filter((row) => row.date && !row.date.startsWith(targetMonth)).length : 0,
+    [result.valid, validMonth, targetMonth],
+  );
   const rowsPayload = useMemo(() => JSON.stringify(result.valid), [result.valid]);
 
   return (
@@ -104,6 +119,7 @@ export function ImportPreview({
                     aria-hidden
                   />
                   {r.categoryName}
+                  {r.date && <span className="text-xs text-muted-foreground">{r.date}</span>}
                 </span>
                 <span className="font-heading font-bold tabular-nums">
                   {yen(r.amount)}
@@ -120,7 +136,7 @@ export function ImportPreview({
           <p className="text-sm font-medium text-destructive">エラー（取り込まれません）</p>
           <PreviewRows rows={result.errors} label="エラー" renderRow={(e) => (
               <li key={`e-${e.row}`}>
-                行{e.row} {e.item}: {e.reason}
+                {e.cell ? [sheet, e.cell].filter(Boolean).join(" · ") : `行${e.row}`} {e.item}: {e.reason}
               </li>
           )} />
         </div>
@@ -164,9 +180,42 @@ export function ImportPreview({
           <p id="import-month-format" className="text-xs text-muted-foreground">
             {targetMonth && !validMonth
               ? "実在する年月を YYYY-MM 形式で入力してください。"
-              : "YYYY-MM（例 2024-02）。収支はこの月の1日付で登録されます。"}
+              : "YYYY-MM（例 2024-02）。日付のない行はこの月の1日付で登録されます。"}
           </p>
         </div>
+
+        {members.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="import-member">名義人</Label>
+            <select id="import-member" name="member" className="w-full rounded-md border bg-background p-2"
+              value={member}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setMember(value);
+                onMemberChange?.(value);
+              }}
+            >
+              <option value="">自分</option>
+              {members.map((entry) => <option key={entry.user_id} value={entry.user_id}>{entry.display_name}</option>)}
+            </select>
+          </div>
+        )}
+
+        {outsideMonth > 0 && (
+          <p className="text-sm">対象月外の {outsideMonth} 件は、Excel の元の日付で登録します。</p>
+        )}
+        {(member || result.valid.some((row) => row.date)) && (
+          <p className="text-xs text-muted-foreground">
+            以前取り込んだ明細に別の日付や名義人を指定すると、新しい明細として登録されます。
+          </p>
+        )}
+        {hasValid && result.errors.length > 0 && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" required checked={acceptExclusions}
+              onChange={(event) => setAcceptExclusions(event.currentTarget.checked)} />
+            エラーの {result.errors.length} 件を除いて取り込む
+          </label>
+        )}
 
         {state?.error ? (
           <p className="text-sm text-destructive" role="alert">
@@ -182,7 +231,7 @@ export function ImportPreview({
         <Button
           type="submit"
           className="h-11 w-full text-base shadow-soft"
-          disabled={pending || !hasValid || !validMonth}
+          disabled={pending || !hasValid || !validMonth || (result.errors.length > 0 && !acceptExclusions)}
         >
           {pending ? "取り込み中..." : `${result.valid.length} 件を取り込む`}
         </Button>
@@ -198,12 +247,15 @@ export function ImportPreview({
 export function ImportResult({
   sheets,
   confirmAction,
+  members,
 }: {
   sheets: SheetPreview[];
+  members?: MemberInfo[];
   confirmAction: ConfirmAction;
 }) {
   const [selected, setSelected] = useState<string>(sheets[0]?.sheet ?? "");
   const [months, setMonths] = useState(() => new Map<string, string>());
+  const [memberBySheet, setMemberBySheet] = useState(() => new Map<string, string>());
   const current = sheets.find((s) => s.sheet === selected) ?? sheets[0];
 
   if (!current) {
@@ -239,6 +291,10 @@ export function ImportResult({
         month={months.get(current.sheet) ?? current.month}
         onMonthChange={(value) => setMonths((previous) => new Map(previous).set(current.sheet, value))}
         result={current.result}
+        sheet={current.sheet}
+        initialMember={memberBySheet.get(current.sheet)}
+        onMemberChange={(value) => setMemberBySheet((previous) => new Map(previous).set(current.sheet, value))}
+        members={members}
         confirmAction={confirmAction}
       />
     </div>
@@ -249,8 +305,10 @@ export function ImportResult({
 export function ImportForm({
   parseAction,
   confirmAction,
+  members,
 }: {
   parseAction: ParseAction;
+  members?: MemberInfo[];
   confirmAction: ConfirmAction;
 }) {
   const [state, formAction, pending] = useActionState<
@@ -265,7 +323,7 @@ export function ImportForm({
   if (state?.ok && !chooseNewFile && !pending) {
     return (
       <div className="space-y-4">
-        <ImportResult sheets={state.sheets} confirmAction={confirmAction} />
+        <ImportResult sheets={state.sheets} confirmAction={confirmAction} members={members} />
         <Button type="button" variant="outline" onClick={() => { setFileName(""); setChooseNewFile(true); }}>
           別のファイルを選ぶ
         </Button>
@@ -295,6 +353,9 @@ export function ImportForm({
       {state && !state.ok ? (
         <p className="text-sm text-destructive" role="alert">
           {state.error}
+          {state.resetAt && ` 再開予定 ${new Date(state.resetAt).toLocaleString("ja-JP", {
+            year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
+          })}`}
         </p>
       ) : null}
 

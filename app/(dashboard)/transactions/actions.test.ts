@@ -14,7 +14,7 @@ const state = vi.hoisted(() => ({
   householdId: null as string | null,
   matchedRows: [] as { id: string }[],
   existingRow: null as
-    | { created_by: string; on_behalf_of: string | null }
+    | { created_by: string; on_behalf_of: string | null; amount?: number }
     | null,
   members: [] as { user_id: string; display_name: string }[],
   calls: [] as {
@@ -244,6 +244,16 @@ describe("updateTransaction", () => {
     const update = state.calls.find((c) => c.method === "update");
     expect(update?.table).toBe("transactions");
     expect(update?.filters).toEqual({ id: "t-1", household_id: "h-1" });
+  });
+
+  it("取込の負額を編集できるが精算対象に変更できない", async () => {
+    state.existingRow = { ...state.existingRow!, amount: -3500 };
+    const protectedResult = await updateTransaction(undefined, updateFormData({ amount: "-4000", is_shared: "on" }));
+    expect(protectedResult).toMatchObject({ error: expect.stringContaining("精算") });
+    expect(state.calls.some((call) => call.method === "update")).toBe(false);
+    await expect(updateTransaction(undefined, updateFormData({ amount: "-4000" })))
+      .rejects.toThrow("NEXT_REDIRECT:/transactions");
+    expect(state.calls.find((call) => call.method === "update")?.values).toMatchObject({ amount: -4000, is_shared: false });
   });
 
   it("対象が見つからない場合（他グループ・他人の取引）はエラーを返す", async () => {

@@ -389,7 +389,7 @@ export function TransactionForm({
         </div>
       ) : null}
 
-      {type === "expense" ? (
+      {type === "expense" && (defaultValues?.amount ?? 0) >= 0 ? (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
           <span className="space-y-0.5">
             <span className="block text-sm font-medium">
