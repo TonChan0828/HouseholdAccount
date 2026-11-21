@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(28);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000b1', 'category-owner@example.test'),
@@ -36,6 +36,16 @@ select is((select count(*) from public.category_usage('40000000-0000-0000-0000-0
 select lives_ok($$select public.set_preset_category_visibility(
   '40000000-0000-0000-0000-000000000001', (select id from public.categories
   where household_id = '40000000-0000-0000-0000-000000000001' and name = '給与'), true)$$, 'members may hide a preset');
+select throws_ok($$insert into public.categories (household_id, name, type, is_default)
+  values ('40000000-0000-0000-0000-000000000001', 'Forged default', 'expense', true)$$,
+  '42501', null, 'members cannot construct undeletable presets');
+select throws_ok($$update public.categories set is_hidden = false where name = '給与'$$,
+  '42501', null, 'visibility updates use the synchronized function');
+select throws_ok($$select public.reorder_categories(
+  '40000000-0000-0000-0000-000000000001', 'income',
+  (select array_agg(id order by (name = '給与') desc, sort_order)
+     from public.categories where type = 'income')
+)$$, '22023', null, 'stale orders cannot move a category that is now hidden');
 select is((select is_hidden from public.categories where name = '給与'), true, 'preset visibility persists');
 with deleted as (delete from public.categories where name = '給与' returning id)
 select is((select count(*) from deleted), 0::bigint,
@@ -54,6 +64,10 @@ set local role authenticated;
 select results_eq($$select transactions, recurring, budgets from public.category_usage('40000000-0000-0000-0000-000000000001')
   where category_id = '41000000-0000-0000-0000-000000000001'$$,
   $$values (1::bigint, 1::bigint, 1::bigint)$$, 'owner sees all affected reference counts');
+update public.categories set type = 'income' where id = '41000000-0000-0000-0000-000000000001';
+select throws_ok($$select pg_temp.merge('41000000-0000-0000-0000-000000000001', '41000000-0000-0000-0000-000000000003')$$,
+  '22023', 'destination category does not support existing references', 'existing expenses cannot move to an income category');
+update public.categories set type = 'expense' where id = '41000000-0000-0000-0000-000000000001';
 select throws_ok($$select pg_temp.merge('41000000-0000-0000-0000-000000000001', '41000000-0000-0000-0000-000000000001')$$,
   '22023', null, 'the same category cannot be merged into itself');
 select throws_ok($$select pg_temp.merge('41000000-0000-0000-0000-000000000001', '41000000-0000-0000-0000-000000000003')$$,
@@ -99,6 +113,21 @@ select results_eq(
   'the recurring transaction and budget both follow the destination');
 select throws_ok($$select pg_temp.merge('41000000-0000-0000-0000-000000000001', '41000000-0000-0000-0000-000000000002')$$,
   '22023', null, 'a repeated merge cannot affect the destination');
+select is(public.confirm_transaction_import_v2(
+  '40000000-0000-0000-0000-000000000001', '2024-02-01',
+  '[{"type":"expense","categoryName":"Excel source","amount":20}]', null
+), 1, 'Excel can create another custom category in the group');
+select public.merge_category(
+  '40000000-0000-0000-0000-000000000001',
+  (select id from public.categories where name = 'Excel source'),
+  '41000000-0000-0000-0000-000000000002'
+);
+select is(public.confirm_transaction_import_v2(
+  '40000000-0000-0000-0000-000000000001', '2024-02-01',
+  '[{"type":"expense","categoryName":"Excel source","amount":20}]', null
+), 0, 'same workbook does not insert another transaction after merging its category');
+select is((select count(*) from public.categories where name = 'Excel source'), 0::bigint,
+  'same workbook does not recreate the merged source category');
 reset role;
 select * from finish();
 rollback;

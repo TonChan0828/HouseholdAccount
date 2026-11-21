@@ -325,6 +325,16 @@ test("非表示のプリセットを履歴に残し、管理画面から再表�
   await expect(page).toHaveURL(/\/transactions$/);
 
   await page.goto("/categories");
+  await page.setViewportSize({ width: 375, height: 812 });
+  const preset = page.getByTestId("category-row").filter({ hasText: "食費" });
+  const name = preset.getByText("食費", { exact: true });
+  const hideButton = preset.getByRole("button", { name: "食費を非表示" });
+  await expect(name).toBeVisible();
+  const [cardBounds, nameBounds, buttonBounds] = await Promise.all([
+    preset.boundingBox(), name.boundingBox(), hideButton.boundingBox(),
+  ]);
+  expect(nameBounds!.width).toBeGreaterThan(0);
+  expect(buttonBounds!.x + buttonBounds!.width).toBeLessThanOrEqual(cardBounds!.x + cardBounds!.width);
   await page.getByRole("button", { name: "食費を非表示" }).click();
   await expect(page.getByTestId("category-row").filter({ hasText: "食費" })).toHaveCount(0);
   await page.reload();

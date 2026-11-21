@@ -154,8 +154,8 @@ export default async function CategoriesPage({
                     data-testid="category-row"
                     className="transition-shadow hover:shadow-lifted"
                   >
-                    <CardContent className="flex items-center justify-between gap-3 py-3">
-                      <span className="inline-flex min-w-0 items-center gap-3 text-sm">
+                    <CardContent className="flex flex-col items-start gap-2 py-3">
+                      <span className="inline-flex w-full min-w-0 items-center gap-3 text-sm">
                         <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-secondary shadow-soft">
                           <CategoryIconMark
                             icon={c.icon}
@@ -165,7 +165,7 @@ export default async function CategoriesPage({
                         </span>
                         <span className="truncate font-medium">{c.name}</span>
                       </span>
-                      <span className="flex shrink-0 items-center gap-1">
+                      <span className="flex w-full flex-wrap items-center justify-end gap-1">
                         <form action={reorderCategories}>
                           <input type="hidden" name="type" value={group.type} />
                           <input
