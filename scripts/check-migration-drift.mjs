@@ -57,11 +57,13 @@ export function findMigrationDrift(localVersions, remoteVersions) {
   };
 }
 
-function localMigrationVersions() {
-  const directory = new URL("../supabase/migrations/", import.meta.url);
+/** @param {string | URL} directory */
+export function localMigrationVersions(directory = new URL("../supabase/migrations/", import.meta.url)) {
   const versions = readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".sql"))
-    .map(({ name }) => {
+    .filter((entry) => !entry.isDirectory() && entry.name.endsWith(".sql"))
+    .map((entry) => {
+      if (!entry.isFile()) throw new Error("Local migration is not a regular file.");
+      const { name } = entry;
       const version = /^(\d{14})_.+\.sql$/.exec(name)?.[1];
       if (!version) throw new Error("Invalid local migration filename.");
       return version;

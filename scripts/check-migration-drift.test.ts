@@ -1,6 +1,9 @@
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import { fetchMigrationVersions, findMigrationDrift } from "./check-migration-drift.mjs";
+import { fetchMigrationVersions, findMigrationDrift, localMigrationVersions } from "./check-migration-drift.mjs";
 
 const project = "bkljkdkldaiemwpnjuks";
 const localVersion = "20260928090000";
@@ -26,6 +29,19 @@ describe("findMigrationDrift", () => {
   it("ローカルに履歴がなければ失敗する", () => {
     expect(() => findMigrationDrift([], [])).toThrow(/local migrations/i);
   });
+});
+
+it("リンクされたSQLファイルを黙って除外しない", () => {
+  const directory = mkdtempSync(join(tmpdir(), "household-drift-test-"));
+  try {
+    const ordinaryFile = join(directory, `${localVersion}_ordinary.sql`);
+    writeFileSync(ordinaryFile, "");
+    expect(localMigrationVersions(directory)).toEqual([localVersion]);
+    symlinkSync(ordinaryFile, join(directory, `${pendingVersion}_linked.sql`));
+    expect(() => localMigrationVersions(directory)).toThrow(/not a regular file/i);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 describe("fetchMigrationVersions", () => {
