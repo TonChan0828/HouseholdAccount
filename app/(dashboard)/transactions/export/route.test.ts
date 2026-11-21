@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type QueryResult = { data: unknown; error: unknown; count?: number | null };
 
-const { state, pagination, filters, logServerError, supabase } = vi.hoisted(() => {
+const { state, pagination, filters, logServerError, supabase, access } = vi.hoisted(() => {
   const state: Record<string, QueryResult> = {
     transactions: { data: [], error: null },
     household_members: { data: [], error: null },
@@ -47,6 +47,7 @@ const { state, pagination, filters, logServerError, supabase } = vi.hoisted(() =
     pagination,
     filters,
     logServerError: vi.fn(),
+    access: { signedIn: true, groupId: "household-1" as string | null },
     supabase: { from: vi.fn((table: string) => queryFor(table)) },
   };
 });
@@ -55,8 +56,8 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: () => supabase,
 }));
 vi.mock("@/lib/household", () => ({
-  getCurrentUser: () => Promise.resolve({ id: "user-1" }),
-  getActiveHouseholdId: () => Promise.resolve("household-1"),
+  getCurrentUser: () => Promise.resolve(access.signedIn ? { id: "user-1" } : null),
+  getActiveHouseholdId: () => Promise.resolve(access.groupId),
   getHouseholdSettings: () => Promise.resolve({ periodStartDay: 1 }),
 }));
 vi.mock("@/lib/observability", () => ({ logServerError }));
@@ -91,6 +92,7 @@ describe("GET /transactions/export", () => {
     Object.assign(pagination, { cap: 1000, failAt: -1, truncateAt: -1, countAt: -1, calls: [] });
     filters.length = 0;
     logServerError.mockReset();
+    Object.assign(access, { signedIn: true, groupId: "household-1" });
     supabase.from.mockClear();
   });
 
@@ -103,6 +105,28 @@ describe("GET /transactions/export", () => {
     expect(response.headers.get("content-type")).toContain("text/csv");
     await expect(response.text()).resolves.toContain("家計担当");
     expect(logServerError).not.toHaveBeenCalled();
+  });
+
+  it.each([[false, null, 401], [true, null, 403]] as const)(
+    "認証または対象グループがなければCSVを返さない", async (signedIn, groupId, status) => {
+      Object.assign(access, { signedIn, groupId });
+      const response = await GET(new NextRequest("http://localhost/transactions/export?start=2024-02-29&end=2024-02-29"));
+      expect(response.status).toBe(status);
+      expect(supabase.from).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([500, 501])("%i件のページ境界で全行を一度ずつ出力する", async (count) => {
+    const sample = (state.transactions.data as Record<string, unknown>[])[0];
+    state.transactions.data = Array.from({ length: count }, (_, index) => ({
+      ...sample, id: `transaction-${index}`, memo: `明細${index}`,
+    }));
+    const response = await GET(new NextRequest("http://localhost/transactions/export?start=2026-09-10&end=2026-09-10"));
+    expect(response.status).toBe(200);
+    const rows = (await response.text()).trim().split(/\r?\n/).slice(1);
+    expect(rows).toHaveLength(count);
+    expect(new Set(rows).size).toBe(count);
+    expect(filters).toContainEqual(["eq", "household_id", "household-1"]);
   });
 
   it("取得上限を超える全1201件を出力する", async () => {

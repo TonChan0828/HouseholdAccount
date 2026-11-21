@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { expect, test, type Page } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
@@ -88,4 +89,37 @@ test.describe("年間分析", () => {
     await expect(page).toHaveURL(/\/analytics$/);
     await expect(page.getByText("月別推移（直近6期）")).toBeVisible();
   });
+});
+
+test("年間のカテゴリ別支出は16カテゴリと明細件数を表示する", async ({ page }) => {
+  await createHousehold(page, ephemeralName("全カテゴリ表示"));
+  const year = new Date().getUTCFullYear() - 1;
+  const url = `/analytics?view=year&year=${year}`;
+  const categorySection = page.getByRole("region", { name: "カテゴリ別支出（年間）" });
+  await page.goto(url);
+  await expect(categorySection.getByText("この年の支出はまだありません。")).toBeVisible();
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(`${year}年06月`);
+  sheet.getCell("B1").value = "1 か月の支出";
+  for (let index = 1; index <= 17; index += 1) {
+    sheet.getCell(`B${index + 1}`).value = `カテゴリ${Math.min(index, 16)}`;
+    sheet.getCell(`C${index + 1}`).value = index <= 15 ? 100 : 1;
+  }
+  await page.goto("/transactions/import");
+  await page.getByLabel(/Excel ファイル/).setInputFiles({
+    name: "analytics.xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: Buffer.from(await workbook.xlsx.writeBuffer()),
+  });
+  await page.getByRole("button", { name: "ファイルを読み込む" }).click();
+  await page.getByRole("button", { name: "17 件を取り込む" }).click();
+  await expect(page).toHaveURL(/imported=17&duplicates=0/);
+
+  await page.goto(url);
+  const rows = categorySection.getByRole("listitem");
+  await expect(rows).toHaveCount(16);
+  const last = rows.filter({ hasText: "カテゴリ16" });
+  await expect(last.getByText("¥2", { exact: true })).toBeVisible();
+  await expect(last.getByText("2件", { exact: true })).toBeVisible();
 });

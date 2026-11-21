@@ -116,13 +116,13 @@ describe("summarizeCategoryExpense", () => {
     });
   });
 
-  it("16カテゴリをすべて返し、相殺された支出も数える", () => {
-    const rows = Array.from({ length: 16 }, (_, i) =>
+  it.each([15, 16])("%iカテゴリをすべて返し、相殺された支出も数える", (count) => {
+    const rows = Array.from({ length: count }, (_, i) =>
       tx({ category_id: String(i), amount: i + 1 }),
     );
     rows.push(tx({ category_id: "0", amount: -1 }));
     const result = summarizeCategoryExpense(rows);
-    expect(result).toHaveLength(16);
+    expect(result).toHaveLength(count);
     expect(result.at(-1)).toMatchObject({ categoryId: "0", amount: 0, count: 2 });
   });
 
