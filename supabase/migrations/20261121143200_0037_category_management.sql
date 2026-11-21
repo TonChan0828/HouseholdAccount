@@ -111,6 +111,14 @@ begin
     or destination.type not in (source.type, 'both') then
     raise exception 'invalid merge categories' using errcode = '22023';
   end if;
+  -- 参照先を変えない明細編集は外部キーを再検査しないため、種別の検証前に明細もロックする。
+  perform 1 from public.transactions where household_id = _household_id
+    and category_id = _source_id order by id for update;
+  perform 1 from public.recurring_transactions where household_id = _household_id
+    and category_id = _source_id order by id for update;
+  perform 1 from public.budgets where household_id = _household_id
+    and category_id in (_source_id, _destination_id) order by id for update;
+
   -- カテゴリの種別が変更されても過去明細の種別は保持される。
   if destination.type <> 'both' and (
     exists (select 1 from public.transactions where household_id = _household_id
