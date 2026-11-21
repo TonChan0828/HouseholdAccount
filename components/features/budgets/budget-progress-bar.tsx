@@ -14,7 +14,7 @@ type Props = {
 export function BudgetProgressBar({ spent, budget, className }: Props) {
   const over = budget > 0 && spent > budget;
   const pct =
-    budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+    budget > 0 ? Math.max(0, Math.min(100, Math.round((spent / budget) * 100))) : 0;
   const rawPct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
   const remaining = budget - spent;
 

@@ -21,8 +21,10 @@ export function Amount({ value, type, showSign = true, className }: Props) {
         className,
       )}
     >
-      {sign}
-      {yen(value)}
+      {value < 0 && (
+        <span className="mr-1 text-xs font-medium text-muted-foreground">調整</span>
+      )}
+      {sign}{yen(value)}
     </span>
   );
 }
