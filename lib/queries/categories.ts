@@ -7,7 +7,7 @@ import type { Category } from "@/types";
  * `TransactionForm` は id/name/color/type しか使わないため、
  * ページ側は行全体を取らずこの形で受け渡す。
  */
-export type CategoryOption = Pick<Category, "id" | "name" | "color" | "type">;
+export type CategoryOption = Pick<Category, "id" | "name" | "color" | "type"> & { is_hidden?: boolean };
 
 /**
  * グループのカテゴリを、収支フォーム向けに type・保存順で取得する。
@@ -21,7 +21,7 @@ export async function fetchHouseholdCategories(
 ): Promise<CategoryOption[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, color, type")
+    .select("id, name, color, type, is_hidden")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
     .order("sort_order", { ascending: true })

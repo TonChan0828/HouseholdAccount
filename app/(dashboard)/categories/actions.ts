@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { requireDashboardContext } from "@/lib/household";
+import { isHouseholdOwner, requireDashboardContext } from "@/lib/household";
 import { throwIfError } from "@/lib/queries/result";
 import { categorySchema } from "@/lib/validations/category";
 
@@ -146,6 +146,23 @@ export async function reorderCategories(formData: FormData): Promise<void> {
   revalidatePath("/categories");
 }
 
+/** プリセットの表示状態をアクティブグループ内で変更する。 */
+export async function setPresetCategoryVisibility(formData: FormData): Promise<void> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  const hidden = formData.get("hidden");
+  if (!id.success || (hidden !== "true" && hidden !== "false")) {
+    redirect("/categories?visibilityError=1");
+  }
+  const { householdId, supabase } = await requireDashboardContext();
+  const { error } = await supabase.rpc("set_preset_category_visibility", {
+    _household_id: householdId,
+    _category_id: id.data,
+    _hidden: hidden === "true",
+  });
+  if (error) redirect("/categories?visibilityError=1");
+  revalidatePath("/", "layout");
+}
+
 /**
  * カスタムカテゴリを削除する。紐づく取引は on delete set null で未分類になる。
  *
@@ -162,7 +179,30 @@ export async function deleteCategory(
     return { error: "対象が指定されていません" };
   }
 
-  const { householdId, supabase } = await requireDashboardContext();
+  const { householdId, supabase, user } = await requireDashboardContext();
+  const destination = formData.get("destination");
+  if (destination) {
+    if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(destination).success ||
+        typeof destination !== "string" || id === destination) {
+      return { error: "移行先を確認してください。" };
+    }
+    if (!await isHouseholdOwner(supabase, householdId, user.id)) {
+      return { error: "カテゴリを統合できるのはオーナーだけです。" };
+    }
+    const { error } = await supabase.rpc("merge_category", {
+      _household_id: householdId,
+      _source_id: id,
+      _destination_id: destination,
+    });
+    if (error) {
+      return { error: error.code === "23505"
+        ? "両方のカテゴリに予算があります。統合する前に予算を見直してください。"
+        : "カテゴリを統合できませんでした。一覧を再読み込みして移行先を確認してください。" };
+    }
+    revalidatePath("/", "layout");
+    redirect("/categories?merged=1");
+  }
+
   const { data, error } = await supabase
     .from("categories")
     .delete()
