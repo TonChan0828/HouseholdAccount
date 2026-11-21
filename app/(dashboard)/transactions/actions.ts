@@ -19,7 +19,7 @@ import {
   buildMirrorRows,
   type MirrorSource,
 } from "@/lib/transactions/mirror";
-import { transactionSchema } from "@/lib/validations/transaction";
+import { importedAdjustmentSchema, transactionSchema } from "@/lib/validations/transaction";
 
 export type TransactionActionState =
   | { error: string }
@@ -49,8 +49,9 @@ function isDialogSubmit(formData: FormData): boolean {
   return formData.get("_dialog") === "1";
 }
 
-function parse(formData: FormData) {
-  return transactionSchema.safeParse({
+function parse(formData: FormData, adjustment = false) {
+  const schema = adjustment ? importedAdjustmentSchema : transactionSchema;
+  return schema.safeParse({
     type: formData.get("type"),
     amount: formData.get("amount"),
     date: formData.get("date"),
@@ -252,21 +253,14 @@ export async function updateTransaction(
     return { error: "対象が指定されていません" };
   }
 
-  const parsed = parse(formData);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
-  }
-
   const { user, householdId, supabase } = await requireDashboardContext();
-
-  const { type, amount, date, category_id, memo, is_shared } = parsed.data;
 
   // 名義人の正規化は「その収支の入力者」を基準にする（操作者ではない）。
   // 名義人が自分名義の収支を編集するとき、操作者と比べると名義が外れてしまい、
   // RLS の WITH CHECK も満たせなくなるため、先に対象行の created_by を引く。
   const existingResult = await supabase
     .from("transactions")
-    .select("created_by, on_behalf_of")
+    .select("created_by, on_behalf_of, amount")
     .eq("id", id)
     .eq("household_id", householdId)
     .maybeSingle();
@@ -274,6 +268,12 @@ export async function updateTransaction(
   if (!existing || !canEditTransaction(existing, user.id)) {
     return { error: "対象の収支が見つかりません" };
   }
+
+  const parsed = parse(formData, existing.amount < 0);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "入力内容を確認してください" };
+  }
+  const { type, amount, date, category_id, memo, is_shared } = parsed.data;
 
   const subject = await resolveOnBehalfOf(
     householdId,
@@ -363,6 +363,10 @@ export async function reflectTransaction(
   const tx = unwrapData(transactionResult, "fetchTransactionForReflection");
   if (!tx || !canEditTransaction(tx, user.id)) {
     return { error: "対象の収支が見つかりません" };
+  }
+
+  if (tx.amount < 0) {
+    return { error: "負額の調整行は他のグループに反映できません" };
   }
 
   try {

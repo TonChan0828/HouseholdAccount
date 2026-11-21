@@ -11,11 +11,12 @@ export async function authorizeReceiptScan(): Promise<boolean> {
   } = await supabase.auth.getUser();
   if (!user) return false;
 
-  return consumeRateLimit({
+  const result = await consumeRateLimit({
     bucket: "ocr.start",
     subject: user.id,
     limit: 10,
     windowSeconds: 10 * 60,
     includeIp: false,
   });
+  return result === "allowed";
 }

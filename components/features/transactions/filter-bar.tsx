@@ -15,7 +15,7 @@ import {
 } from "@/lib/transaction-filter";
 import { cn } from "@/lib/utils";
 
-type CategoryOption = { id: string; name: string; color: string | null };
+type CategoryOption = { id: string; name: string; color: string | null; is_hidden?: boolean };
 type MemberOption = { user_id: string; display_name: string };
 
 type Props = {
@@ -200,8 +200,8 @@ export function FilterBar({
           className={selectClass}
         >
           <option value="">すべてのカテゴリ</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
+          {categories.filter((c) => !c.is_hidden || c.id === filter.categoryId).map((c) => (
+            <option key={c.id} value={c.id} disabled={c.is_hidden}>
               {c.name}
             </option>
           ))}

@@ -12,7 +12,10 @@ import {
 } from "@/lib/household";
 import { createClient } from "@/lib/supabase/server";
 import { throwIfError, unwrapData } from "@/lib/queries/result";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import {
+  consumeRateLimit,
+  RATE_LIMIT_UNAVAILABLE_MESSAGE,
+} from "@/lib/rate-limit";
 import {
   createHouseholdSchema,
   invitationLimitSchema,
@@ -123,16 +126,19 @@ export async function createInvitation(
     redirect("/login");
   }
 
-  if (
-    !(await consumeRateLimit({
-      bucket: "invitation.create",
-      subject: user.id,
-      limit: 20,
-      windowSeconds: 60 * 60,
-      includeIp: false,
-    }))
-  ) {
-    return { error: "招待リンクの発行回数が多すぎます。しばらくお待ちください" };
+  const rateLimit = await consumeRateLimit({
+    bucket: "invitation.create",
+    subject: user.id,
+    limit: 20,
+    windowSeconds: 60 * 60,
+    includeIp: false,
+  });
+  if (rateLimit !== "allowed") {
+    return {
+      error: rateLimit === "unavailable"
+        ? RATE_LIMIT_UNAVAILABLE_MESSAGE
+        : "招待リンクの発行回数が多すぎます。しばらくお待ちください",
+    };
   }
 
   const token = randomBytes(24).toString("base64url");
@@ -501,16 +507,19 @@ export async function acceptInvitation(
     redirect("/login");
   }
 
-  if (
-    !(await consumeRateLimit({
-      bucket: "invitation.accept",
-      subject: user.id,
-      limit: 20,
-      windowSeconds: 15 * 60,
-      includeIp: false,
-    }))
-  ) {
-    return { error: "参加の試行回数が多すぎます。しばらくお待ちください" };
+  const rateLimit = await consumeRateLimit({
+    bucket: "invitation.accept",
+    subject: user.id,
+    limit: 20,
+    windowSeconds: 15 * 60,
+    includeIp: false,
+  });
+  if (rateLimit !== "allowed") {
+    return {
+      error: rateLimit === "unavailable"
+        ? RATE_LIMIT_UNAVAILABLE_MESSAGE
+        : "参加の試行回数が多すぎます。しばらくお待ちください",
+    };
   }
 
   const { data, error } = await supabase.rpc("accept_invitation", {

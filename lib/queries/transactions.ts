@@ -45,25 +45,37 @@ export async function fetchTransactionsInRange(
   const filter = options?.filter ?? {};
   const rows: TransactionRow[] = [];
 
-  for (let offset = 0; ; offset += FETCH_BATCH_SIZE) {
-    const { data, error } = await buildTransactionQuery(
+  const seen = new Set<string>();
+  let expectedCount: number | null = null;
+  do {
+    const { data, error, count } = await buildTransactionQuery(
       supabase,
       householdId,
       range,
       filter,
       ascending,
+      true,
     )
-      .range(offset, offset + FETCH_BATCH_SIZE - 1)
+      .range(rows.length, rows.length + FETCH_BATCH_SIZE - 1)
       .overrideTypes<TransactionRow[]>();
     if (error) {
       throw new DataAccessError("fetchTransactionsInRange", error);
     }
     const batch = data ?? [];
-    rows.push(...batch);
-    if (batch.length < FETCH_BATCH_SIZE) {
-      return rows;
+    if (count === null || (expectedCount !== null && count !== expectedCount) ||
+        rows.length + batch.length > count || (!batch.length && rows.length < count)) {
+      throw new DataAccessError("fetchTransactionsInRange", { message: "Transaction count changed or is unavailable" });
     }
-  }
+    expectedCount = count;
+    for (const row of batch) {
+      if (seen.has(row.id)) {
+        throw new DataAccessError("fetchTransactionsInRange", { message: "Duplicate transaction" });
+      }
+      seen.add(row.id);
+      rows.push(row);
+    }
+  } while (rows.length < expectedCount);
+  return rows;
 }
 
 export type TransactionPage = {
@@ -111,11 +123,13 @@ function buildTransactionQuery(
   range: { start: Date; end: Date },
   filter: TransactionFilter,
   ascending: boolean,
+  includeCount = false,
 ) {
   let query = supabase
     .from("transactions")
     .select(
       "id, created_at, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, category:categories(name, color, icon)",
+      includeCount ? { count: "exact" } : undefined,
     )
     .eq("household_id", householdId)
     .gte("date", toISODate(range.start))

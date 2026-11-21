@@ -4,6 +4,7 @@ import { STORAGE_STATE } from "./e2e/constants";
 
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3000);
 const E2E_BASE_URL = `http://localhost:${E2E_PORT}`;
+const useProductionBuild = process.env.E2E_PRODUCTION_BUILD === "true";
 const isCI = Boolean(process.env.CI);
 const skipDatabaseSetup = process.env.E2E_SKIP_DB_SETUP === "true";
 
@@ -56,7 +57,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --port ${E2E_PORT}`,
+    command: `npm run ${useProductionBuild ? "start" : "dev"} -- --port ${E2E_PORT}`,
     url: E2E_BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

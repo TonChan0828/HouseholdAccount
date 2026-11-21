@@ -58,6 +58,19 @@ async function buildMultiSheetXlsx(): Promise<string> {
 }
 
 test.describe("Excel取り込み", () => {
+  test("過大展開するExcelを拒否し、その後も通常の画面を利用できる", async ({ page }) => {
+    await createHousehold(page, ephemeralName("展開制限"));
+    const wb = new ExcelJS.Workbook();
+    const ws = addBudgetSheet(wb, "2026年10月", 100, 100);
+    ws.getCell("B14").value = "x".repeat(8 * 1024 * 1024);
+    const path = await writeXlsx(wb, "oversized.xlsx");
+    await page.goto("/transactions/import");
+    await page.getByLabel("Excel ファイル（.xlsx）").setInputFiles(path);
+    await page.getByRole("button", { name: "ファイルを読み込む" }).click();
+    await expect(page.getByText("Excelファイルが解析上限を超えています。行数やシート数を減らしてください")).toBeVisible();
+    await page.goto("/transactions");
+    await expect(page.getByRole("heading", { name: "収支", exact: true })).toBeVisible();
+  });
   test("Excelをアップロード→プレビュー→確定で収支に反映される", async ({
     page,
   }) => {
@@ -130,4 +143,73 @@ test.describe("Excel取り込み", () => {
       page.locator('[data-testid="transaction-row"]').filter({ hasText: "食費" }),
     ).toBeVisible();
   });
+});
+
+test("500行のプレビューを操作してもファイルを再解析しない", async ({ page }) => {
+  await createHousehold(page, ephemeralName("大容量プレビュー"));
+  const wb = new ExcelJS.Workbook();
+  for (const month of ["2026年06月", "2026年07月"]) {
+    const ws = wb.addWorksheet(month);
+    ws.getCell("B1").value = "1 か月の支出";
+    for (let row = 2; row <= 251; row += 1) {
+      ws.getCell(`B${row}`).value = `費目${row - 1}`;
+      ws.getCell(`C${row}`).value = row;
+    }
+  }
+  await page.goto("/transactions/import");
+  await page.getByLabel(/Excel ファイル/).setInputFiles(await writeXlsx(wb, "preview.xlsx"));
+  await page.getByRole("button", { name: "ファイルを読み込む" }).click();
+  await expect(page.getByRole("button", { name: "250 件を取り込む" })).toBeVisible();
+
+  let postCount = 0;
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/transactions/import") {
+      postCount += 1;
+    }
+  });
+  const latencies: number[] = [];
+  for (let iteration = 0; iteration < 5; iteration += 1) {
+    for (const [month, edited] of [["2026年06月", "2024-02"], ["2026年07月", "2024-03"]]) {
+      const started = Date.now();
+      await page.getByLabel("シート", { exact: true }).selectOption(month, { timeout: 1000 });
+      await page.getByLabel("対象月").fill(edited, { timeout: 1000 });
+      await expect(page.getByText(`対象月: 2024年${Number(edited.slice(5))}月`, { exact: false })).toBeVisible({ timeout: 1000 });
+      latencies.push(Date.now() - started);
+      const next = page.getByRole("button", { name: "取込予定の次のページ" });
+      const pageStarted = Date.now();
+      await next.click({ timeout: 1000 });
+      await expect(page.getByText("費目51", { exact: true })).toBeVisible({ timeout: 1000 });
+      latencies.push(Date.now() - pageStarted);
+    }
+  }
+  expect(postCount).toBe(0);
+  expect(Math.max(...latencies)).toBeLessThanOrEqual(1000);
+  test.info().annotations.push({ type: "preview_max_ms", description: String(Math.max(...latencies)) });
+});
+
+test("数式と日付を保持し、未保存の数式を確認して除外できる", async ({ page }) => {
+  await createHousehold(page, ephemeralName("調整行取り込み"));
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("2024年02月");
+  sheet.getCell("B1").value = "1 か月の支出";
+  sheet.getCell("B2").value = "項目";
+  sheet.getCell("C2").value = "金額";
+  sheet.getCell("D2").value = "日付";
+  sheet.getCell("B3").value = "食費";
+  sheet.getCell("C3").value = { formula: "0-3500", result: -3500 };
+  sheet.getCell("D3").value = new Date("2024-02-29T00:00:00Z");
+  sheet.getCell("B4").value = "日用品";
+  sheet.getCell("C4").value = { formula: "1+1" };
+  await page.goto("/transactions/import");
+  await page.getByLabel(/Excel ファイル/).setInputFiles(await writeXlsx(workbook, "adjustment.xlsx"));
+  await page.getByRole("button", { name: "ファイルを読み込む" }).click();
+
+  await expect(page.getByText("2024-02-29", { exact: true })).toBeVisible();
+  await expect(page.getByText(/2024年02月 · C4.*計算結果/)).toBeVisible();
+  const confirm = page.getByRole("button", { name: "1 件を取り込む" });
+  await expect(confirm).toBeDisabled();
+  await page.getByRole("checkbox", { name: /エラーの 1 件を除いて/ }).check();
+  await confirm.click();
+  await expect(page).toHaveURL(/imported=1&duplicates=0/);
+  await expect(page.getByTestId("transaction-row").filter({ hasText: "食費" })).toContainText("-¥3,500");
 });

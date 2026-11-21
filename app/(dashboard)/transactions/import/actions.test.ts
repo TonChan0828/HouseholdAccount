@@ -5,6 +5,7 @@ import { confirmImport, parseImportFile } from "./actions";
 const state = vi.hoisted(() => ({
   parseWorkbookCalls: 0,
   rpc: vi.fn(),
+  rateLimit: "allowed" as "allowed" | "limited" | "unavailable",
 }));
 
 vi.mock("@/lib/household", () => ({
@@ -13,6 +14,11 @@ vi.mock("@/lib/household", () => ({
     householdId: "h-1",
     supabase: { rpc: (...args: unknown[]) => state.rpc(...args) },
   }),
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  consumeRateLimitWithReset: async () => ({ status: state.rateLimit }),
+  RATE_LIMIT_UNAVAILABLE_MESSAGE: "一時的に利用できません",
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -44,12 +50,18 @@ function formDataWithFile(file: File): FormData {
 }
 
 beforeEach(() => {
+  state.rateLimit = "allowed";
   state.parseWorkbookCalls = 0;
   state.rpc.mockReset();
   state.rpc.mockResolvedValue({ data: 1, error: null });
 });
 
 describe("parseImportFile", () => {
+  it.each(["limited", "unavailable"] as const)("制限の判定が%sなら解析しない", async (status) => {
+    state.rateLimit = status;
+    expect(await parseImportFile(undefined, formDataWithFile(fileOfSize(100)))).toMatchObject({ ok: false });
+    expect(state.parseWorkbookCalls).toBe(0);
+  });
   it("ファイルサイズが上限（5MB）を超える場合はエラーを返し parseWorkbook を呼ばない", async () => {
     const result = await parseImportFile(
       undefined,
@@ -93,9 +105,10 @@ describe("confirmImport", () => {
     await expect(confirmImport(undefined, formData)).rejects.toThrow(
       "NEXT_REDIRECT:/transactions?ref=2026-06-01&imported=1&duplicates=0",
     );
-    expect(state.rpc).toHaveBeenCalledWith("confirm_transaction_import", {
+    expect(state.rpc).toHaveBeenCalledWith("confirm_transaction_import_v2", {
       _household_id: "h-1",
       _month: "2026-06-01",
+      _member_id: null,
       _rows: [{ type: "expense", categoryName: "食費", amount: 1200 }],
     });
   });
@@ -124,6 +137,17 @@ describe("confirmImport", () => {
       ),
     ).resolves.toEqual({ error: "収支の取り込みに失敗しました" });
     expect(state.rpc).toHaveBeenCalledOnce();
+  });
+
+  it("調整行と明示日付、選択された名義人をDBに渡す", async () => {
+    const member = "22222222-2222-4222-8222-222222222222";
+    const rows = [{ type: "expense", categoryName: "調整", amount: -3500, date: "2024-02-29" }];
+    const data = formDataWithRows(rows);
+    data.set("member", member);
+    await expect(confirmImport(undefined, data)).rejects.toThrow("NEXT_REDIRECT:");
+    expect(state.rpc).toHaveBeenCalledWith("confirm_transaction_import_v2", {
+      _household_id: "h-1", _month: "2026-06-01", _rows: rows, _member_id: member,
+    });
   });
 
   it("DB integer上限を超える金額はRPC前に拒否する", async () => {

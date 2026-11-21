@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Bell, Plus } from "lucide-react";
 import {
   deleteCategory,
   reorderCategories,
+  setPresetCategoryVisibility,
   toggleCategoryReminder,
 } from "@/app/(dashboard)/categories/actions";
 import { DeleteCategoryButton } from "@/components/features/categories/delete-category-button";
@@ -13,7 +14,7 @@ import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Surface } from "@/components/shared/surface";
-import { requireDashboardContext } from "@/lib/household";
+import { isHouseholdOwner, requireDashboardContext } from "@/lib/household";
 import { cn } from "@/lib/utils";
 import { unwrapData } from "@/lib/queries/result";
 import type { Category, CategoryType } from "@/types";
@@ -41,22 +42,29 @@ function moveCategoryIds(
 export default async function CategoriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sortError?: string }>;
+  searchParams: Promise<{ sortError?: string; deleted?: string; merged?: string; visibilityError?: string }>;
 }) {
-  const [{ sortError }, { householdId, supabase }] = await Promise.all([
+  const [{ sortError, deleted, merged, visibilityError }, { householdId, supabase, user }] = await Promise.all([
     searchParams,
     requireDashboardContext(),
   ]);
 
-  const result = await supabase
-    .from("categories")
-    .select("*")
-    .eq("household_id", householdId)
-    .order("type", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  const data = unwrapData(result, "fetchCategories");
-  const categories = (data ?? []) as Category[];
+  const [result, isOwner] = await Promise.all([
+    supabase
+      .from("categories")
+      .select("*")
+      .eq("household_id", householdId)
+      .order("type", { ascending: true })
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true }),
+    isHouseholdOwner(supabase, householdId, user.id),
+  ]);
+  const categories = (unwrapData(result, "fetchCategories") ?? []) as Category[];
+  const hiddenCategories = categories.filter((category) => category.is_hidden);
+  const usage = isOwner
+    ? unwrapData(await supabase.rpc("category_usage", { _household_id: householdId }), "fetchCategoryUsage") ?? []
+    : [];
+  const usageByCategory = new Map(usage.map((entry) => [entry.category_id, entry]));
 
   const reveal =
     "animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out";
@@ -86,6 +94,24 @@ export default async function CategoriesPage({
         </p>
       ) : null}
 
+      {visibilityError === "1" && (
+        <p role="alert" className="text-sm text-destructive">カテゴリの表示設定を変更できませんでした。</p>
+      )}
+
+      {merged === "1" && (
+        <p role="status" className="rounded-xl bg-secondary px-3 py-2.5 text-sm">カテゴリを統合しました。</p>
+      )}
+
+      {deleted === "1" ? (
+        <p
+          role="status"
+          data-testid="category-deleted-notice"
+          className="rounded-xl bg-secondary px-3 py-2.5 text-sm text-secondary-foreground"
+        >
+          カテゴリを削除しました。
+        </p>
+      ) : null}
+
       <p
         data-testid="category-reminder-note"
         className={cn(
@@ -102,8 +128,14 @@ export default async function CategoriesPage({
       </p>
 
       {GROUPS.map((group, gi) => {
-        const items = categories.filter((c) => c.type === group.type);
-        const itemIds = items.map((c) => c.id);
+        const groupCategories = categories.filter((category) => category.type === group.type);
+        const items = groupCategories.filter((category) => !category.is_hidden);
+        const itemIds = items.map((category) => category.id);
+        const reordered = (index: number, direction: -1 | 1) => {
+          const visibleIds = moveCategoryIds(itemIds, index, direction);
+          let visibleIndex = 0;
+          return groupCategories.map((category) => category.is_hidden ? category.id : visibleIds[visibleIndex++]);
+        };
         if (items.length === 0) {
           return null;
         }
@@ -122,8 +154,8 @@ export default async function CategoriesPage({
                     data-testid="category-row"
                     className="transition-shadow hover:shadow-lifted"
                   >
-                    <CardContent className="flex items-center justify-between gap-3 py-3">
-                      <span className="inline-flex min-w-0 items-center gap-3 text-sm">
+                    <CardContent className="flex flex-col items-start gap-2 py-3">
+                      <span className="inline-flex w-full min-w-0 items-center gap-3 text-sm">
                         <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-secondary shadow-soft">
                           <CategoryIconMark
                             icon={c.icon}
@@ -133,13 +165,13 @@ export default async function CategoriesPage({
                         </span>
                         <span className="truncate font-medium">{c.name}</span>
                       </span>
-                      <span className="flex shrink-0 items-center gap-1">
+                      <span className="flex w-full flex-wrap items-center justify-end gap-1">
                         <form action={reorderCategories}>
                           <input type="hidden" name="type" value={group.type} />
                           <input
                             type="hidden"
                             name="category_ids"
-                            value={JSON.stringify(moveCategoryIds(itemIds, index, -1))}
+                            value={JSON.stringify(reordered(index, -1))}
                           />
                           <Button
                             type="submit"
@@ -158,7 +190,7 @@ export default async function CategoriesPage({
                           <input
                             type="hidden"
                             name="category_ids"
-                            value={JSON.stringify(moveCategoryIds(itemIds, index, 1))}
+                            value={JSON.stringify(reordered(index, 1))}
                           />
                           <Button
                             type="submit"
@@ -190,9 +222,18 @@ export default async function CategoriesPage({
                           </Button>
                         </form>
                         {c.is_default ? (
-                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            デフォルト
-                          </span>
+                          <>
+                            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                              デフォルト
+                            </span>
+                            <form action={setPresetCategoryVisibility}>
+                              <input type="hidden" name="id" value={c.id} />
+                              <input type="hidden" name="hidden" value="true" />
+                              <Button variant="ghost" size="sm" type="submit" aria-label={`${c.name}を非表示`}>
+                                非表示
+                              </Button>
+                            </form>
+                          </>
                         ) : (
                           <>
                             <Link
@@ -207,6 +248,12 @@ export default async function CategoriesPage({
                             <DeleteCategoryButton
                               action={deleteCategory}
                               categoryId={c.id}
+                              categoryName={c.name}
+                              usage={usageByCategory.get(c.id)}
+                              destinations={isOwner ? categories
+                                .filter((target) => target.id !== c.id && !target.is_hidden &&
+                                  (target.type === c.type || target.type === "both"))
+                                .map(({ id, name }) => ({ id, name })) : undefined}
                             />
                           </>
                         )}
@@ -219,6 +266,27 @@ export default async function CategoriesPage({
           </section>
         );
       })}
+      {hiddenCategories.length > 0 && (
+        <details className="rounded-lg border p-3">
+          <summary className="cursor-pointer text-sm font-medium">
+            非表示のカテゴリ（{hiddenCategories.length}件）
+          </summary>
+          <ul className="mt-2 divide-y">
+            {hiddenCategories.map((category) => (
+              <li key={category.id} className="flex items-center justify-between gap-3 py-1 text-sm">
+                {category.name}
+                <form action={setPresetCategoryVisibility}>
+                  <input type="hidden" name="id" value={category.id} />
+                  <input type="hidden" name="hidden" value="false" />
+                  <Button type="submit" size="sm" variant="outline" aria-label={`${category.name}を再表示`}>
+                    再表示
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </main>
   );
 }

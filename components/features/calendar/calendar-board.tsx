@@ -137,14 +137,14 @@ export function CalendarBoard({
                     {dayNum}
                   </span>
                   <span className="flex w-full min-w-0 flex-col items-end gap-0 leading-tight">
-                    {d.income > 0 ? (
+                    {d.income !== 0 ? (
                       <span className="w-full truncate text-right text-[9px] font-medium tabular-nums text-income sm:text-[11px]">
-                        +{compactAmount(d.income)}
+                        {d.income < 0 ? "-" : "+"}{compactAmount(d.income)}
                       </span>
                     ) : null}
-                    {d.expense > 0 ? (
+                    {d.expense !== 0 ? (
                       <span className="w-full truncate text-right text-[9px] font-medium tabular-nums text-expense sm:text-[11px]">
-                        -{compactAmount(d.expense)}
+                        {d.expense < 0 ? "+" : "-"}{compactAmount(d.expense)}
                       </span>
                     ) : null}
                   </span>

@@ -41,7 +41,7 @@ export default async function BudgetsPage({
     await Promise.all([
       supabase
         .from("categories")
-        .select("id, name, color, type")
+        .select("id, name, color, type, is_hidden")
         .eq("household_id", householdId)
         .in("type", ["expense", "both"])
         .order("type", { ascending: true })
@@ -56,11 +56,11 @@ export default async function BudgetsPage({
   const categoryData = unwrapData(categoryResult, "fetchBudgetCategories");
   const budgetData = unwrapData(budgetResult, "fetchBudgets");
 
-  const categories = (categoryData ?? []) as Pick<
-    Category,
-    "id" | "name" | "color"
-  >[];
   const budgets = (budgetData ?? []) as Pick<Budget, "category_id" | "amount">[];
+  const budgetedCategories = new Set(budgets.map((budget) => budget.category_id));
+  const categories = (categoryData ?? []).filter((category) =>
+    !category.is_hidden || budgetedCategories.has(category.id),
+  ) satisfies Pick<Category, "id" | "name" | "color">[];
   const expenseSlices = summarizeCategoryExpense(txData);
 
   const { rows, totalBudget, totalSpent } = buildBudgetRows(

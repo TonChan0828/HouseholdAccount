@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { requireDashboardContext } from "@/lib/household";
+import { isHouseholdOwner, requireDashboardContext } from "@/lib/household";
 import { throwIfError } from "@/lib/queries/result";
 import { categorySchema } from "@/lib/validations/category";
 
@@ -146,22 +146,86 @@ export async function reorderCategories(formData: FormData): Promise<void> {
   revalidatePath("/categories");
 }
 
-/** カスタムカテゴリを削除する。紐づく取引は on delete set null で未分類になる。 */
-export async function deleteCategory(formData: FormData): Promise<void> {
+/** プリセットの表示状態をアクティブグループ内で変更する。 */
+export async function setPresetCategoryVisibility(formData: FormData): Promise<void> {
+  const id = z.uuid().safeParse(formData.get("id"));
+  const hidden = formData.get("hidden");
+  if (!id.success || (hidden !== "true" && hidden !== "false")) {
+    redirect("/categories?visibilityError=1");
+  }
+  const { householdId, supabase } = await requireDashboardContext();
+  const { error } = await supabase.rpc("set_preset_category_visibility", {
+    _household_id: householdId,
+    _category_id: id.data,
+    _hidden: hidden === "true",
+  });
+  if (error) redirect("/categories?visibilityError=1");
+  revalidatePath("/", "layout");
+}
+
+/**
+ * カスタムカテゴリを削除する。紐づく取引は on delete set null で未分類になる。
+ *
+ * PostgREST の DELETE は条件に合う行が 0 件（RLS で除外・デフォルトカテゴリ・
+ * 他グループの id）でもエラーを返さない。削除した行を受け取って件数を確かめ、
+ * 0 件を成功として扱わない。
+ */
+export async function deleteCategory(
+  _prevState: CategoryActionState,
+  formData: FormData,
+): Promise<CategoryActionState> {
   const id = String(formData.get("id") ?? "");
   if (!id) {
-    return;
+    return { error: "対象が指定されていません" };
   }
 
-  const { householdId, supabase } = await requireDashboardContext();
-  const result = await supabase
+  const { householdId, supabase, user } = await requireDashboardContext();
+  const destination = formData.get("destination");
+  if (destination) {
+    if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(destination).success ||
+        typeof destination !== "string" || id === destination) {
+      return { error: "移行先を確認してください。" };
+    }
+    if (!await isHouseholdOwner(supabase, householdId, user.id)) {
+      return { error: "カテゴリを統合できるのはオーナーだけです。" };
+    }
+    const { error } = await supabase.rpc("merge_category", {
+      _household_id: householdId,
+      _source_id: id,
+      _destination_id: destination,
+    });
+    if (error) {
+      return { error: error.code === "23505"
+        ? "両方のカテゴリに予算があります。統合する前に予算を見直してください。"
+        : "カテゴリを統合できませんでした。一覧を再読み込みして移行先を確認してください。" };
+    }
+    revalidatePath("/", "layout");
+    redirect("/categories?merged=1");
+  }
+
+  const { data, error } = await supabase
     .from("categories")
     .delete()
     .eq("id", id)
     .eq("household_id", householdId)
-    .eq("is_default", false);
-  throwIfError(result, "deleteCategory");
+    .eq("is_default", false)
+    .select("id");
 
-  revalidatePath("/categories");
-  redirect("/categories");
+  if (error) {
+    console.error("deleteCategory failed", error);
+    return { error: "カテゴリの削除に失敗しました。時間をおいて再度お試しください。" };
+  }
+
+  if (!data || data.length === 0) {
+    // 一覧が古い可能性があるため最新の状態を表示させる。
+    revalidatePath("/categories");
+    return {
+      error:
+        "このカテゴリは削除できませんでした（既に削除済み、またはデフォルトカテゴリです）。一覧を再読み込みしてください。",
+    };
+  }
+
+  // 収支・予算・定期収支など、カテゴリを表示する全画面を再検証する。
+  revalidatePath("/", "layout");
+  redirect("/categories?deleted=1");
 }

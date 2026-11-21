@@ -27,6 +27,14 @@ describe("SummaryCards", () => {
     expect(screen.getByText("-¥2,000")).toBeInTheDocument();
   });
 
+  it("負額があるときは金額を表示し、収入に対する比率図を省く", () => {
+    render(<SummaryCards income={100} expense={-20} />);
+    expect(screen.getByText("-¥20")).toBeInTheDocument();
+    expect(screen.getByText("¥120")).toBeInTheDocument();
+    expect(screen.queryByText("貯蓄率")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
   it("前期の値が渡されたら前期比を表示する", () => {
     render(
       <SummaryCards

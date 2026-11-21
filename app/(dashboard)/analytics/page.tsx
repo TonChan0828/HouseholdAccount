@@ -134,14 +134,16 @@ export default async function AnalyticsPage({
   const avgExpense = Math.round(
     trend.reduce((s, t) => s + t.expense, 0) / trend.length,
   );
-  const topShare = categories.length
+  const hasProportions = categories.every((category) => category.amount >= 0) &&
+    categories.some((category) => category.amount > 0);
+  const topShare = hasProportions
     ? Math.round((categories[0].amount / totalExpense) * 100)
     : 0;
 
   const kpis = [
     { label: "当期収入", value: currentPeriod.income, format: "yen" as const },
     { label: "支出カテゴリ", value: categories.length, unit: "件" },
-    { label: "最多占有", value: topShare, unit: "%" },
+    ...(hasProportions ? [{ label: "最多占有", value: topShare, unit: "%" }] : []),
     { label: "月平均支出", value: avgExpense, format: "yen" as const },
   ];
 

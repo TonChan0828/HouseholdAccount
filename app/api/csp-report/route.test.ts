@@ -14,7 +14,7 @@ describe("POST /api/csp-report", () => {
   beforeEach(() => {
     logServerError.mockReset();
     consumeRateLimit.mockReset();
-    consumeRateLimit.mockResolvedValue(true);
+    consumeRateLimit.mockResolvedValue("allowed");
   });
 
   it("URL のクエリを除去して違反を構造化ログに記録する", async () => {
@@ -57,6 +57,30 @@ describe("POST /api/csp-report", () => {
     expect(logServerError).not.toHaveBeenCalled();
   });
 
+  it("制限基盤が停止したときは本文を処理せず503を返す", async () => {
+    consumeRateLimit.mockResolvedValue("unavailable");
+    const response = await POST(new Request("http://localhost/api/csp-report", {
+      method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+    }));
+    expect(response.status).toBe(503);
+    expect(logServerError).not.toHaveBeenCalled();
+  });
+
+  it("申告サイズがなくても32KiBを超える本文を拒否する", async () => {
+    const response = await POST(new Request("http://localhost/api/csp-report", {
+      method: "POST", headers: { "content-type": "application/json" }, body: "x".repeat(32 * 1024 + 1),
+    }));
+    expect(response.status).toBe(413);
+  });
+
+  it("違反報告の招待トークンも記録しない", async () => {
+    await POST(new Request("http://localhost/api/csp-report", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ "document-uri": "https://example.com/invite/private-token" }),
+    }));
+    expect(JSON.stringify(logServerError.mock.calls)).not.toContain("private-token");
+  });
+
   it("大きすぎるレポートを読み込まず拒否する", async () => {
     const response = await POST(
       new Request("http://localhost/api/csp-report", {
@@ -89,7 +113,7 @@ describe("POST /api/csp-report", () => {
   });
 
   it("レート上限を超えたレポートを拒否する", async () => {
-    consumeRateLimit.mockResolvedValue(false);
+    consumeRateLimit.mockResolvedValue("limited");
 
     const response = await POST(
       new Request("http://localhost/api/csp-report", {

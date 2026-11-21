@@ -20,7 +20,8 @@ export const getHouseholdMemberNames = cache(
       .from("household_members")
       .select("user_id, display_name")
       .eq("household_id", householdId)
-      .order("joined_at");
+      .order("joined_at")
+      .order("user_id");
     if (memberError) {
       throw new DataAccessError("getHouseholdMembers", memberError);
     }

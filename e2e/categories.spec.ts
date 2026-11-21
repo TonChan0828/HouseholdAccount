@@ -1,7 +1,26 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { ephemeralName } from "./constants";
-import { createHousehold } from "./helpers";
+import { createHousehold, openTransactionDialog } from "./helpers";
+
+/** カテゴリ一覧で確認ダイアログを開いて「削除する」を押し、完了表示まで確認する。 */
+async function deleteCategoryViaDialog(page: Page, name: string) {
+  const row = page
+    .locator('[data-testid="category-row"]')
+    .filter({ hasText: name });
+  const dialog = page.getByRole("dialog", { name: "カテゴリを削除しますか？" });
+  // ハイドレーション前のクリック空振りに備えて開くまで再試行する。
+  await expect(async () => {
+    await row.getByRole("button", { name: `${name}を削除` }).click();
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  await dialog.getByRole("button", { name: "削除する" }).click();
+  await expect(page).toHaveURL(/\/categories\?deleted=1$/);
+  await expect(page.getByTestId("category-deleted-notice")).toHaveText(
+    "カテゴリを削除しました。",
+  );
+  await expect(row).toHaveCount(0);
+}
 
 // ログイン済み（storageState）で実行される。
 // カテゴリはグループ共有のため、各テストでグループを作成する。
@@ -80,14 +99,91 @@ test.describe("カテゴリ管理", () => {
     await expect(renamedRow).toBeVisible();
     await expect(renamedRow.locator("svg.lucide-plane")).toBeVisible();
 
-    // 削除（confirm 承諾）で一覧から消える
-    page.once("dialog", (dialog) => dialog.accept());
-    await renamedRow.getByRole("button", { name: "削除" }).click();
+    // 確認ダイアログで「削除する」を押すと一覧から消え、再読み込み後も復活しない
+    await deleteCategoryViaDialog(page, renamed);
+    await page.reload();
     await expect(
       page
         .locator('[data-testid="category-row"]')
         .filter({ hasText: renamed }),
     ).toHaveCount(0);
+  });
+
+  test("収支で使われているカテゴリを削除すると永続化され、収支は未選択になり選択肢からも消える", async ({
+    page,
+  }) => {
+    const stamp = Date.now();
+    const name = `削除検証-${stamp}`;
+    const memo = `削除検証メモ-${stamp}`;
+    const categoryRows = page
+      .locator('[data-testid="category-row"]')
+      .filter({ hasText: name });
+
+    await createHousehold(page, ephemeralName("カテゴリ削除"));
+
+    await page.goto("/categories/new");
+    await page.getByLabel("カテゴリ名").fill(name);
+    await page.getByRole("radio", { name: "支出" }).check();
+    await page.getByRole("button", { name: "追加する" }).click();
+    await expect(page).toHaveURL(/\/categories$/);
+    await expect(categoryRows).toHaveCount(1);
+
+    // このカテゴリで収支を1件登録する
+    await page.goto("/transactions/new");
+    await page.getByLabel("金額").fill("1500");
+    await page.getByRole("radio", { name }).check();
+    await page.getByLabel("メモ").fill(memo);
+    await page.getByRole("button", { name: "登録する" }).click();
+    await expect(page).toHaveURL(/\/transactions$/);
+    const txRow = page
+      .locator('[data-testid="transaction-row"]')
+      .filter({ hasText: memo });
+    await expect(txRow).toContainText(name);
+
+    // キャンセルでは削除されない
+    await page.goto("/categories");
+    const trigger = categoryRows.getByRole("button", { name: `${name}を削除` });
+    const dialog = page.getByRole("dialog", { name: "カテゴリを削除しますか？" });
+    await expect(async () => {
+      await trigger.click();
+      await expect(dialog).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+    await expect(dialog).toContainText("「未選択」に変更されます");
+    await dialog.getByRole("button", { name: "キャンセル" }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.reload();
+    await expect(categoryRows).toHaveCount(1);
+
+    // 削除すると成功が表示され、再読み込み・画面遷移後も復活しない
+    await deleteCategoryViaDialog(page, name);
+    await page.reload();
+    await expect(categoryRows).toHaveCount(0);
+    await page.goto("/dashboard");
+    await page.goto("/categories");
+    await expect(categoryRows).toHaveCount(0);
+
+    // 収支は残り、カテゴリは未分類（編集フォームでは「未選択」）になる
+    await page.goto("/transactions");
+    await expect(txRow).toBeVisible();
+    await expect(txRow).toContainText("未分類");
+    await expect(txRow).not.toContainText(name);
+    const editDialog = await openTransactionDialog(
+      page,
+      txRow.getByRole("button", { name: "編集" }),
+    );
+    await expect(editDialog.getByRole("radio", { name: "未選択" })).toBeChecked();
+    await expect(editDialog.getByRole("radio", { name })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    // 収支一覧のカテゴリ絞り込みの選択肢にも出ない
+    await expect(
+      page.getByLabel("カテゴリ").locator("option", { hasText: name }),
+    ).toHaveCount(0);
+
+    // 収支登録画面の選択肢にも出ない
+    await page.goto("/transactions/new");
+    await expect(page.getByRole("radio", { name: "食費" })).toBeVisible();
+    await expect(page.getByRole("radio", { name })).toHaveCount(0);
   });
 
   test("通知ONにしたカテゴリの登録漏れが月末3日以内にダッシュボードで警告され、記録すると消える", async ({
@@ -218,4 +314,70 @@ test.describe("カテゴリ管理", () => {
       page.getByTestId("unrecorded-categories-reminder"),
     ).toHaveCount(0);
   });
+});
+
+test("非表示のプリセットを履歴に残し、管理画面から再表示できる", async ({ page }) => {
+  await createHousehold(page, ephemeralName("プリセット表示"));
+  await page.goto("/transactions/new");
+  await page.getByLabel("金額").fill("1250");
+  await page.getByRole("radio", { name: "食費", exact: true }).check();
+  await page.getByRole("button", { name: "登録する" }).click();
+  await expect(page).toHaveURL(/\/transactions$/);
+
+  await page.goto("/categories");
+  await page.setViewportSize({ width: 375, height: 812 });
+  const preset = page.getByTestId("category-row").filter({ hasText: "食費" });
+  const name = preset.getByText("食費", { exact: true });
+  const hideButton = preset.getByRole("button", { name: "食費を非表示" });
+  await expect(name).toBeVisible();
+  const [cardBounds, nameBounds, buttonBounds] = await Promise.all([
+    preset.boundingBox(), name.boundingBox(), hideButton.boundingBox(),
+  ]);
+  expect(nameBounds!.width).toBeGreaterThan(0);
+  expect(buttonBounds!.x + buttonBounds!.width).toBeLessThanOrEqual(cardBounds!.x + cardBounds!.width);
+  await page.getByRole("button", { name: "食費を非表示" }).click();
+  await expect(page.getByTestId("category-row").filter({ hasText: "食費" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("非表示のカテゴリ（1件）")).toBeVisible();
+
+  await page.goto("/transactions/new");
+  await expect(page.getByRole("radio", { name: "食費", exact: true })).toHaveCount(0);
+  await page.goto("/transactions");
+  const row = page.getByTestId("transaction-row").filter({ hasText: "食費" });
+  await expect(row).toBeVisible();
+  await row.getByRole("button", { name: "編集" }).click();
+  await expect(page.getByRole("radio", { name: "食費", exact: true })).toBeChecked();
+
+  await page.goto("/categories");
+  await page.getByText("非表示のカテゴリ（1件）").click();
+  await page.getByRole("button", { name: "食費を再表示" }).click();
+  await expect(page.getByTestId("category-row").filter({ hasText: "食費" })).toBeVisible();
+});
+
+test("移行先を選び、元カテゴリの収支を保ったまま統合できる", async ({ page }) => {
+  await createHousehold(page, ephemeralName("カテゴリ統合"));
+  await page.goto("/categories/new");
+  await page.getByLabel("カテゴリ名").fill("統合元");
+  await page.getByRole("radio", { name: "支出" }).check();
+  await page.getByRole("button", { name: "追加する" }).click();
+  await expect(page).toHaveURL(/\/categories$/);
+  await page.goto("/transactions/new");
+  await page.getByLabel("金額").fill("1250");
+  await page.getByRole("radio", { name: "統合元", exact: true }).check();
+  await page.getByRole("button", { name: "登録する" }).click();
+  await expect(page).toHaveURL(/\/transactions$/);
+
+  await page.goto("/categories");
+  const dialog = page.getByRole("dialog", { name: "カテゴリを削除しますか？" });
+  await expect(async () => {
+    await page.getByRole("button", { name: "統合元を削除" }).click();
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15000 });
+  await expect(dialog.getByText("収支 1件・定期収支 0件・予算 0件")).toBeVisible();
+  await dialog.getByLabel("移行先カテゴリ").selectOption({ label: "食費" });
+  await dialog.getByRole("button", { name: "統合する" }).click();
+  await expect(page.getByRole("status")).toContainText("カテゴリを統合しました");
+  await expect(page.getByTestId("category-row").filter({ hasText: "統合元" })).toHaveCount(0);
+  await page.goto("/transactions");
+  await expect(page.getByTestId("transaction-row").filter({ hasText: "食費" })).toContainText("¥1,250");
 });

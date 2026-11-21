@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { evaluateAmount } from "@/lib/amount-expression";
+import { isIsoCalendarDate } from "@/lib/period";
 
 export const transactionSchema = z.object({
   type: z.enum(["income", "expense"], {
@@ -17,7 +18,7 @@ export const transactionSchema = z.object({
   ),
   date: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "日付を入力してください"),
+    .refine(isIsoCalendarDate, "実在する日付を YYYY-MM-DD 形式で入力してください"),
   // カテゴリ未選択は空文字で送られてくるため undefined に正規化する。
   category_id: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),
@@ -40,6 +41,16 @@ export const transactionSchema = z.object({
     z.boolean(),
   ),
 });
+
+/** 取り込みで作成された調整行の編集にだけ使う。 */
+export const importedAdjustmentSchema = transactionSchema.extend({
+  amount: z.preprocess(
+    (value) => typeof value === "string" ? evaluateAmount(value) : value,
+    z.number({ message: "金額を正しく入力してください" }).int()
+      .min(-2_147_483_647).max(2_147_483_647)
+      .refine((amount) => amount !== 0, "金額は0円以外にしてください"),
+  ),
+}).refine((entry) => entry.amount > 0 || !entry.is_shared, "負額の調整行は精算対象にできません");
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
 
