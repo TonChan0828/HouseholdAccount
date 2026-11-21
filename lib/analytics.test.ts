@@ -93,8 +93,8 @@ describe("summarizeCategoryExpense", () => {
     const result = summarizeCategoryExpense(txs);
 
     expect(result).toEqual([
-      { categoryId: "c2", name: "日用品", color: "#0f0", amount: 700 },
-      { categoryId: "c1", name: "食費", color: "#f00", amount: 300 },
+      { categoryId: "c2", name: "日用品", color: "#0f0", amount: 700, count: 1 },
+      { categoryId: "c1", name: "食費", color: "#f00", amount: 300, count: 1 },
     ]);
   });
 
@@ -112,7 +112,18 @@ describe("summarizeCategoryExpense", () => {
       name: "未分類",
       color: "#999",
       amount: 300,
+      count: 2,
     });
+  });
+
+  it.each([15, 16])("%iカテゴリをすべて返し、相殺された支出も数える", (count) => {
+    const rows = Array.from({ length: count }, (_, i) =>
+      tx({ category_id: String(i), amount: i + 1 }),
+    );
+    rows.push(tx({ category_id: "0", amount: -1 }));
+    const result = summarizeCategoryExpense(rows);
+    expect(result).toHaveLength(count);
+    expect(result.at(-1)).toMatchObject({ categoryId: "0", amount: 0, count: 2 });
   });
 
   it("支出が無ければ空配列を返す", () => {

@@ -8,6 +8,7 @@ type OrderCall = { column: string; ascending: boolean };
 
 const state = vi.hoisted(() => ({
   data: null as unknown[] | null,
+  cap: Infinity,
   error: null as { message: string } | null,
   range: [0, 999] as [number, number],
   ranges: [] as [number, number][],
@@ -78,8 +79,8 @@ function makeClient() {
         };
         rows = rows.filter((row) => !cursor || (cursor.direction === "after" ? compare(row, cursor) < 0 : compare(row, cursor) > 0));
         rows = [...rows].sort((a, b) => compare(a, b) * (ascending ? 1 : -1)).slice(0, limit);
-      } else rows = rows?.slice(state.range[0], state.range[1] + 1) ?? null;
-      return Promise.resolve({ data: rows, error: state.error });
+      } else rows = rows?.slice(state.range[0], Math.min(state.range[1] + 1, state.range[0] + state.cap)) ?? null;
+      return Promise.resolve({ data: rows, count: state.data?.length ?? 0, error: state.error });
     },
   };
   return {
@@ -92,6 +93,7 @@ function makeClient() {
 
 beforeEach(() => {
   state.data = [];
+  state.cap = Infinity;
   state.error = null;
   state.range = [0, 999];
   state.ranges = [];
@@ -230,6 +232,13 @@ describe("fetchTransactionsInRange", () => {
       [0, 999],
       [1000, 1999],
     ]);
+  });
+
+  it("DBの取得上限が要求ページより小さくても全件取得する", async () => {
+    state.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    state.cap = 2;
+    const rows = await fetchTransactionsInRange(makeClient() as never, "h-1", range);
+    expect(rows).toEqual(state.data);
   });
 
   it("Supabaseエラーを空配列にせず送出する", async () => {

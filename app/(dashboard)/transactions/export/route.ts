@@ -7,7 +7,7 @@ import {
   getHouseholdSettings,
 } from "@/lib/household";
 import { logServerError } from "@/lib/observability";
-import { getPeriodRange, toISODate } from "@/lib/period";
+import { getPeriodRange, isIsoCalendarDate, toISODate } from "@/lib/period";
 import { parseTransactionFilter, escapeLike } from "@/lib/transaction-filter";
 import { unwrapData } from "@/lib/queries/result";
 import { createClient } from "@/lib/supabase/server";
@@ -25,7 +25,7 @@ type TransactionRow = {
 };
 
 function refFromParam(ref: string | null): Date {
-  if (ref && /^\d{4}-\d{2}-\d{2}$/.test(ref)) {
+  if (ref && isIsoCalendarDate(ref)) {
     return new Date(`${ref}T00:00:00Z`);
   }
   return new Date();
@@ -48,12 +48,24 @@ export async function GET(request: NextRequest) {
     return new NextResponse("No active household", { status: 403 });
   }
 
+  const params = request.nextUrl.searchParams;
+  const start = params.get("start");
+  const end = params.get("end");
+  if ((start !== null || end !== null) &&
+      (!start || !end || !isIsoCalendarDate(start) || !isIsoCalendarDate(end) || start > end ||
+       params.getAll("start").length !== 1 || params.getAll("end").length !== 1)) {
+    return Response.json({ error: "開始日と終了日を正しく指定してください" }, {
+      status: 400,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
   try {
     const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
 
     const ref = request.nextUrl.searchParams.get("ref");
     const range = getPeriodRange(refFromParam(ref), startDay);
-    const isoStart = toISODate(range.start);
+    const isoStart = start ?? toISODate(range.start);
     const isoEnd = toISODate(range.end);
     const filter = parseTransactionFilter(Object.fromEntries(request.nextUrl.searchParams));
 
@@ -70,8 +82,8 @@ export async function GET(request: NextRequest) {
           { count: "exact" },
         )
         .eq("household_id", householdId)
-        .gte("date", isoStart)
-        .lt("date", isoEnd);
+        .gte("date", isoStart);
+      query = end ? query.lte("date", end) : query.lt("date", isoEnd);
       if (filter.type) query = query.eq("type", filter.type);
       if (filter.categoryId) query = query.eq("category_id", filter.categoryId);
       if (filter.createdBy) query = query.or(attributionOrFilter(filter.createdBy));
@@ -141,7 +153,7 @@ export async function GET(request: NextRequest) {
     }));
 
     const csv = toTransactionsCsv(rows);
-    const lastDay = toISODate(
+    const lastDay = end ?? toISODate(
       new Date(range.end.getTime() - 24 * 60 * 60 * 1000),
     );
     const filename = `transactions_${isoStart}_${lastDay}.csv`;
@@ -149,6 +161,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
+        "Cache-Control": "private, no-store",
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });

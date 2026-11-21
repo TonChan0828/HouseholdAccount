@@ -26,46 +26,49 @@ export function CategoryBreakdown({
     );
   }
 
-  const total = data.reduce((sum, d) => sum + d.amount, 0) || 1;
-  const max = data[0]?.amount || 1; // summarizeCategoryExpense は金額降順
-  const topShare = Math.round((data[0].amount / total) * 100);
+  const showProportions = data.every((item) => item.amount >= 0) &&
+    data.some((item) => item.amount > 0);
+  const total = data.reduce((sum, item) => sum + item.amount, 0);
+  const max = data[0].amount;
+  const topShare = showProportions ? Math.round((max / total) * 100) : 0;
 
-  // コニックグラデの色帯を構築する（描画中の変数変更を避け純関数で算出）。
-  const stops = data.map((d, i) => {
-    const before = data
-      .slice(0, i)
-      .reduce((sum, x) => sum + x.amount, 0);
-    const start = (before / total) * 100;
-    const end = ((before + d.amount) / total) * 100;
-    return `${d.color} ${start}% ${end}%`;
-  });
+  let cumulative = 0;
+  const stops = showProportions ? data.map(({ amount, color }) => {
+    const start = (cumulative / total) * 100;
+    cumulative += amount;
+    return `${color} ${start}% ${(cumulative / total) * 100}%`;
+  }) : [];
   const gradient = `conic-gradient(from -90deg, ${stops.join(", ")})`;
 
   return (
     <div className="flex flex-col gap-7 sm:flex-row sm:items-center">
       {/* ドーナツ */}
-      <div className="relative mx-auto size-44 shrink-0 sm:mx-0">
-        <div
-          className="size-full rounded-full shadow-soft"
-          style={{ background: gradient }}
-          aria-hidden
-        />
-        <div className="absolute inset-[19%] flex flex-col items-center justify-center rounded-full bg-card text-center ring-1 ring-foreground/5">
-          <span className="font-heading text-3xl font-bold leading-none tabular-nums">
-            {topShare}
-            <span className="text-lg">%</span>
-          </span>
-          <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            最多カテゴリ
-          </span>
+      {showProportions && (
+        <div className="relative mx-auto size-44 shrink-0 sm:mx-0">
+          <div
+            className="size-full rounded-full shadow-soft"
+            style={{ background: gradient }}
+            aria-hidden
+          />
+          <div className="absolute inset-[19%] flex flex-col items-center justify-center rounded-full bg-card text-center ring-1 ring-foreground/5">
+            <span className="font-heading text-3xl font-bold leading-none tabular-nums">
+              {topShare}
+              <span className="text-lg">%</span>
+            </span>
+            <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              最多カテゴリ
+            </span>
+          </div>
         </div>
-      </div>
+
+      )}
+
 
       {/* リーグテーブル */}
       <ol className="min-w-0 flex-1 space-y-3">
         {data.map((d, i) => {
-          const share = Math.round((d.amount / total) * 100);
-          const width = (d.amount / max) * 100;
+          const share = showProportions ? Math.round((d.amount / total) * 100) : 0;
+          const width = showProportions ? (d.amount / max) * 100 : 0;
           return (
             <li key={d.categoryId ?? "none"} className="space-y-1.5">
               <div className="flex items-baseline justify-between gap-3">
@@ -84,12 +87,13 @@ export function CategoryBreakdown({
                   <span className="font-heading text-sm font-bold tabular-nums">
                     {yen(d.amount)}
                   </span>
-                  <span className="w-9 text-right text-[11px] tabular-nums text-muted-foreground">
+                  <span className="text-xs tabular-nums">{d.count}件</span>
+                  {showProportions && <span className="w-9 text-right text-[11px] tabular-nums text-muted-foreground">
                     {share}%
-                  </span>
+                  </span>}
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary/60">
+              {showProportions && <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary/60">
                 <div
                   data-viz-bar
                   className="h-full origin-left rounded-full"
@@ -97,10 +101,10 @@ export function CategoryBreakdown({
                     width: `${width}%`,
                     backgroundColor: d.color,
                     animation: "grow-x 0.7s cubic-bezier(0.22,1,0.36,1) both",
-                    animationDelay: `${150 + i * 70}ms`,
+                    animationDelay: `${150 + Math.min(i, 10) * 70}ms`,
                   }}
                 />
-              </div>
+              </div>}
             </li>
           );
         })}

@@ -40,5 +40,14 @@ test.describe("収支のCSV出力", () => {
     expect(csv).toContain("4200");
     expect(csv).toContain("食費");
     expect(csv).toContain(memo);
+
+    await page.getByText("CSV出力の期間指定", { exact: true }).click();
+    await page.getByLabel("開始日").fill("2024-02-29");
+    await page.getByLabel("終了日").fill("2024-02-29");
+    const datedDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "CSVをダウンロード" }).click();
+    const datedDownload = await datedDownloadPromise;
+    expect(datedDownload.suggestedFilename()).toBe("transactions_2024-02-29_2024-02-29.csv");
+    expect(readFileSync(await datedDownload.path(), "utf-8")).not.toContain(memo);
   });
 });

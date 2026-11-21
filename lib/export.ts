@@ -43,8 +43,10 @@ function escapeCsvField(value: string): string {
   return safe;
 }
 
-function toCsvLine(fields: string[]): string {
-  return fields.map(escapeCsvField).join(",");
+function toCsvLine(fields: (string | number)[]): string {
+  return fields.map((value) => typeof value === "number" && Number.isSafeInteger(value)
+    ? String(value)
+    : escapeCsvField(String(value))).join(",");
 }
 
 /** 収支行を CSV 文字列（BOM + ヘッダー + データ行）に変換する。 */
@@ -56,7 +58,7 @@ export function toTransactionsCsv(rows: ExportRow[]): string {
         r.date,
         r.type === "income" ? "収入" : "支出",
         r.categoryName ?? "未分類",
-        String(r.amount),
+        r.amount,
         r.memo ?? "",
         r.memberName ?? "不明",
       ]),

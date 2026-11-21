@@ -13,7 +13,7 @@ const slice = (
   categoryId: string,
   name: string,
   amount: number,
-): CategorySlice => ({ categoryId, name, color: "#abc", amount });
+): CategorySlice => ({ categoryId, name, color: "#abc", amount, count: 1 });
 
 describe("buildBudgetRows", () => {
   it("カテゴリごとに予算と実績をマージした行を返す", () => {

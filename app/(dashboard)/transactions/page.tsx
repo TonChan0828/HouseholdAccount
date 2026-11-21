@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
   ReceiptText,
   Repeat,
   Upload,
@@ -145,8 +144,7 @@ export default async function TransactionsPage({
                 href={`/transactions/export?ref=${toISODate(range.start)}${filterSuffix}`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
-                <Download className="size-4" aria-hidden />
-                <span className="max-sm:sr-only">CSV出力</span>
+                CSV出力
               </a>
               <Link
                 href="/transactions/import"
@@ -190,6 +188,30 @@ export default async function TransactionsPage({
             nextHref={nextHref}
           />
         </div>
+
+        <details className="w-full max-w-sm">
+          <summary className="w-fit cursor-pointer rounded-md border px-3 py-1.5 text-sm">
+            CSV出力の期間指定
+          </summary>
+          <form
+            method="get"
+            action="/transactions/export"
+            className="mt-2 grid gap-3 rounded-md border bg-card p-3"
+          >
+            {Array.from(new URLSearchParams(filterQs)).map(([name, value]) => (
+              <input key={name} type="hidden" name={name} value={value} />
+            ))}
+            <label className="grid gap-1 text-sm">
+              開始日
+              <input type="date" name="start" defaultValue={toISODate(range.start)} required />
+            </label>
+            <label className="grid gap-1 text-sm">
+              終了日
+              <input type="date" name="end" defaultValue={toISODate(new Date(range.end.getTime() - 86_400_000))} required />
+            </label>
+            <button className={buttonVariants({ size: "sm" })}>CSVをダウンロード</button>
+          </form>
+        </details>
 
         <div className={reveal} style={{ animationDelay: "90ms" }}>
           <FilterBar
