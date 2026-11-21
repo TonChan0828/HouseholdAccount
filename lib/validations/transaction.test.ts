@@ -80,6 +80,14 @@ describe("transactionSchema", () => {
     ).toBe(false);
   });
 
+  it.each(["2025-02-29", "2026-04-31", "0000-01-01"])("存在しない日付を拒否する: %s", (date) => {
+    expect(transactionSchema.safeParse({ ...valid, date }).success).toBe(false);
+  });
+
+  it("うるう日を受け付ける", () => {
+    expect(transactionSchema.safeParse({ ...valid, date: "2024-02-29" }).success).toBe(true);
+  });
+
   it("カテゴリ未選択（空文字）を許可し undefined に正規化する", () => {
     const result = transactionSchema.safeParse({ ...valid, category_id: "" });
     expect(result.success).toBe(true);

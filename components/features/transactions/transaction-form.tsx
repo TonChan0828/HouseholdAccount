@@ -5,6 +5,7 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 
 import type { TransactionActionState } from "@/app/(dashboard)/transactions/actions";
 import { Button } from "@/components/ui/button";
+import { isIsoCalendarDate } from "@/lib/period";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { evaluateExpression } from "@/lib/amount-expression";
@@ -105,6 +106,11 @@ export function TransactionForm({
   const [memo, setMemo] = useState<string>(defaultValues?.memo ?? "");
 
   const amountRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    dateRef.current?.setCustomValidity(date && !isIsoCalendarDate(date)
+      ? "実在する日付を YYYY-MM-DD 形式で入力してください" : "");
+  }, [date]);
   const lastOkKey = useRef<string | null>(null);
   // 直前に押された送信ボタンが「登録して続ける」だったか。
   // 成功後にフォームをリセットするか、ダイアログを閉じるかの分岐に使う。
@@ -278,11 +284,17 @@ export function TransactionForm({
         <Input
           id="date"
           name="date"
-          type="date"
+          type="text"
+          placeholder="YYYY-MM-DD"
+          aria-describedby="transaction-date-format"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          ref={dateRef}
+          onChange={(event) => setDate(event.currentTarget.value)}
           required
         />
+        <p id="transaction-date-format" className="text-xs text-muted-foreground">
+          YYYY-MM-DD（例 2024-02-29）
+        </p>
       </div>
 
       <fieldset className="space-y-2">

@@ -157,3 +157,5 @@ setPeriodStartDay(formData)   // owner のみ。households.period_start_day を�
 - 種別・カテゴリ・名義人・メモ・金額による絞り込みは仕様36で対応済みです。
 
 > 登録者の表示名は `profiles`（07）/ グループ毎ニックネーム（22）で解決済み。
+
+収支の日付は YYYY-MM-DD 形式をキーボードで直接入力または貼り付けできます。実在しない日付は登録できません。

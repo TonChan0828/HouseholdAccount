@@ -69,6 +69,29 @@ describe("ImportPreview", () => {
     ).not.toBeDisabled();
   });
 
+  it("対象月が推定できなければ入力するまで確定できない", async () => {
+    render(<ImportPreview month="" result={result()} confirmAction={noop} />);
+    const input = screen.getByLabelText("対象月");
+    const button = screen.getByRole("button", { name: /取り込む/ });
+    expect(button).toBeDisabled();
+    await userEvent.type(input, "2026-13");
+    expect(button).toBeDisabled();
+    await userEvent.clear(input);
+    await userEvent.type(input, "2026-12");
+    expect(button).toBeEnabled();
+  });
+
+  it("51行のプレビューは2ページになる", async () => {
+    const valid = Array.from({ length: 51 }, (_, i) => ({
+      type: "expense" as const, categoryName: `費目${i + 1}`, amount: 1,
+    }));
+    render(<ImportPreview month="2026-06" result={result({ valid })} confirmAction={noop} />);
+    expect(screen.getByText("費目50")).toBeVisible();
+    expect(screen.queryByText("費目51")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "取込予定の次のページ" }));
+    expect(screen.getByText("費目51")).toBeVisible();
+  });
+
   it("有効行が0件なら確定ボタンは無効", () => {
     render(
       <ImportPreview
@@ -141,8 +164,13 @@ describe("ImportResult（シート選択）", () => {
     expect(screen.getByText("食費")).toBeInTheDocument();
     expect(screen.getByLabelText("対象月")).toHaveValue("2026-06");
 
+    await userEvent.clear(screen.getByLabelText("対象月"));
+    await userEvent.type(screen.getByLabelText("対象月"), "2024-02");
+    expect(screen.getByText(/対象月: 2024年2月/)).toBeVisible();
     await userEvent.selectOptions(screen.getByLabelText("シート"), "2026年07月");
     expect(screen.getByText("賞与")).toBeInTheDocument();
     expect(screen.getByLabelText("対象月")).toHaveValue("2026-07");
+    await userEvent.selectOptions(screen.getByLabelText("シート"), "2026年06月");
+    expect(screen.getByLabelText("対象月")).toHaveValue("2024-02");
   });
 });

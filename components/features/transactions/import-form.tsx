@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { type ReactNode, useActionState, useMemo, useState } from "react";
 import { FileSpreadsheet, TrendingDown, TrendingUp } from "lucide-react";
 
 import type {
@@ -11,6 +11,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isIsoCalendarMonth } from "@/lib/period";
 import { yen } from "@/lib/format";
 import { type ClassifyResult, parseMonthFromFilename } from "@/lib/import/excel";
 
@@ -24,13 +25,46 @@ type ConfirmAction = (
   formData: FormData,
 ) => Promise<ImportConfirmState>;
 
+const ROWS_PER_PAGE = 50;
+
+function PreviewRows<T>({ rows, label, renderRow }: {
+  rows: T[];
+  label: string;
+  renderRow: (row: T, index: number) => ReactNode;
+}) {
+  const [page, setPage] = useState(0);
+  const pages = Math.ceil(rows.length / ROWS_PER_PAGE);
+  const offset = page * ROWS_PER_PAGE;
+
+  return (
+    <>
+      <ul className="divide-y divide-border rounded-lg border border-border">
+        {rows.slice(offset, offset + ROWS_PER_PAGE).map((row, index) =>
+          renderRow(row, offset + index),
+        )}
+      </ul>
+      {pages > 1 && (
+        <nav className="my-2 flex items-center justify-between gap-2" aria-label={`${label}のページ`}>
+          <Button type="button" size="sm" variant="outline" disabled={page === 0}
+            aria-label={`${label}の前のページ`} onClick={() => setPage(page - 1)}>前へ</Button>
+          <span aria-live="polite">{page + 1} / {pages}</span>
+          <Button type="button" size="sm" variant="outline" disabled={page === pages - 1}
+            aria-label={`${label}の次のページ`} onClick={() => setPage(page + 1)}>次へ</Button>
+        </nav>
+      )}
+    </>
+  );
+}
+
 /** プレビュー（取込予定・スキップ・エラー）と確定フォーム。表示専用でテスト対象。 */
 export function ImportPreview({
   month,
   result,
+  onMonthChange,
   confirmAction,
 }: {
   month: string;
+  onMonthChange?: (value: string) => void;
   result: ClassifyResult;
   confirmAction: ConfirmAction;
 }) {
@@ -39,7 +73,10 @@ export function ImportPreview({
     FormData
   >(confirmAction, undefined);
 
+  const [targetMonth, setTargetMonth] = useState(month);
+  const validMonth = isIsoCalendarMonth(targetMonth);
   const hasValid = result.valid.length > 0;
+  const rowsPayload = useMemo(() => JSON.stringify(result.valid), [result.valid]);
 
   return (
     <div className="space-y-5">
@@ -50,8 +87,7 @@ export function ImportPreview({
       </p>
 
       {hasValid ? (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {result.valid.map((r, i) => {
+        <PreviewRows rows={result.valid} label="取込予定" renderRow={(r, i) => {
             const Icon = r.type === "income" ? TrendingUp : TrendingDown;
             return (
               <li
@@ -74,8 +110,7 @@ export function ImportPreview({
                 </span>
               </li>
             );
-          })}
-        </ul>
+        }} />
       ) : (
         <p className="text-sm text-destructive">取り込める収支がありません。</p>
       )}
@@ -83,13 +118,11 @@ export function ImportPreview({
       {result.errors.length > 0 ? (
         <div className="space-y-1">
           <p className="text-sm font-medium text-destructive">エラー（取り込まれません）</p>
-          <ul className="space-y-0.5 text-xs text-muted-foreground">
-            {result.errors.map((e) => (
+          <PreviewRows rows={result.errors} label="エラー" renderRow={(e) => (
               <li key={`e-${e.row}`}>
                 行{e.row} {e.item}: {e.reason}
               </li>
-            ))}
-          </ul>
+          )} />
         </div>
       ) : null}
 
@@ -98,13 +131,11 @@ export function ImportPreview({
           <summary className="cursor-pointer select-none">
             スキップした費目 {result.skipped.length} 件
           </summary>
-          <ul className="mt-1 space-y-0.5">
-            {result.skipped.map((s) => (
+          <PreviewRows rows={result.skipped} label="スキップ" renderRow={(s) => (
               <li key={`s-${s.row}`}>
                 行{s.row} {s.item}: {s.reason}
               </li>
-            ))}
-          </ul>
+          )} />
         </details>
       ) : null}
 
@@ -112,19 +143,28 @@ export function ImportPreview({
         <input
           type="hidden"
           name="rows"
-          value={JSON.stringify(result.valid)}
+          value={rowsPayload}
         />
         <div className="space-y-2">
           <Label htmlFor="month">対象月</Label>
           <Input
             id="month"
             name="month"
-            type="month"
-            defaultValue={month}
+            type="text"
+            placeholder="YYYY-MM"
+            aria-describedby="import-month-format"
+            value={targetMonth}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setTargetMonth(value);
+              onMonthChange?.(value);
+            }}
             required
           />
-          <p className="text-xs text-muted-foreground">
-            取り込む収支はすべてこの月の1日付で登録されます。
+          <p id="import-month-format" className="text-xs text-muted-foreground">
+            {targetMonth && !validMonth
+              ? "実在する年月を YYYY-MM 形式で入力してください。"
+              : "YYYY-MM（例 2024-02）。収支はこの月の1日付で登録されます。"}
           </p>
         </div>
 
@@ -134,10 +174,15 @@ export function ImportPreview({
           </p>
         ) : null}
 
+        {validMonth && (
+          <p className="text-sm">
+            対象月: {targetMonth.slice(0, 4)}年{Number(targetMonth.slice(5))}月 · {result.valid.length} 件
+          </p>
+        )}
         <Button
           type="submit"
           className="h-11 w-full text-base shadow-soft"
-          disabled={pending || !hasValid}
+          disabled={pending || !hasValid || !validMonth}
         >
           {pending ? "取り込み中..." : `${result.valid.length} 件を取り込む`}
         </Button>
@@ -158,6 +203,7 @@ export function ImportResult({
   confirmAction: ConfirmAction;
 }) {
   const [selected, setSelected] = useState<string>(sheets[0]?.sheet ?? "");
+  const [months, setMonths] = useState(() => new Map<string, string>());
   const current = sheets.find((s) => s.sheet === selected) ?? sheets[0];
 
   if (!current) {
@@ -190,7 +236,8 @@ export function ImportResult({
       {/* シートを切り替えたら確定フォームの状態（useActionState）もリセットする。 */}
       <ImportPreview
         key={current.sheet}
-        month={current.month}
+        month={months.get(current.sheet) ?? current.month}
+        onMonthChange={(value) => setMonths((previous) => new Map(previous).set(current.sheet, value))}
         result={current.result}
         confirmAction={confirmAction}
       />
@@ -210,16 +257,24 @@ export function ImportForm({
     ImportPreviewState,
     FormData
   >(parseAction, undefined);
+  const [chooseNewFile, setChooseNewFile] = useState(false);
   const [fileName, setFileName] = useState<string>("");
 
   const monthHint = fileName ? parseMonthFromFilename(fileName) : null;
 
-  if (state?.ok) {
-    return <ImportResult sheets={state.sheets} confirmAction={confirmAction} />;
+  if (state?.ok && !chooseNewFile && !pending) {
+    return (
+      <div className="space-y-4">
+        <ImportResult sheets={state.sheets} confirmAction={confirmAction} />
+        <Button type="button" variant="outline" onClick={() => { setFileName(""); setChooseNewFile(true); }}>
+          別のファイルを選ぶ
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={(data) => { setChooseNewFile(false); formAction(data); }} className="space-y-5">
       <div className="space-y-2">
         <Label htmlFor="file">Excel ファイル（.xlsx）</Label>
         <Input

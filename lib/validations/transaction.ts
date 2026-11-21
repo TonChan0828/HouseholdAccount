@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { evaluateAmount } from "@/lib/amount-expression";
+import { isIsoCalendarDate } from "@/lib/period";
 
 export const transactionSchema = z.object({
   type: z.enum(["income", "expense"], {
@@ -17,7 +18,7 @@ export const transactionSchema = z.object({
   ),
   date: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "日付を入力してください"),
+    .refine(isIsoCalendarDate, "実在する日付を YYYY-MM-DD 形式で入力してください"),
   // カテゴリ未選択は空文字で送られてくるため undefined に正規化する。
   category_id: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),

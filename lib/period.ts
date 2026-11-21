@@ -118,3 +118,8 @@ export function isIsoCalendarDate(value: string): boolean {
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
+
+/** YYYY-MM を暦月として検証する。 */
+export function isIsoCalendarMonth(value: string): boolean {
+  return isIsoCalendarDate(`${value}-01`);
+}

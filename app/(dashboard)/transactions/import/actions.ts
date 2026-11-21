@@ -10,6 +10,7 @@ import {
   parseMonthFromFilename,
   type ValidImportRow,
 } from "@/lib/import/excel";
+import { isIsoCalendarMonth } from "@/lib/period";
 import { parseWorkbook } from "@/lib/import/parse-workbook";
 import { requireDashboardContext } from "@/lib/household";
 import { consumeRateLimit, RATE_LIMIT_UNAVAILABLE_MESSAGE } from "@/lib/rate-limit";
@@ -27,11 +28,6 @@ export type ImportPreviewState =
   | { ok: true; sheets: SheetPreview[] }
   | { ok: false; error: string }
   | undefined;
-
-/** 今月を `YYYY-MM` で返す（ファイル名から月を取れなかったときの初期値）。 */
-function currentMonth(): string {
-  return new Date().toISOString().slice(0, 7);
-}
 
 /**
  * アップロードされた Excel をサーバーでパース・分類してプレビュー state を返す。
@@ -81,10 +77,13 @@ export async function parseImportFile(
       month:
         parseMonthFromFilename(s.sheet) ??
         parseMonthFromFilename(file.name) ??
-        currentMonth(),
+        "",
       result: classifyRows(s.rows),
     }));
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "WorkbookTimeout") {
+      return { ok: false, error: "ファイルの解析が10秒で終了しました。内容を確認して選び直してください" };
+    }
     return { ok: false, error: "ファイルを読み込めませんでした。形式を確認してください" };
   }
 
@@ -99,7 +98,7 @@ export async function parseImportFile(
 }
 
 const confirmSchema = z.object({
-  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "対象月が不正です"),
+  month: z.string().refine(isIsoCalendarMonth, "対象月が不正です"),
   rows: z
     .array(
       z.object({
