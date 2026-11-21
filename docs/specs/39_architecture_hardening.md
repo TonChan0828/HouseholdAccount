@@ -44,6 +44,18 @@
 - `CRON_SECRET`: Vercel Cron Route Handler の認証用。
 - `NEXT_PUBLIC_APP_URL`: `metadataBase` 用の公開URL。
 
+## マイグレーション適用漏れの検知
+
+main への push で Vercel は自動デプロイされるが、本番DBのマイグレーションは `supabase db push --linked` による手動適用。適用漏れのまま新コードが本番に出ると、存在しない列や関数を参照して `(dashboard)` 全体が「データを読み込めませんでした」になる（2026-09-28 の `categories.sort_order`、2026-10-07 の RPC `transaction_daily_summary` で発生）。
+
+- `.github/workflows/migration-drift.yml` が PR・main push・毎日 09:00 JST・手動で実行される。
+- `scripts/check-migration-drift.mjs` が Supabase の管理APIから本番のマイグレーション履歴を取得し、リポジトリ内のSQLファイルのバージョンと照合する。次のいずれかがあれば失敗する。
+  - リポジトリにあるが本番未適用のマイグレーション
+  - 本番に適用済みだがリポジトリにないマイグレーション
+  - API の呼び出しが失敗するか、応答が有効なマイグレーション履歴として読み取れない
+- 運用: マイグレーションを含む PR は、内容が後方互換（追加のみ）であることを確認したうえで、マージ前に本番へ適用してからチェックを通す。
+- GitHub Actions のシークレット `SUPABASE_ACCESS_TOKEN` に、本番プロジェクト限定で Migrations の読み取り権限を持つ期限付きトークンを登録する。未設定時はエラーにする。
+
 ## テスト方針
 
 - クエリのエラー送出、1,000件超の範囲取得、50件ページングをユニットテストする。
