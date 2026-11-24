@@ -61,6 +61,20 @@ npm run test:run      # Vitest（CI 向け 1 回実行）
 npm run test:e2e      # Playwright E2E
 ```
 
+## CI（変更の自動検証）
+
+プルリクエストと `main` への push で、GitHub Actions が次のチェックを実行します。
+
+| チェック | 内容 |
+| --- | --- |
+| `CI / verify` | ワークフローの構文と式、ESLint（警告も失敗）、Next.js のルート型を含む型検査、単体テストとカバレッジ下限、公開画面のアクセシビリティ、本番ビルドを検証します。依存パッケージに重大度が High 以上の脆弱性がある場合も失敗します。 |
+| `Database / test` | CI 内の Supabase にマイグレーションを適用し、SQL テストと TypeScript・SQL の精算結果の一致を検証します。 |
+| `E2E / playwright` | CI 内の Supabase とブラウザーで利用者の操作を検証し、本番ビルドでも取込プレビューを確認します。 |
+| `Migration Drift / check` | 本番 Supabase のマイグレーション履歴を読み取り専用で照合します。プルリクエストでは同じリポジトリのブランチが対象です。Dependabot 起点の実行はスキップします。 |
+
+`CI / verify` と `E2E / playwright` が失敗した場合、取得済みのレポートを GitHub Actions の実行画面からダウンロードできます。保存期間は 7 日間です。
+プルリクエストに追加のコミットを push すると、CI・データベース・ブラウザーの検証は進行中の旧コミットの実行を取り消します。
+
 ## ドキュメント
 
 - 機能仕様書: [`docs/specs/`](docs/specs/)
