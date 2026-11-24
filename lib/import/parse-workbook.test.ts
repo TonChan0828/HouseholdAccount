@@ -4,6 +4,9 @@ import { expect, it } from "vitest";
 import { isAbsolute } from "node:path";
 import { parseWorkbook, resolveWorkbookModule, WORKBOOK_LIMITS } from "./parse-workbook";
 
+// Generating large compressed fixtures can exceed Vitest's default timeout on CI.
+const largeFixtureTimeout = { timeout: 20_000 };
+
 async function workbook(item = "食費") {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("2026年10月");
@@ -33,12 +36,12 @@ it("通常のブックと文字数上限ちょうどのセルを読み込める"
   expect((await parseWorkbook(await workbook()))[0].rows[0]).toMatchObject({ item: "食費", amount: 100 });
   expect((await parseWorkbook(await workbook("a".repeat(WORKBOOK_LIMITS.cellCharacters))))[0].rows[0].item).toHaveLength(WORKBOOK_LIMITS.cellCharacters);
 });
-it("小さく圧縮された巨大セルを拒否する", async () => {
+it("小さく圧縮された巨大セルを拒否する", largeFixtureTimeout, async () => {
   const buffer = await workbook("a".repeat(8 * 1024 * 1024));
   expect(buffer.byteLength).toBeLessThan(100_000);
   await expect(parseWorkbook(buffer)).rejects.toThrow(/WorkbookLimit|InvalidWorkbook/);
 });
-it("展開後のエントリー上限を超える圧縮データを拒否する", async () => {
+it("展開後のエントリー上限を超える圧縮データを拒否する", largeFixtureTimeout, async () => {
   const buffer = await alter((zip) => { zip.file("large.bin", Buffer.alloc(WORKBOOK_LIMITS.entryBytes + 1)); });
   await expect(parseWorkbook(buffer)).rejects.toThrow(/WorkbookLimit|InvalidWorkbook/);
 });
@@ -48,7 +51,7 @@ it("エントリー数を制限する", async () => {
   });
   await expect(parseWorkbook(buffer)).rejects.toThrow(/WorkbookLimit|InvalidWorkbook/);
 });
-it("複数の小さなエントリーでも展開後の合計を制限する", async () => {
+it("複数の小さなエントリーでも展開後の合計を制限する", largeFixtureTimeout, async () => {
   const buffer = await alter((zip) => {
     for (let i = 0; i < 3; i++) zip.file("payload" + i + ".bin", Buffer.alloc(6 * 1024 * 1024));
   });
