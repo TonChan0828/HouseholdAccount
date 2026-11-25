@@ -17,7 +17,6 @@ import type { MemberInfo } from "@/lib/members";
 import { localToday } from "@/lib/period";
 import type { CategoryOption } from "@/lib/queries/categories";
 import type { ParsedReceipt } from "@/lib/receipt/parse-receipt";
-import { submissionReceipt } from "@/lib/transactions/submission-receipt";
 import { cn } from "@/lib/utils";
 import type { TransactionType } from "@/types";
 
@@ -136,7 +135,11 @@ export function TransactionForm({
         return;
       }
       if (!response.ok) throw new Error("Receipt unavailable");
-      const receipt = submissionReceipt.parse(await response.json());
+      const receipt = await response.json();
+      if (typeof receipt?.id !== "string" || !Array.isArray(receipt.warnings) ||
+          !receipt.warnings.every((warning: unknown) => typeof warning === "string")) {
+        throw new Error("Invalid receipt");
+      }
       if (requestKey.current === checkingKey) setRecovered({ ok: true, key: receipt.id, warnings: receipt.warnings });
     } catch {
       if (requestKey.current === checkingKey) setReceiptMessage("登録状況を取得できませんでした。少し時間をおいて確認してください。");
