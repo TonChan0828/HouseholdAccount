@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { HouseholdLabel } from "@/components/features/layout/household-label";
 import { HouseholdSwitcher } from "@/components/features/layout/household-switcher";
 import { NAV_ITEMS, isNavActive } from "@/components/features/layout/nav-items";
 import { ShalletLogo } from "@/components/shallet-logo";
@@ -48,6 +49,7 @@ export function AppHeader({
   signOutAction,
 }: Props) {
   const pathname = usePathname();
+  const household = households.find((item) => item.id === activeHouseholdId);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
@@ -148,6 +150,14 @@ export function AppHeader({
           </DropdownMenu>
         </div>
       </div>
+      {household ? (
+        <div className="border-t border-border/60">
+          <p className="mx-auto flex w-full max-w-6xl items-baseline gap-2 px-4 py-1.5">
+            <span className="shrink-0 text-xs text-muted-foreground">利用中のグループ</span>
+            <HouseholdLabel household={household} />
+          </p>
+        </div>
+      ) : null}
     </header>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
+import { HouseholdLabel } from "@/components/features/layout/household-label";
 import type { TransactionActionState } from "@/app/(dashboard)/transactions/actions";
 import { Button } from "@/components/ui/button";
 import { isIsoCalendarDate } from "@/lib/period";
@@ -37,6 +38,8 @@ type Props = {
   enableContinue?: boolean;
   /** ダイアログ内での利用（spec 40）。Server Action がページ遷移せず成功状態を返す */
   dialog?: boolean;
+  afterForm?: ReactNode;
+  household?: { id: string; name: string };
   /** 保存に成功したときに呼ばれる（ダイアログを閉じるのに使う） */
   onSuccess?: () => void;
   /** レシートOCRの導線を出すか。編集ダイアログでは不要なので false にできる */
@@ -65,6 +68,8 @@ export function TransactionForm({
   submitLabel,
   enableContinue,
   dialog,
+  afterForm,
+  household,
   onSuccess,
   showReceiptScan = true,
   otherHouseholds,
@@ -72,6 +77,7 @@ export function TransactionForm({
   currentUserId,
   defaultValues,
 }: Props) {
+  const formId = useId();
   const [state, formAction, pending] = useActionState<
     TransactionActionState,
     FormData
@@ -93,6 +99,8 @@ export function TransactionForm({
   const [isShared, setIsShared] = useState<boolean>(
     defaultValues?.is_shared ?? false,
   );
+  const [keepCategory, setKeepCategory] = useState(false);
+  const submittedKeepCategory = useRef(false);
   const [savedCount, setSavedCount] = useState(0);
   // 金額欄に入力された式のプレビュー。null=非表示。
   const [amountPreview, setAmountPreview] = useState<string | null>(null);
@@ -115,8 +123,7 @@ export function TransactionForm({
   // 直前に押された送信ボタンが「登録して続ける」だったか。
   // 成功後にフォームをリセットするか、ダイアログを閉じるかの分岐に使う。
   const continueSubmit = useRef(false);
-  // 成功のたびに、「登録して続ける」なら金額・メモ・カテゴリをクリアし金額欄へフォーカス、
-  // そうでなければ onSuccess（ダイアログを閉じる）を呼ぶ。日付・種別は維持する。
+  // 連続入力では金額とメモを空にし、希望された場合だけカテゴリも引き継ぐ。
   // 名義人も維持する（他人の分をまとめて入力するのが代理入力の主用途のため。spec 41）。
   useEffect(() => {
     if (!state || !("ok" in state)) return;
@@ -130,7 +137,7 @@ export function TransactionForm({
 
     setAmount("");
     setMemo("");
-    setCategoryId("");
+    if (!submittedKeepCategory.current) setCategoryId("");
     setReflectIds([]);
     setIsShared(false);
     setAmountPreview(null);
@@ -190,299 +197,332 @@ export function TransactionForm({
   };
 
   return (
-    <form action={formAction} className="space-y-5">
-      {defaultValues?.id ? (
-        <input type="hidden" name="id" value={defaultValues.id} />
-      ) : null}
-      {dialog ? <input type="hidden" name="_dialog" value="1" /> : null}
+    <div className={dialog ? "flex min-h-0 flex-col" : "space-y-5"}>
+      <div className={dialog ? "min-h-0 overflow-y-auto px-4 pb-4" : undefined}>
+        <form
+          id={formId}
+          action={formAction}
+          onSubmit={(event) => {
+            const submitter = (event.nativeEvent as SubmitEvent).submitter;
+            continueSubmit.current = submitter?.getAttribute("name") === "_continue";
+            submittedKeepCategory.current = keepCategory;
+          }}
+          className="space-y-5"
+        >
+          {household ? (
+            <>
+              <input type="hidden" name="_household" value={household.id} />
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-muted px-3 py-2 text-sm">
+                <span>{defaultValues?.id ? "編集先" : "登録先"}</span>
+                <HouseholdLabel household={household} />
+              </div>
+            </>
+          ) : null}
+          {defaultValues?.id ? (
+            <input type="hidden" name="id" value={defaultValues.id} />
+          ) : null}
+          {dialog ? <input type="hidden" name="_dialog" value="1" /> : null}
 
-      {showReceiptScan ? (
-        <div className="space-y-1.5">
-          <ReceiptScanButton onResult={applyScanResult} />
-          <p className="text-center text-xs text-muted-foreground">
-            レシート画像から金額・日付を自動入力します（内容をご確認ください）
-          </p>
-        </div>
-      ) : null}
+          {showReceiptScan ? (
+            <div className="space-y-1.5">
+              <ReceiptScanButton onResult={applyScanResult} />
+              <p className="text-center text-xs text-muted-foreground">
+                レシート画像から金額・日付を自動入力します（内容をご確認ください）
+              </p>
+            </div>
+          ) : null}
 
-      <fieldset className="grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1.5">
-        {(["expense", "income"] as const).map((t) => {
-          const active = type === t;
-          const Icon = t === "expense" ? TrendingDown : TrendingUp;
-          return (
-            <label
-              key={t}
-              className={cn(
-                "flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-all",
-                active
-                  ? t === "expense"
-                    ? "bg-card font-bold text-expense shadow-soft"
-                    : "bg-card font-bold text-income shadow-soft"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <input
-                type="radio"
-                name="type"
-                value={t}
-                checked={active}
-                onChange={() => selectType(t)}
-                className="sr-only"
+          <fieldset className="grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1.5">
+            {(["expense", "income"] as const).map((t) => {
+              const active = type === t;
+              const Icon = t === "expense" ? TrendingDown : TrendingUp;
+              return (
+                <label
+                  key={t}
+                  className={cn(
+                    "flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-all",
+                    active
+                      ? t === "expense"
+                        ? "bg-card font-bold text-expense shadow-soft"
+                        : "bg-card font-bold text-income shadow-soft"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="type"
+                    value={t}
+                    checked={active}
+                    onChange={() => selectType(t)}
+                    className="sr-only"
+                  />
+                  <Icon className="pointer-events-none size-4" aria-hidden />
+                  {t === "expense" ? "支出" : "収入"}
+                </label>
+              );
+            })}
+          </fieldset>
+
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <Label htmlFor="amount">金額</Label>
+              <span className="text-xs text-muted-foreground">
+                + − × ÷ で計算できます
+              </span>
+            </div>
+            <div className="relative">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-heading text-xl font-bold text-muted-foreground"
+              >
+                ¥
+              </span>
+              <Input
+                ref={amountRef}
+                id="amount"
+                name="amount"
+                type="text"
+                inputMode="text"
+                placeholder="1000"
+                value={amount}
+                required
+                onChange={(e) => changeAmount(e.target.value)}
+                className="h-14 pl-10 font-heading text-2xl font-bold tabular-nums md:text-2xl"
               />
-              <Icon className="pointer-events-none size-4" aria-hidden />
-              {t === "expense" ? "支出" : "収入"}
-            </label>
-          );
-        })}
-      </fieldset>
+            </div>
+            {amountPreview ? (
+              <p
+                role="status"
+                aria-live="polite"
+                className={cn(
+                  "font-heading text-lg font-bold tabular-nums",
+                  amountPreview === "計算できません"
+                    ? "text-muted-foreground"
+                    : "text-foreground",
+                )}
+              >
+                {amountPreview}
+              </p>
+            ) : null}
+          </div>
 
-      <div className="space-y-2">
-        <div className="flex items-baseline justify-between gap-2">
-          <Label htmlFor="amount">金額</Label>
-          <span className="text-xs text-muted-foreground">
-            + − × ÷ で計算できます
-          </span>
-        </div>
-        <div className="relative">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-heading text-xl font-bold text-muted-foreground"
-          >
-            ¥
-          </span>
-          <Input
-            ref={amountRef}
-            id="amount"
-            name="amount"
-            type="text"
-            inputMode="text"
-            placeholder="1000"
-            value={amount}
-            required
-            onChange={(e) => changeAmount(e.target.value)}
-            className="h-14 pl-10 font-heading text-2xl font-bold tabular-nums md:text-2xl"
-          />
-        </div>
-        {amountPreview ? (
-          <p
-            role="status"
-            aria-live="polite"
-            className={cn(
-              "font-heading text-lg font-bold tabular-nums",
-              amountPreview === "計算できません"
-                ? "text-muted-foreground"
-                : "text-foreground",
-            )}
-          >
-            {amountPreview}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="date">日付</Label>
-        <Input
-          id="date"
-          name="date"
-          type="text"
-          placeholder="YYYY-MM-DD"
-          aria-describedby="transaction-date-format"
-          value={date}
-          ref={dateRef}
-          onChange={(event) => setDate(event.currentTarget.value)}
-          required
-        />
-        <p id="transaction-date-format" className="text-xs text-muted-foreground">
-          YYYY-MM-DD（例 2024-02-29）
-        </p>
-      </div>
-
-      <fieldset className="space-y-2">
-        <legend className="flex items-center gap-2 text-sm leading-none font-medium select-none">
-          カテゴリ
-        </legend>
-        <div className="flex flex-wrap gap-2">
-          <label
-            className={cn(
-              "relative flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring/60",
-              categoryId === ""
-                ? "border-primary bg-secondary font-medium text-secondary-foreground"
-                : "border-border text-muted-foreground hover:bg-accent/60",
-            )}
-          >
-            <input
-              type="radio"
-              name="category_id"
-              value=""
-              checked={categoryId === ""}
-              onChange={() => setCategoryId("")}
-              className="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0"
+          <div className="space-y-2">
+            <Label htmlFor="date">日付</Label>
+            <Input
+              id="date"
+              name="date"
+              type="text"
+              placeholder="YYYY-MM-DD"
+              aria-describedby="transaction-date-format"
+              value={date}
+              ref={dateRef}
+              onChange={(event) => setDate(event.currentTarget.value)}
+              required
             />
-            未選択
-          </label>
-          {options.map((c) => {
-            const active = categoryId === c.id;
-            return (
+            <p id="transaction-date-format" className="text-xs text-muted-foreground">
+              YYYY-MM-DD（例 2024-02-29）
+            </p>
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="flex items-center gap-2 text-sm leading-none font-medium select-none">
+              カテゴリ
+            </legend>
+            <div className="flex flex-wrap gap-2">
               <label
-                key={c.id}
                 className={cn(
                   "relative flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring/60",
-                  active
+                  categoryId === ""
                     ? "border-primary bg-secondary font-medium text-secondary-foreground"
-                    : "border-border hover:bg-accent/60",
+                    : "border-border text-muted-foreground hover:bg-accent/60",
                 )}
               >
                 <input
                   type="radio"
                   name="category_id"
-                  value={c.id}
-                  checked={active}
-                  onChange={() => setCategoryId(c.id)}
+                  value=""
+                  checked={categoryId === ""}
+                  onChange={() => setCategoryId("")}
                   className="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0"
                 />
-                <span
-                  aria-hidden
-                  className="pointer-events-none inline-block size-2.5 rounded-full"
-                  style={{ backgroundColor: c.color ?? "#999" }}
-                />
-                {c.name}
+                未選択
               </label>
-            );
-          })}
-        </div>
-      </fieldset>
+              {options.map((c) => {
+                const active = categoryId === c.id;
+                return (
+                  <label
+                    key={c.id}
+                    className={cn(
+                      "relative flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring/60",
+                      active
+                        ? "border-primary bg-secondary font-medium text-secondary-foreground"
+                        : "border-border hover:bg-accent/60",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="category_id"
+                      value={c.id}
+                      checked={active}
+                      onChange={() => setCategoryId(c.id)}
+                      className="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0"
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none inline-block size-2.5 rounded-full"
+                      style={{ backgroundColor: c.color ?? "#999" }}
+                    />
+                    {c.name}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
 
-      <div className="space-y-2">
-        <Label htmlFor="memo">メモ</Label>
-        <textarea
-          id="memo"
-          name="memo"
-          rows={2}
-          maxLength={200}
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        />
+          <div className="space-y-2">
+            <Label htmlFor="memo">メモ</Label>
+            <textarea
+              id="memo"
+              name="memo"
+              rows={2}
+              maxLength={200}
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            />
+          </div>
+
+          {members && members.length > 1 && currentUserId ? (
+            <div className="space-y-2">
+              <Label htmlFor="on_behalf_of">名義人</Label>
+              <select
+                id="on_behalf_of"
+                name="on_behalf_of"
+                value={onBehalfOf}
+                onChange={(e) => setOnBehalfOf(e.target.value)}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.user_id === currentUserId
+                      ? `${m.display_name}（自分）`
+                      : m.display_name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                この収支を誰の記録として集計するかを選べます。自分以外を選ぶと代理入力になります。
+              </p>
+            </div>
+          ) : null}
+
+          {type === "expense" && (defaultValues?.amount ?? 0) >= 0 ? (
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
+              <span className="space-y-0.5">
+                <span className="block text-sm font-medium">
+                  精算対象（割り勘）
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  メンバー間精算の均等割りに含めます
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                name="is_shared"
+                value="true"
+                checked={isShared}
+                onChange={(e) => setIsShared(e.target.checked)}
+                className="size-5 accent-primary"
+              />
+            </label>
+          ) : null}
+
+          {otherHouseholds && otherHouseholds.length > 0 ? (
+            <details className="rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <summary className="cursor-pointer text-sm font-medium select-none">
+                他のグループにも反映する
+                {reflectIds.length > 0 ? `（${reflectIds.length}件選択中）` : ""}
+              </summary>
+              <p className="mt-2 text-xs text-muted-foreground">
+                選択したグループにも同じ収支をコピーします。カテゴリは同名のものに紐付け、無ければ未分類になります。
+              </p>
+              <div className="mt-3 flex flex-col gap-2">
+                {otherHouseholds.map((h) => {
+                  const checked = reflectIds.includes(h.id);
+                  return (
+                    <label
+                      key={h.id}
+                      className="flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleReflect(h.id)}
+                        className="size-4 rounded border-border accent-primary"
+                      />
+                      {h.name}
+                    </label>
+                  );
+                })}
+              </div>
+            </details>
+          ) : null}
+          {reflectIds.map((id) => (
+            <input key={id} type="hidden" name="reflect_household_ids" value={id} />
+          ))}
+
+          {state && "error" in state ? (
+            <p className="text-sm text-destructive" role="alert">
+              {state.error}
+            </p>
+          ) : null}
+
+          {savedCount > 0 ? (
+            <p className="text-sm text-income" role="status" aria-live="polite">
+              {savedCount}件登録しました（続けて入力できます）
+            </p>
+          ) : null}
+
+        </form>
+        {afterForm}
       </div>
 
-      {members && members.length > 1 && currentUserId ? (
-        <div className="space-y-2">
-          <Label htmlFor="on_behalf_of">名義人</Label>
-          <select
-            id="on_behalf_of"
-            name="on_behalf_of"
-            value={onBehalfOf}
-            onChange={(e) => setOnBehalfOf(e.target.value)}
-            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            {members.map((m) => (
-              <option key={m.user_id} value={m.user_id}>
-                {m.user_id === currentUserId
-                  ? `${m.display_name}（自分）`
-                  : m.display_name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground">
-            この収支を誰の記録として集計するかを選べます。自分以外を選ぶと代理入力になります。
-          </p>
-        </div>
-      ) : null}
-
-      {type === "expense" && (defaultValues?.amount ?? 0) >= 0 ? (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
-          <span className="space-y-0.5">
-            <span className="block text-sm font-medium">
-              精算対象（割り勘）
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              メンバー間精算の均等割りに含めます
-            </span>
-          </span>
-          <input
-            type="checkbox"
-            name="is_shared"
-            value="true"
-            checked={isShared}
-            onChange={(e) => setIsShared(e.target.checked)}
-            className="size-5 accent-primary"
-          />
-        </label>
-      ) : null}
-
-      {otherHouseholds && otherHouseholds.length > 0 ? (
-        <details className="rounded-xl border border-border bg-muted/40 px-4 py-3">
-          <summary className="cursor-pointer text-sm font-medium select-none">
-            他のグループにも反映する
-            {reflectIds.length > 0 ? `（${reflectIds.length}件選択中）` : ""}
-          </summary>
-          <p className="mt-2 text-xs text-muted-foreground">
-            選択したグループにも同じ収支をコピーします。カテゴリは同名のものに紐付け、無ければ未分類になります。
-          </p>
-          <div className="mt-3 flex flex-col gap-2">
-            {otherHouseholds.map((h) => {
-              const checked = reflectIds.includes(h.id);
-              return (
-                <label
-                  key={h.id}
-                  className="flex cursor-pointer items-center gap-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleReflect(h.id)}
-                    className="size-4 rounded border-border accent-primary"
-                  />
-                  {h.name}
-                </label>
-              );
-            })}
+      <div className={cn("space-y-2", dialog && "shrink-0 border-t bg-popover p-4")}>
+        {enableContinue ? (
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p>続けて登録する場合、日付・種別・名義人を引き継ぎます。</p>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={keepCategory}
+                onChange={(event) => setKeepCategory(event.target.checked)}
+              />
+              カテゴリも引き継ぐ
+            </label>
           </div>
-        </details>
-      ) : null}
-      {reflectIds.map((id) => (
-        <input key={id} type="hidden" name="reflect_household_ids" value={id} />
-      ))}
-
-      {state && "error" in state ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.error}
-        </p>
-      ) : null}
-
-      {savedCount > 0 ? (
-        <p className="text-sm text-income" role="status" aria-live="polite">
-          {savedCount}件登録しました（続けて入力できます）
-        </p>
-      ) : null}
-
-      <div className="space-y-2">
+        ) : null}
         <Button
+          form={formId}
           type="submit"
           className="h-11 w-full text-base shadow-soft"
           disabled={pending}
-          onClick={() => {
-            continueSubmit.current = false;
-          }}
         >
           {pending ? "処理中..." : submitLabel}
         </Button>
         {enableContinue ? (
           <Button
+            form={formId}
             type="submit"
             name="_continue"
             value="1"
             variant="outline"
             className="h-11 w-full text-base"
             disabled={pending}
-            onClick={() => {
-              continueSubmit.current = true;
-            }}
           >
             登録して続ける
           </Button>
         ) : null}
       </div>
-    </form>
+    </div>
   );
 }

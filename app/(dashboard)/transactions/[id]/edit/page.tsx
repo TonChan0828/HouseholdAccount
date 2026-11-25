@@ -33,6 +33,7 @@ export default async function EditTransactionPage({
     .from("transactions")
     .select("*")
     .eq("id", id)
+    .eq("household_id", householdId)
     .maybeSingle();
   const transaction = unwrapData(transactionResult, "fetchEditableTransaction");
 
@@ -52,9 +53,9 @@ export default async function EditTransactionPage({
   const categories = (data ?? []) as Category[];
 
   // 反映元（アクティブグループ）を除く自分の所属グループを反映先候補にする。
-  const otherHouseholds = (await getUserHouseholds()).filter(
-    (h) => h.id !== householdId,
-  );
+  const households = await getUserHouseholds();
+  const household = households.find((group) => group.id === householdId);
+  const otherHouseholds = households.filter((group) => group.id !== householdId);
 
   // 名義人セレクト（代理入力。spec 41）の選択肢。
   const members = await getHouseholdMemberNames(householdId);
@@ -74,6 +75,7 @@ export default async function EditTransactionPage({
           <TransactionForm
             action={updateTransaction}
             categories={categories}
+            household={household}
             submitLabel="更新する"
             members={members}
             currentUserId={user.id}
