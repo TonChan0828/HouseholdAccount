@@ -17,11 +17,11 @@ vi.mock("@/lib/queries/members", () => ({
 
 function client() {
   return {
+    rpc: vi.fn(async () => ({ data: 300, error: null })),
     from(table: string) {
       const query = {
         select: () => query,
         eq: () => query,
-        gte: () => query,
         maybeSingle: async () => ({
           data:
             table === "savings_goals"
@@ -40,7 +40,7 @@ function client() {
               ? [{ category_id: "c-1", amount: 500 }]
               : table === "categories"
                 ? [{ id: "c-1", name: "家賃" }]
-                : [{ amount: 300, type: "income" }];
+                : [];
           return Promise.resolve({ data, error: null }).then(resolve);
         },
       };
@@ -51,9 +51,10 @@ function client() {
 
 describe("loadDashboardData", () => {
   it("ダッシュボードに必要な取得を一つのloaderで返す", async () => {
+    const supabase = client();
     const data = await loadDashboardData(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      client() as any,
+      supabase as any,
       "h-1",
       {
         current: { start: new Date("2026-07-01"), end: new Date("2026-08-01") },
@@ -67,6 +68,10 @@ describe("loadDashboardData", () => {
     expect(data.members).toHaveLength(1);
     expect(data.budgets).toEqual([{ category_id: "c-1", amount: 500 }]);
     expect(data.savingsGoal.progress?.saved).toBe(300);
+    expect(supabase.rpc).toHaveBeenCalledWith("savings_goal_balance", {
+      _household_id: "h-1",
+      _start_date: "2026-01-01",
+    });
     expect(data.reminderTargets).toEqual([{ id: "c-1", name: "家賃" }]);
   });
 });
