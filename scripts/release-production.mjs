@@ -47,6 +47,7 @@ function readOptional(path) {
 }
 
 function main() {
+  const preflightOnly = process.argv[2] === "--check";
   const repo = required("RELEASE_REPO");
   const stateDir = required("RELEASE_STATE_DIR");
   if (!isAbsolute(repo) || !isAbsolute(stateDir)) {
@@ -144,7 +145,7 @@ function main() {
     const drift = (options = []) => run(process.execPath, [
       "scripts/check-migration-drift.mjs", ...options,
     ], checkout, { SUPABASE_PROJECT_REF: projectRef, SUPABASE_ACCESS_TOKEN: supabaseToken });
-    if (readOptional(published) === commit) {
+    if (!preflightOnly && readOptional(published) === commit) {
       console.log(drift());
       return;
     }
@@ -155,14 +156,21 @@ function main() {
     const assertLatest = () => {
       if (mainSha() !== commit) throw new Error("A newer main commit superseded this release.");
     };
+    const checkBefore = () => {
+      console.log(drift(["--allow-pending-tail"]));
+      vercel(["project", "inspect", vercelProjectId]);
+      run("supabase", ["link", "--project-ref", projectRef], checkout, dbEnv);
+      run("supabase", ["db", "push", "--linked", "--dry-run"], checkout, dbEnv);
+    };
+    if (preflightOnly) {
+      assertLatest();
+      checkBefore();
+      console.log(`Production preflight succeeded for ${commit}.`);
+      return;
+    }
     releaseCommit({
       assertLatest,
-      checkBefore() {
-        console.log(drift(["--allow-pending-tail"]));
-        vercel(["project", "inspect", vercelProjectId]);
-        run("supabase", ["link", "--project-ref", projectRef], checkout, dbEnv);
-        run("supabase", ["db", "push", "--linked", "--dry-run"], checkout, dbEnv);
-      },
+      checkBefore,
       apply() {
         assertLatest();
         run("supabase", ["db", "push", "--linked", "--yes"], checkout, dbEnv);
