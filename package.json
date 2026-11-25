@@ -16,11 +16,11 @@
     "test:a11y": "E2E_SKIP_DB_SETUP=true E2E_PORT=3217 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=e2e-public-placeholder playwright test --project=chromium-guest e2e/accessibility.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:mutation": "stryker run",
-    "test:db:parity": "node scripts/test-settlement-parity.mjs"
+    "test:db:parity": "node scripts/test-settlement-parity.mjs",
+    "check:dependencies": "knip --dependencies --no-progress"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "class-variance-authority": "^0.7.1",
@@ -32,7 +32,6 @@
     "next-themes": "^0.4.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hook-form": "^7.77.0",
     "recharts": "^3.8.1",
     "saxes": "^6.0.0",
     "server-only": "^0.0.1",
@@ -45,6 +44,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@next/env": "16.4.6",
     "@playwright/test": "^1.60.0",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
@@ -61,6 +61,7 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "16.4.6",
     "jsdom": "^29.1.1",
+    "knip": "6.48.0",
     "shadcn": "^4.21.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5",
