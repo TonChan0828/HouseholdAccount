@@ -526,6 +526,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      savings_goal_balance: {
+        Args: { _household_id: string; _start_date: string }
+        Returns: number
+      }
       set_member_display_name: {
         Args: { _display_name: string; _household_id: string }
         Returns: undefined

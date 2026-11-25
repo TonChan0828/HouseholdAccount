@@ -1,5 +1,5 @@
 import type { ServerClient } from "@/lib/household";
-import { DataAccessError } from "@/lib/queries/errors";
+import { unwrapData } from "@/lib/queries/result";
 import type { Category } from "@/types";
 
 /**
@@ -19,16 +19,41 @@ export async function fetchHouseholdCategories(
   supabase: ServerClient,
   householdId: string,
 ): Promise<CategoryOption[]> {
-  const { data, error } = await supabase
+  const result = await categoryOptionsQuery(supabase, householdId);
+  return unwrapData(result, "fetchHouseholdCategories") ?? [];
+}
+
+function categoryOptionsQuery(supabase: ServerClient, householdId: string) {
+  return supabase
     .from("categories")
     .select("id, name, color, type, is_hidden")
     .eq("household_id", householdId)
     .order("type", { ascending: true })
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
+}
 
-  if (error) {
-    throw new DataAccessError("fetchHouseholdCategories", error);
-  }
-  return (data ?? []) as CategoryOption[];
+export async function fetchExpenseCategories(supabase: ServerClient, householdId: string) {
+  const result = await categoryOptionsQuery(supabase, householdId).in("type", ["expense", "both"]);
+  return unwrapData(result, "fetchExpenseCategories") ?? [];
+}
+
+export async function fetchManagedCategories(supabase: ServerClient, householdId: string) {
+  const result = await supabase.from("categories").select("*").eq("household_id", householdId)
+    .order("type", { ascending: true })
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  return unwrapData(result, "fetchManagedCategories") ?? [];
+}
+
+export async function fetchEditableCategory(supabase: ServerClient, householdId: string, id: string) {
+  const result = await supabase.from("categories").select("*").eq("household_id", householdId)
+    .eq("id", id).eq("is_default", false).maybeSingle();
+  return unwrapData(result, "fetchEditableCategory");
+}
+
+export async function fetchReminderCategories(supabase: ServerClient, householdId: string) {
+  const result = await supabase.from("categories").select("id, name").eq("household_id", householdId)
+    .eq("reminder_enabled", true).eq("is_hidden", false);
+  return unwrapData(result, "fetchReminderCategories") ?? [];
 }
