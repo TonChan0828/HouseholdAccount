@@ -104,6 +104,34 @@ describe("TransactionForm", () => {
     expect(screen.queryByRole("radio", { name: "食費" })).not.toBeInTheDocument();
   });
 
+  it("連続入力でカテゴリを引き継ぐ設定と表示中の登録先を送信に反映する", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn<(state: TransactionActionState, data: FormData) => Promise<TransactionActionState>>(async () => ({
+      ok: true as const,
+      key: "saved",
+    }));
+    render(
+      <TransactionForm
+        action={action}
+        categories={categories}
+        household={{ id: "h1", name: "家の家計簿" }}
+        submitLabel="登録する"
+        enableContinue
+      />,
+    );
+
+    expect(screen.getByText("家の家計簿")).toBeVisible();
+    await user.type(screen.getByLabelText("金額"), "250");
+    await user.click(screen.getByRole("radio", { name: "食費" }));
+    await user.click(screen.getByRole("checkbox", { name: "カテゴリも引き継ぐ" }));
+    await user.click(screen.getByRole("button", { name: "登録して続ける" }));
+
+    await waitFor(() => expect(screen.getByLabelText("金額")).toHaveValue(""));
+    expect(action.mock.calls[0]?.[1].get("_household")).toBe("h1");
+    expect(action.mock.calls[0]?.[1].get("_continue")).toBe("1");
+    expect(screen.getByRole("radio", { name: "食費" })).toBeChecked();
+  });
+
   it("enableContinue 未指定では「登録して続ける」ボタンを出さない", () => {
     renderForm();
 

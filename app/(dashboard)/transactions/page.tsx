@@ -127,6 +127,7 @@ export default async function TransactionsPage({
     <TransactionDialogProvider
       categories={categoryOptions}
       otherHouseholds={otherHouseholds}
+      household={households.find((group) => group.id === householdId)}
       members={members}
       currentUserId={user.id}
     >
