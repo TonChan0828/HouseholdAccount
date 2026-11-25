@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
@@ -36,6 +37,10 @@ export default async function SettingsPage() {
   return (
     <main className="mx-auto w-full max-w-md space-y-6 p-4 sm:py-8">
       <PageHeader eyebrow="アカウント" title="設定" className={reveal} />
+
+      <Link href="/settings/agent" className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">
+        エージェント API の設定
+      </Link>
 
       <section className={reveal} style={{ animationDelay: "60ms" }}>
         <SectionHeading>プロフィール設定</SectionHeading>

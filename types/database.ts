@@ -439,6 +439,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agent_api_v1: { Args: { _token: string; _operation: string; _arguments: Json }; Returns: Json }
+      create_agent_token: { Args: { _label: string }; Returns: string }
+      get_agent_routing: { Args: never; Returns: Json }
+      list_agent_tokens: { Args: never; Returns: { id: string; label: string; created_at: string }[] }
+      revoke_agent_token: { Args: { _id: string }; Returns: undefined }
+      save_agent_routing: { Args: {
+        _personal_id: string; _home_id: string; _transfer_id: string; _category_map: Json
+      }; Returns: undefined }
       transaction_daily_summary: {
         Args: {
           _household_id: string
