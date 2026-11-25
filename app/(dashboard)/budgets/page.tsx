@@ -1,3 +1,5 @@
+import { fetchHouseholdBudgets } from "@/lib/queries/budgets";
+import { fetchExpenseCategories } from "@/lib/queries/categories";
 import { Wallet } from "lucide-react";
 
 import { BudgetProgressBar } from "@/components/features/budgets/budget-progress-bar";
@@ -22,8 +24,6 @@ import {
   toISODate,
 } from "@/lib/period";
 import { yen } from "@/lib/format";
-import type { Budget, Category } from "@/types";
-import { unwrapData } from "@/lib/queries/result";
 
 export default async function BudgetsPage({
   searchParams,
@@ -37,30 +37,15 @@ export default async function BudgetsPage({
   const { periodStartDay: startDay } = await getHouseholdSettings(householdId);
   const range = getPeriodRange(refFromParam(ref), startDay);
 
-  const [categoryResult, budgetResult, txData] =
-    await Promise.all([
-      supabase
-        .from("categories")
-        .select("id, name, color, type, is_hidden")
-        .eq("household_id", householdId)
-        .in("type", ["expense", "both"])
-        .order("type", { ascending: true })
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true }),
-      supabase
-        .from("budgets")
-        .select("category_id, amount")
-        .eq("household_id", householdId),
-      fetchTransactionsInRange(supabase, householdId, range),
-    ]);
-  const categoryData = unwrapData(categoryResult, "fetchBudgetCategories");
-  const budgetData = unwrapData(budgetResult, "fetchBudgets");
-
-  const budgets = (budgetData ?? []) as Pick<Budget, "category_id" | "amount">[];
+  const [categoryData, budgets, txData] = await Promise.all([
+    fetchExpenseCategories(supabase, householdId),
+    fetchHouseholdBudgets(supabase, householdId),
+    fetchTransactionsInRange(supabase, householdId, range),
+  ]);
   const budgetedCategories = new Set(budgets.map((budget) => budget.category_id));
-  const categories = (categoryData ?? []).filter((category) =>
+  const categories = categoryData.filter((category) =>
     !category.is_hidden || budgetedCategories.has(category.id),
-  ) satisfies Pick<Category, "id" | "name" | "color">[];
+  );
   const expenseSlices = summarizeCategoryExpense(txData);
 
   const { rows, totalBudget, totalSpent } = buildBudgetRows(

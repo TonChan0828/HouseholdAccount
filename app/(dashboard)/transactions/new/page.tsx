@@ -1,3 +1,4 @@
+import { fetchHouseholdCategories } from "@/lib/queries/categories";
 import Link from "next/link";
 
 import { createTransaction } from "@/app/(dashboard)/transactions/actions";
@@ -11,8 +12,6 @@ import {
   requireDashboardContext,
 } from "@/lib/household";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
-import { unwrapData } from "@/lib/queries/result";
-import type { Category } from "@/types";
 
 export default async function NewTransactionPage({
   searchParams,
@@ -25,15 +24,7 @@ export default async function NewTransactionPage({
 
   const { user, householdId, supabase } = await requireDashboardContext();
 
-  const categoryResult = await supabase
-    .from("categories")
-    .select("*")
-    .eq("household_id", householdId)
-    .order("type", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  const data = unwrapData(categoryResult, "fetchTransactionFormCategories");
-  const categories = (data ?? []) as Category[];
+  const categories = await fetchHouseholdCategories(supabase, householdId);
 
   // 反映元（アクティブグループ）を除く自分の所属グループを反映先候補にする。
   const households = await getUserHouseholds();

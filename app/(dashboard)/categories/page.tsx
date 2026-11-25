@@ -1,3 +1,4 @@
+import { fetchManagedCategories } from "@/lib/queries/categories";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, Bell, Plus } from "lucide-react";
 
@@ -17,7 +18,7 @@ import { Surface } from "@/components/shared/surface";
 import { isHouseholdOwner, requireDashboardContext } from "@/lib/household";
 import { cn } from "@/lib/utils";
 import { unwrapData } from "@/lib/queries/result";
-import type { Category, CategoryType } from "@/types";
+import type { CategoryType } from "@/types";
 
 const GROUPS: { type: CategoryType; label: string }[] = [
   { type: "expense", label: "支出" },
@@ -49,17 +50,10 @@ export default async function CategoriesPage({
     requireDashboardContext(),
   ]);
 
-  const [result, isOwner] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("*")
-      .eq("household_id", householdId)
-      .order("type", { ascending: true })
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true }),
+  const [categories, isOwner] = await Promise.all([
+    fetchManagedCategories(supabase, householdId),
     isHouseholdOwner(supabase, householdId, user.id),
   ]);
-  const categories = (unwrapData(result, "fetchCategories") ?? []) as Category[];
   const hiddenCategories = categories.filter((category) => category.is_hidden);
   const usage = isOwner
     ? unwrapData(await supabase.rpc("category_usage", { _household_id: householdId }), "fetchCategoryUsage") ?? []

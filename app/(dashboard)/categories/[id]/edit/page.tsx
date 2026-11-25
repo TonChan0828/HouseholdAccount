@@ -1,3 +1,4 @@
+import { fetchEditableCategory } from "@/lib/queries/categories";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -8,8 +9,6 @@ import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
 import { requireDashboardContext } from "@/lib/household";
-import { unwrapData } from "@/lib/queries/result";
-import type { Category } from "@/types";
 
 export default async function EditCategoryPage({
   params,
@@ -20,15 +19,7 @@ export default async function EditCategoryPage({
 
   const { householdId, supabase } = await requireDashboardContext();
 
-  const result = await supabase
-    .from("categories")
-    .select("*")
-    .eq("id", id)
-    .eq("household_id", householdId)
-    .eq("is_default", false)
-    .maybeSingle();
-  const data = unwrapData(result, "fetchEditableCategory");
-  const category = data as Category | null;
+  const category = await fetchEditableCategory(supabase, householdId, id);
 
   // 存在しない・デフォルト・他グループのカテゴリは編集対象外
   if (!category) {

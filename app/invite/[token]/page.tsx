@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { unwrapData } from "@/lib/queries/result";
 
 const STATUS_MESSAGE: Record<string, string> = {
@@ -34,12 +33,12 @@ export default async function InvitePage({
   // 招待された本人は household_invitations を直接 SELECT できないため、
   // SECURITY DEFINER 関数がグループ名と有効性だけを返す。
   const isValidToken = INVITATION_TOKEN_PATTERN.test(token);
-  const [data, userResult] = isValidToken
+  const supabase = isValidToken ? await createClient() : null;
+  const [data, userResult] = supabase
     ? await Promise.all([
-        createAdminClient()
-          .rpc("invitation_preview", { _token: token })
+        supabase.rpc("invitation_preview", { _token: token })
           .then((result) => unwrapData(result, "previewInvitation")),
-        (await createClient()).auth.getUser(),
+        supabase.auth.getUser(),
       ])
     : [null, null];
   const preview = data?.[0];
