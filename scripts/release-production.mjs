@@ -47,7 +47,9 @@ function readOptional(path) {
 }
 
 function main() {
-  const preflightOnly = process.argv[2] === "--check";
+  const args = process.argv.slice(2);
+  const preflightOnly = args.length === 1 && args[0] === "--check";
+  if (args.length && !preflightOnly) throw new Error("Usage: release-production.mjs [--check]");
   const repo = required("RELEASE_REPO");
   const stateDir = required("RELEASE_STATE_DIR");
   if (!isAbsolute(repo) || !isAbsolute(stateDir)) {
@@ -108,7 +110,7 @@ function main() {
   try {
     fd = openSync(lock, "wx", 0o600);
   } catch (error) {
-    if (error.code === "EEXIST") {
+    if (error.code === "EEXIST" && !preflightOnly) {
       console.log("Another release owns the lock.");
       return;
     }
@@ -116,8 +118,8 @@ function main() {
   }
 
   const published = join(stateDir, "published-commit");
-  const workspace = mkdtempSync(join(tmpdir(), "household-release-"));
-  const checkout = join(workspace, "checkout");
+  let workspace;
+  let checkout;
   let attached = false;
 
   try {
@@ -125,7 +127,9 @@ function main() {
     const commit = mainSha();
     if (!commitPattern.test(commit)) throw new Error("GitHub did not return a valid main commit.");
     if (!verified(commit)) {
-      console.log(`Waiting for successful CI, Database and E2E on ${commit}.`);
+      const pending = `Waiting for successful CI, Database and E2E on ${commit}.`;
+      if (preflightOnly) throw new Error(pending);
+      console.log(pending);
       return;
     }
     const origin = run("git", ["remote", "get-url", "origin"]);
@@ -136,9 +140,13 @@ function main() {
     ]).has(origin)) throw new Error("Release clone must point to the HouseholdAccount repository.");
     run("git", ["fetch", "--no-tags", "origin", "refs/heads/main"]);
     if (run("git", ["rev-parse", "FETCH_HEAD"]) !== commit) {
-      console.log("Main changed while fetching. This release will be retried.");
+      const newer = "Main changed while fetching. This release will be retried.";
+      if (preflightOnly) throw new Error(newer);
+      console.log(newer);
       return;
     }
+    workspace = mkdtempSync(join(tmpdir(), "household-release-"));
+    checkout = join(workspace, "checkout");
     run("git", ["worktree", "add", "--detach", checkout, commit]);
     attached = true;
 
@@ -211,7 +219,7 @@ function main() {
   } finally {
     try {
       if (attached) run("git", ["worktree", "remove", "--force", checkout]);
-      rmSync(workspace, { recursive: true, force: true });
+      if (workspace) rmSync(workspace, { recursive: true, force: true });
     } finally {
       closeSync(fd);
       rmSync(lock, { force: true });
