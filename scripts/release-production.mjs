@@ -59,10 +59,10 @@ function main() {
   if (!/^https:\/\/[a-z0-9.-]+$/.test(productionUrl)) {
     throw new Error("PRODUCTION_URL must be an HTTPS origin.");
   }
-  const ghToken = required("RELEASE_GITHUB_TOKEN");
+  const ghToken = process.env.RELEASE_GITHUB_TOKEN?.trim();
   const supabaseToken = required("SUPABASE_ACCESS_TOKEN");
-  const dbPassword = required("SUPABASE_DB_PASSWORD");
-  const vercelToken = required("VERCEL_TOKEN");
+  const dbPassword = process.env.SUPABASE_DB_PASSWORD;
+  const vercelToken = process.env.VERCEL_TOKEN?.trim();
   const vercelScope = required("VERCEL_SCOPE");
   const vercelOrgId = required("VERCEL_ORG_ID");
   const vercelProjectId = required("VERCEL_PROJECT_ID");
@@ -73,8 +73,8 @@ function main() {
     "RELEASE_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN",
     "SUPABASE_ACCESS_TOKEN", "SUPABASE_DB_PASSWORD", "VERCEL_TOKEN",
   ]) delete env[key];
-  const ghEnv = { GH_TOKEN: ghToken };
-  const dbEnv = { SUPABASE_ACCESS_TOKEN: supabaseToken, SUPABASE_DB_PASSWORD: dbPassword };
+  const ghEnv = ghToken ? { GH_TOKEN: ghToken } : {};
+  const dbEnv = { SUPABASE_ACCESS_TOKEN: supabaseToken, ...(dbPassword ? { SUPABASE_DB_PASSWORD: dbPassword } : {}) };
   const vercelEnv = { VERCEL_ORG_ID: vercelOrgId, VERCEL_PROJECT_ID: vercelProjectId };
 
   function run(file, args, cwd = repo, extraEnv = {}) {
@@ -158,16 +158,15 @@ function main() {
       return;
     }
 
-    const vercel = (args) => run("vercel", [
-      ...args, "--scope", vercelScope, "--token", vercelToken,
-    ], checkout, vercelEnv);
+    const vercelAuth = ["--scope", vercelScope, ...(vercelToken ? ["--token", vercelToken] : [])];
+    const vercel = (args) => run("vercel", [...args, ...vercelAuth], checkout, vercelEnv);
     const assertLatest = () => {
       if (mainSha() !== commit) throw new Error("A newer main commit superseded this release.");
     };
     const checkBefore = () => {
       console.log(drift(["--allow-pending-tail"]));
       vercel(["project", "inspect", vercelProjectId]);
-      run("supabase", ["link", "--project-ref", projectRef], checkout, dbEnv);
+      run("supabase", ["link", "--project-ref", projectRef, "--yes"], checkout, dbEnv);
       run("supabase", ["db", "push", "--linked", "--dry-run"], checkout, dbEnv);
     };
     if (preflightOnly) {
@@ -195,8 +194,8 @@ function main() {
         return candidate;
       },
       smoke(candidate) {
-        run("vercel", ["curl", "/login", "--deployment", candidate, "--scope", vercelScope,
-          "--token", vercelToken, "--", "--fail", "--silent", "--show-error",
+        run("vercel", ["curl", "/login", "--deployment", candidate, ...vercelAuth,
+          "--", "--fail", "--silent", "--show-error",
           "--max-time", "30", "--output", "/dev/null"], checkout, vercelEnv);
       },
       promote(candidate) {

@@ -49,7 +49,7 @@
 本番リリース専用ホストが `scripts/release-production.mjs` を定期実行します。スクリプトは `main` の対象コミットで CI、Database、E2E が成功したことを確認します。現在の本番アプリと互換性のあるマイグレーションを適用し、履歴が一致した場合に候補版を作成します。候補版のログイン画面が応答することを確認した後、本番ドメインへ公開します。Git 連携はプルリクエストのプレビューに使います。
 
 - 初回切り替え前に、プルリクエストの検証からアクセスできない専用ホストを用意します。Node.js 22、Git、GitHub CLI、Supabase CLI 2.117.0、Vercel CLI 66.5.0、curl を専用ユーザーで利用できるようにします。専用ユーザーの管理下に GitHub のリポジトリを取得し、Git の読み取り認証を設定します。
-- ホストの秘密情報管理から `RELEASE_GITHUB_TOKEN`、`SUPABASE_ACCESS_TOKEN`、`SUPABASE_DB_PASSWORD`、`VERCEL_TOKEN` を渡します。GitHub のトークンは Actions と Contents の読み取りに絞ります。Supabase のトークンは本番プロジェクトのリンクと履歴照合に必要な権限に絞ります。
+- ホストの秘密情報管理から `SUPABASE_ACCESS_TOKEN` を渡します。Supabase の一時接続で認証できない場合は `SUPABASE_DB_PASSWORD` を使います。GitHub CLI と Vercel CLI は事前認証済みのセッションを使えます。`RELEASE_GITHUB_TOKEN` と `VERCEL_TOKEN` を渡す場合は、対象リポジトリの読み取りと対象プロジェクトのデプロイに必要な権限に絞ります。
 - `RELEASE_REPO` に専用クローンの絶対パス、`RELEASE_STATE_DIR` に専用ユーザーの状態保存先を設定します。`VERCEL_ORG_ID`・`VERCEL_PROJECT_ID`・`VERCEL_SCOPE` と本番ドメインの `PRODUCTION_URL` も設定します。まず専用ホストで `node scripts/release-production.mjs --check` を実行して、照合と接続が成功することを確認します。その後、5分間隔を目安に引数なしで起動し、終了コードとログを監視します。
 - 現行の GitHub 契約では非公開リポジトリの環境シークレットを `main` に限定できません。本番マイグレーションの認証情報は専用ホストに置きます。従来の読み取り専用トークンは、切り替えと専用ホストでの照合を確認した後に GitHub のリポジトリシークレットから削除します。
 - 本番と同じ既存スキーマからの適用、旧アプリの動作、更新後のアプリの動作を事前に隔離環境で確認します。列の削除や名前変更は、新旧アプリで使える追加を先に公開し、旧アプリへの切り戻しが不要になってから別の公開で行います。
