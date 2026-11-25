@@ -16,6 +16,7 @@
     "test:a11y": "E2E_SKIP_DB_SETUP=true E2E_PORT=3217 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=e2e-public-placeholder playwright test --project=chromium-guest e2e/accessibility.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:mutation": "stryker run",
+    "db:types": "node scripts/generate-database-types.mjs",
     "test:db:parity": "node scripts/test-settlement-parity.mjs"
   },
   "dependencies": {
