@@ -1,7 +1,8 @@
+import { readFile } from "node:fs/promises";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { expect, it } from "vitest";
-import { isAbsolute } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { parseWorkbook, resolveWorkbookModule, WORKBOOK_LIMITS } from "./parse-workbook";
 
 // Generating large compressed fixtures can exceed Vitest's default timeout on CI.
@@ -51,11 +52,12 @@ it("エントリー数を制限する", async () => {
   });
   await expect(parseWorkbook(buffer)).rejects.toThrow(/WorkbookLimit|InvalidWorkbook/);
 });
-it("複数の小さなエントリーでも展開後の合計を制限する", largeFixtureTimeout, async () => {
-  const buffer = await alter((zip) => {
-    for (let i = 0; i < 3; i++) zip.file("payload" + i + ".bin", Buffer.alloc(6 * 1024 * 1024));
-  });
-  await expect(parseWorkbook(buffer)).rejects.toThrow(/WorkbookLimit|InvalidWorkbook/);
+it("複数の小さなエントリーでも展開後の合計を制限する", async () => {
+  // 有効なブックに 6 MiB のゼロ埋めファイルを3件追加して圧縮したもの。
+  // 各ファイルは 8 MiB 未満だが、合計は 16 MiB を超える。
+  const compressed = await readFile(resolve(__dirname, "fixtures/expanded-total-limit.xlsx"));
+  expect(compressed.byteLength).toBeLessThan(WORKBOOK_LIMITS.compressedBytes);
+  await expect(parseWorkbook(Uint8Array.from(compressed).buffer)).rejects.toThrow(/^WorkbookLimit$/);
 });
 it("シート数の上限を超えるブックを拒否する", async () => {
   const wb = new ExcelJS.Workbook();
