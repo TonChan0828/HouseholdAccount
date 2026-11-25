@@ -1,13 +1,14 @@
+import { fetchHouseholdCategories } from "@/lib/queries/categories";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
-  deleteTransaction,
   updateTransaction,
 } from "@/app/(dashboard)/transactions/actions";
+import { DeleteTransactionForm } from "@/components/features/transactions/delete-transaction-form";
 import { ReflectToGroups } from "@/components/features/transactions/reflect-to-groups.client";
 import { TransactionForm } from "@/components/features/transactions/transaction-form";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
@@ -18,7 +19,6 @@ import {
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { unwrapData } from "@/lib/queries/result";
 import { canEditTransaction } from "@/lib/transactions/attribution";
-import type { Category } from "@/types";
 
 export default async function EditTransactionPage({
   params,
@@ -42,15 +42,7 @@ export default async function EditTransactionPage({
     notFound();
   }
 
-  const categoryResult = await supabase
-    .from("categories")
-    .select("*")
-    .eq("household_id", householdId)
-    .order("type", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  const data = unwrapData(categoryResult, "fetchTransactionFormCategories");
-  const categories = (data ?? []) as Category[];
+  const categories = await fetchHouseholdCategories(supabase, householdId);
 
   // 反映元（アクティブグループ）を除く自分の所属グループを反映先候補にする。
   const households = await getUserHouseholds();
@@ -72,6 +64,9 @@ export default async function EditTransactionPage({
         style={{ animationDelay: "60ms" }}
       >
         <CardContent className="space-y-4 pt-6">
+          {!transaction.category_id && transaction.reflected_category_name ? (
+            <p className="text-sm text-muted-foreground">反映元のカテゴリ：{transaction.reflected_category_name}</p>
+          ) : null}
           <TransactionForm
             action={updateTransaction}
             categories={categories}
@@ -96,12 +91,7 @@ export default async function EditTransactionPage({
               otherHouseholds={otherHouseholds}
             />
           ) : null}
-          <form action={deleteTransaction} className="border-t pt-4">
-            <input type="hidden" name="id" value={transaction.id} />
-            <Button type="submit" variant="destructive" className="w-full">
-              この収支を削除
-            </Button>
-          </form>
+          <DeleteTransactionForm id={transaction.id} householdId={householdId} />
         </CardContent>
       </Surface>
       <div className="text-center">

@@ -27,6 +27,7 @@ export type MirrorRow = {
   amount: number;
   date: string;
   category_id: string | null;
+  reflected_category_name?: string;
   memo: string | null;
 };
 
@@ -42,15 +43,19 @@ export function buildMirrorRows(
   userId: string,
   targets: MirrorTarget[],
 ): MirrorRow[] {
-  return targets.map((target) => ({
-    household_id: target.householdId,
-    created_by: userId,
-    type: source.type,
-    amount: source.amount,
-    date: source.date,
-    category_id: resolveCategoryId(source, target),
-    memo: source.memo,
-  }));
+  return targets.map((target) => {
+    const categoryId = resolveCategoryId(source, target);
+    return {
+      household_id: target.householdId,
+      created_by: userId,
+      type: source.type,
+      amount: source.amount,
+      date: source.date,
+      category_id: categoryId,
+      memo: source.memo,
+      ...(!categoryId && source.categoryName ? { reflected_category_name: source.categoryName } : {}),
+    };
+  });
 }
 
 /** 反映先グループで反映元カテゴリ名に一致する id を返す（無ければ null）。 */

@@ -4,7 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { Trash2 } from "lucide-react";
 
-import { deleteTransaction } from "@/app/(dashboard)/transactions/actions";
+import { deleteTransactionWithUndo } from "@/app/(dashboard)/transactions/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,6 +19,7 @@ import { yen } from "@/lib/format";
 import type { TransactionType } from "@/types";
 
 type Props = {
+  householdId: string;
   transaction: {
     id: string;
     date: string;
@@ -28,15 +29,15 @@ type Props = {
   };
 };
 
-export function DeleteTransactionButton({ transaction }: Props) {
+export function DeleteTransactionButton({ transaction, householdId }: Props) {
   const [open, setOpen] = useState(false);
   const submitting = useRef(false);
   const [error, action, pending] = useActionState(
     async (_previous: string | null, formData: FormData) => {
       try {
-        await deleteTransaction(formData);
-        setOpen(false);
-        return null;
+        const result = await deleteTransactionWithUndo(undefined, formData);
+        if (!result) setOpen(false);
+        return result?.error ?? null;
       } catch (error) {
         // Preserve Next.js redirects (including an expired login session).
         unstable_rethrow(error);
@@ -72,7 +73,7 @@ export function DeleteTransactionButton({ transaction }: Props) {
         <DialogHeader>
           <DialogTitle>収支を削除しますか？</DialogTitle>
           <DialogDescription>
-            以下の収支を削除します。削除した収支は元に戻せません。
+            以下の収支を削除します。削除後10秒間は元に戻せます。
           </DialogDescription>
         </DialogHeader>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
@@ -100,6 +101,7 @@ export function DeleteTransactionButton({ transaction }: Props) {
           }}
         >
           <input type="hidden" name="id" value={transaction.id} />
+          <input type="hidden" name="householdId" value={householdId} />
           {error ? <p role="alert" className="mb-4 text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button

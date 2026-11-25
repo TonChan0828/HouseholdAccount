@@ -3,6 +3,10 @@ import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   summary: vi.fn(), page: vi.fn(), full: vi.fn(),
 }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: () => undefined }),
+}));
+
 vi.mock("@/lib/household", () => ({
   requireDashboardContext: async () => ({ user: { id: "user" }, householdId: "household", supabase: {} }),
   getHouseholdSettings: async () => ({ periodStartDay: 1 }),

@@ -23,6 +23,7 @@ export type TransactionRow = {
   /** 名義人（代理入力。spec 41）。null なら入力者本人が名義人。 */
   on_behalf_of: string | null;
   category_id: string | null;
+  reflected_category_name?: string | null;
   recurring_id: string | null;
   is_shared: boolean;
   category: { name: string; color: string | null; icon: string | null } | null;
@@ -128,7 +129,7 @@ function buildTransactionQuery(
   let query = supabase
     .from("transactions")
     .select(
-      "id, created_at, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, category:categories(name, color, icon)",
+      "id, created_at, amount, type, date, memo, created_by, on_behalf_of, category_id, recurring_id, is_shared, reflected_category_name, category:categories(name, color, icon)",
       includeCount ? { count: "exact" } : undefined,
     )
     .eq("household_id", householdId)

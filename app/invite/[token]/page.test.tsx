@@ -7,11 +7,7 @@ const { getUser, rpc } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { getUser } }),
-}));
-
-vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ rpc }),
+  createClient: async () => ({ auth: { getUser }, rpc }),
 }));
 
 vi.mock("@/app/households/actions", () => ({

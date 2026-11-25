@@ -6,7 +6,7 @@ import { DeleteTransactionButton } from "./delete-transaction-button";
 
 const mocks = vi.hoisted(() => ({ remove: vi.fn(), rethrow: vi.fn() }));
 vi.mock("@/app/(dashboard)/transactions/actions", () => ({
-  deleteTransaction: mocks.remove,
+  deleteTransactionWithUndo: mocks.remove,
 }));
 vi.mock("next/navigation", () => ({ unstable_rethrow: mocks.rethrow }));
 
@@ -25,7 +25,7 @@ beforeEach(() => {
 
 async function openDialog() {
   const user = userEvent.setup();
-  render(<DeleteTransactionButton transaction={transaction} />);
+  render(<DeleteTransactionButton transaction={transaction} householdId="h-1" />);
   await user.click(screen.getByRole("button", { name: "削除" }));
   return user;
 }
@@ -48,7 +48,7 @@ describe("DeleteTransactionButton", () => {
     const user = await openDialog();
     await user.click(screen.getByRole("button", { name: "削除する" }));
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledTimes(1));
-    expect(mocks.remove.mock.calls[0][0].get("id")).toBe("t-1");
+    expect(mocks.remove.mock.calls[0][1].get("id")).toBe("t-1");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 

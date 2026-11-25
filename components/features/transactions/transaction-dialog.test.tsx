@@ -11,6 +11,10 @@ import {
   type DialogTransaction,
 } from "./transaction-dialog";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const actions = vi.hoisted(() => ({
   create: vi.fn(async () => undefined),
   update: vi.fn(async () => undefined),

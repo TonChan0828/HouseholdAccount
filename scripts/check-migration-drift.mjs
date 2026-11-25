@@ -57,6 +57,20 @@ export function findMigrationDrift(localVersions, remoteVersions) {
   };
 }
 
+/** @param {string[]} localVersions @param {string[]} remoteVersions */
+export function assertMigrationPrefix(localVersions, remoteVersions) {
+  const { pending, remoteOnly } = findMigrationDrift(localVersions, remoteVersions);
+  if (remoteOnly.length > 0) {
+    throw new Error(`Unknown remote migrations: ${remoteOnly.join(", ")}.`);
+  }
+  const local = [...localVersions].sort();
+  const remote = [...remoteVersions].sort();
+  if (remote.some((version, index) => version !== local[index])) {
+    throw new Error("Migration history has a pending version before an applied version.");
+  }
+  return pending;
+}
+
 /** @param {string | URL} directory */
 export function localMigrationVersions(directory = new URL("../supabase/migrations/", import.meta.url)) {
   const versions = readdirSync(directory, { withFileTypes: true })
@@ -80,6 +94,11 @@ async function main() {
     process.env.SUPABASE_PROJECT_REF ?? "",
     process.env.SUPABASE_ACCESS_TOKEN ?? "",
   );
+  if (process.argv[2] === "--allow-pending-tail") {
+    const pending = assertMigrationPrefix(local, remote);
+    console.log(`Production history is a prefix. Pending migrations: ${pending.length}.`);
+    return;
+  }
   const { pending, remoteOnly } = findMigrationDrift(local, remote);
   if (!pending.length && !remoteOnly.length) {
     console.log("All local migrations are applied to the remote database.");

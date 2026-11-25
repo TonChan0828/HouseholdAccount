@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { TransactionDeletionNotice } from "@/components/features/transactions/transaction-deletion-notice";
+import { parseUndoReceipt, transactionDeletionCookie } from "@/lib/transactions/submission-receipt";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -87,6 +90,7 @@ export default async function TransactionsPage({
       fetchHouseholdCategories(supabase, householdId),
       getUserHouseholds(),
     ]);
+  const undoReceipt = parseUndoReceipt((await cookies()).get(transactionDeletionCookie)?.value);
   const otherHouseholds = households.filter((h) => h.id !== householdId);
   const { income, expense, dailyTotals } = summary;
   const groups = groupByDate(transactionPage.items);
@@ -131,6 +135,7 @@ export default async function TransactionsPage({
       members={members}
       currentUserId={user.id}
     >
+      {undoReceipt ? <TransactionDeletionNotice receipt={undoReceipt} /> : null}
       <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:py-8">
         <PageHeader
           eyebrow="記録"
@@ -350,6 +355,9 @@ export default async function TransactionsPage({
                                       </span>
                                     ) : null}
                                   </div>
+                                  {!t.category_id && t.reflected_category_name ? (
+                                    <p className="text-xs text-muted-foreground">反映元のカテゴリ：{t.reflected_category_name}</p>
+                                  ) : null}
                                   {t.memo ? (
                                     <p className="truncate text-xs text-muted-foreground">
                                       {t.memo}
@@ -374,6 +382,7 @@ export default async function TransactionsPage({
                                         }}
                                       />
                                       <DeleteTransactionButton
+                                        householdId={householdId}
                                         transaction={{
                                           id: t.id,
                                           date: t.date,
