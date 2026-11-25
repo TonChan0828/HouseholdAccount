@@ -183,6 +183,11 @@ export async function createTransaction(
   }
 
   const { user, householdId, supabase } = await requireDashboardContext();
+  const submittedHousehold = formData.get("_household");
+  if (submittedHousehold !== null && submittedHousehold !== householdId) {
+    return { error: "グループが切り替わりました。フォームを開き直してください。" };
+  }
+
 
   const { type, amount, date, category_id, memo, is_shared } = parsed.data;
 
@@ -254,6 +259,11 @@ export async function updateTransaction(
   }
 
   const { user, householdId, supabase } = await requireDashboardContext();
+  const submittedHousehold = formData.get("_household");
+  if (submittedHousehold !== null && submittedHousehold !== householdId) {
+    return { error: "グループが切り替わりました。フォームを開き直してください。" };
+  }
+
 
   // 名義人の正規化は「その収支の入力者」を基準にする（操作者ではない）。
   // 名義人が自分名義の収支を編集するとき、操作者と比べると名義が外れてしまい、

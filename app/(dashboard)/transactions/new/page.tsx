@@ -27,9 +27,9 @@ export default async function NewTransactionPage({
   const categories = await fetchHouseholdCategories(supabase, householdId);
 
   // 反映元（アクティブグループ）を除く自分の所属グループを反映先候補にする。
-  const otherHouseholds = (await getUserHouseholds()).filter(
-    (h) => h.id !== householdId,
-  );
+  const households = await getUserHouseholds();
+  const household = households.find((group) => group.id === householdId);
+  const otherHouseholds = households.filter((group) => group.id !== householdId);
 
   // 名義人セレクト（代理入力。spec 41）の選択肢。
   const members = await getHouseholdMemberNames(householdId);
@@ -49,6 +49,7 @@ export default async function NewTransactionPage({
           <TransactionForm
             action={createTransaction}
             categories={categories}
+            household={household}
             submitLabel="登録する"
             enableContinue
             otherHouseholds={otherHouseholds}

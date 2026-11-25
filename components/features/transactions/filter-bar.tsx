@@ -57,7 +57,7 @@ export function FilterBar({
   const [q, setQ] = useState(filter.memoQuery ?? "");
   const [min, setMin] = useState(filter.minAmount?.toString() ?? "");
   const [max, setMax] = useState(filter.maxAmount?.toString() ?? "");
-  // モバイルでは種別ピル以外を「絞り込み」ボタンで開閉する
+  // モバイルではメモ・名義人・金額を「絞り込み」ボタンで開閉する
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -169,9 +169,36 @@ export function FilterBar({
         </div>
       </div>
 
+      <select
+        aria-label="カテゴリ"
+        value={filter.categoryId ?? ""}
+        onChange={(e) => applyNow({ category: e.target.value })}
+        className={cn(selectClass, "w-full sm:w-auto")}
+        >
+        <option value="">すべてのカテゴリ</option>
+        {categories.filter((c) => !c.is_hidden || c.id === filter.categoryId).map((c) => (
+          <option key={c.id} value={c.id} disabled={c.is_hidden}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+
+      {active ? (
+        <p className="break-words text-sm text-muted-foreground" role="status">
+          適用中の条件：{[
+            filter.type && (filter.type === "income" ? "収入" : "支出"),
+            filter.categoryId && `カテゴリ ${categories.find((item) => item.id === filter.categoryId)?.name ?? "指定のカテゴリ"}`,
+            filter.createdBy && `名義人 ${members.find((item) => item.user_id === filter.createdBy)?.display_name ?? "指定の名義人"}`,
+            filter.memoQuery && `メモ「${filter.memoQuery}」`,
+            filter.minAmount !== undefined && `${filter.minAmount.toLocaleString()}円以上`,
+            filter.maxAmount !== undefined && `${filter.maxAmount.toLocaleString()}円以下`,
+          ].filter(Boolean).join("、")}
+        </p>
+      ) : null}
+
       <div
         className={cn(
-          "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4",
+          "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3",
           !open && "max-sm:hidden",
         )}
       >
@@ -192,20 +219,6 @@ export function FilterBar({
             className="h-9 pl-9"
           />
         </div>
-
-        <select
-          aria-label="カテゴリ"
-          value={filter.categoryId ?? ""}
-          onChange={(e) => applyNow({ category: e.target.value })}
-          className={selectClass}
-        >
-          <option value="">すべてのカテゴリ</option>
-          {categories.filter((c) => !c.is_hidden || c.id === filter.categoryId).map((c) => (
-            <option key={c.id} value={c.id} disabled={c.is_hidden}>
-              {c.name}
-            </option>
-          ))}
-        </select>
 
         {members.length > 1 ? (
           <select
