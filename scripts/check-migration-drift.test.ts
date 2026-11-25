@@ -3,12 +3,30 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import { fetchMigrationVersions, findMigrationDrift, localMigrationVersions } from "./check-migration-drift.mjs";
+import { assertMigrationPrefix, fetchMigrationVersions, findMigrationDrift, localMigrationVersions } from "./check-migration-drift.mjs";
 
 const project = "bkljkdkldaiemwpnjuks";
 const localVersion = "20260928090000";
 const pendingVersion = "20261005120000";
 const remoteVersion = "20261006000000";
+
+describe("assertMigrationPrefix", () => {
+  const a = "20260618212503";
+  const b = "20260618212518";
+  const c = "20260618212528";
+
+  it("照合結果の順序にかかわらず末尾に連続する未適用だけを許す", () => {
+    expect(assertMigrationPrefix([c, b, a], [b, a])).toEqual([c]);
+  });
+
+  it("適用履歴の途中に欠落があれば停止する", () => {
+    expect(() => assertMigrationPrefix([a, b, c], [a, c])).toThrow(/pending version before/);
+  });
+
+  it("未知の適用履歴があれば停止する", () => {
+    expect(() => assertMigrationPrefix([a, b], [a, c])).toThrow(/Unknown remote migrations/);
+  });
+});
 
 describe("findMigrationDrift", () => {
   it("一致時は差分なしになる", () => {
