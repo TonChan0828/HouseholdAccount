@@ -37,8 +37,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Block high and critical dependency advisories
-        run: npm audit --audit-level=high
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Audit all dependencies, including development
+        if: success() || failure()
+        run: npm audit --include=dev --audit-level=high
+      - name: Find unused and undeclared dependencies
+        run: npm run check:dependencies
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage -- --maxWorkers=2

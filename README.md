@@ -68,7 +68,7 @@ npm run test:e2e      # Playwright E2E
 | チェック | 内容 |
 | --- | --- |
 | `CI / verify` | ワークフローの構文と式、ESLint（警告も失敗）、Next.js のルート型を含む型検査、単体テストとカバレッジ下限、公開画面のアクセシビリティ、本番ビルドを検証します。依存パッケージに重大度が High 以上の脆弱性がある場合も失敗します。 |
-| `Database / test` | CI 内の Supabase にマイグレーションを適用し、SQL テストと TypeScript・SQL の精算結果の一致を検証します。 |
+| `Database / test` | CI 内の Supabase にマイグレーションを適用し、生成した DB 型と、SQL テスト・精算結果を検証します。 |
 | `E2E / playwright` | CI 内の Supabase とブラウザーで利用者の操作を検証し、本番ビルドでも取込プレビューを確認します。 |
 
 本番公開にはリリース専用ホストを使います。[本番公開とマイグレーション](docs/specs/39_architecture_hardening.md#本番公開とマイグレーション)に設定と復旧手順を記載しています。
@@ -80,3 +80,5 @@ npm run test:e2e      # Playwright E2E
 
 - 機能仕様書: [`docs/specs/`](docs/specs/)
 - 開発ガイド（Claude Code 向け）: [`CLAUDE.md`](CLAUDE.md)
+
+DB のスキーマを変更したら Supabase CLI 2.117.0 でローカル DB を起動し、`npm run db:types` で `types/database.ts` を更新してください。
