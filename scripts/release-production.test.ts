@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { releaseCommit } from "./release-production.mjs";
+import { releaseCommit, stagedDeploymentUrl } from "./release-production.mjs";
 
 function operations() {
   return {
@@ -47,5 +47,21 @@ describe("production release", () => {
       .mockImplementationOnce(() => { throw new Error("main changed"); });
     expect(() => releaseCommit(workflow)).toThrow("main changed");
     expect(workflow.promote).not.toHaveBeenCalled();
+  });
+});
+
+describe("Vercel staged deployment response", () => {
+  const deployment = { url: "https://candidate.vercel.app", readyState: "READY", productionUrl: null };
+
+  it("reads the candidate URL from the CLI's structured response", () => {
+    expect(stagedDeploymentUrl(JSON.stringify({ status: "ok", deployment }))).toBe(deployment.url);
+  });
+
+  it("rejects a deployment that already has a production URL", () => {
+    const output = JSON.stringify({
+      status: "ok",
+      deployment: { ...deployment, productionUrl: "https://production.vercel.app" },
+    });
+    expect(() => stagedDeploymentUrl(output)).toThrow(/unpromoted/);
   });
 });

@@ -31,6 +31,18 @@ export function releaseCommit({
   verifyLive(candidate);
 }
 
+export function stagedDeploymentUrl(output) {
+  const response = JSON.parse(output);
+  const deployment = response?.deployment;
+  const candidate = deployment?.url;
+  if (response?.status !== "ok" || deployment?.readyState !== "READY" ||
+      deployment?.productionUrl != null || typeof candidate !== "string" ||
+      !/^https:\/\/[a-z0-9.-]+\.vercel\.app$/.test(candidate)) {
+    throw new Error("Vercel did not return a ready, unpromoted candidate.");
+  }
+  return candidate;
+}
+
 function required(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing release configuration: ${name}.`);
@@ -187,11 +199,9 @@ function main() {
       },
       deploy() {
         rmSync(join(checkout, "supabase", ".temp"), { recursive: true, force: true });
-        const candidate = vercel(["deploy", "--prod", "--skip-domain", "--archive=tgz", "--yes"]);
-        if (!/^https:\/\/[a-z0-9.-]+\.vercel\.app$/.test(candidate)) {
-          throw new Error("Vercel did not return a valid candidate URL.");
-        }
-        return candidate;
+        return stagedDeploymentUrl(vercel([
+          "deploy", "--prod", "--skip-domain", "--archive=tgz", "--yes",
+        ]));
       },
       smoke(candidate) {
         run("vercel", ["curl", "/login", "--deployment", candidate, ...vercelAuth,
