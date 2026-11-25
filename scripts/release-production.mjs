@@ -200,7 +200,7 @@ function main() {
       deploy() {
         rmSync(join(checkout, "supabase", ".temp"), { recursive: true, force: true });
         return stagedDeploymentUrl(vercel([
-          "deploy", "--prod", "--skip-domain", "--archive=tgz", "--yes",
+          "deploy", "--prod", "--skip-domain", "--archive=tgz", "--yes", "--json",
         ]));
       },
       smoke(candidate) {
