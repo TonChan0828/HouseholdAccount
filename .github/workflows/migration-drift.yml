@@ -1,11 +1,7 @@
 name: Migration Drift
 
-# main への push で Vercel は自動デプロイされるが、本番DBのマイグレーションは手動適用。
-# リポジトリと本番DBの適用状況がずれていないかを PR・main・毎日の定期実行で検知する。
+# 本番公開ワークフローとは別に、定期的に公開後の適用履歴を照合する。
 on:
-  pull_request:
-  push:
-    branches: [main]
   schedule:
     - cron: "0 0 * * *" # 09:00 JST
   workflow_dispatch:
@@ -19,7 +15,8 @@ concurrency:
 
 jobs:
   check:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    if: github.ref == 'refs/heads/main'
+    environment: Production
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

@@ -43,7 +43,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 本番は `RATE_LIMIT_SECRET` と回数制限用のSupabase設定を起動時に検査します。設定不足の場合は起動を中止します。
 
-収支一覧のデータベース集計には `20261005120000_0032_transaction_summary.sql` の適用が必要です。アプリの更新前にマイグレーションを適用してください。
+収支一覧のデータベース集計には `20261005120000_0032_transaction_summary.sql` の適用が必要です。本番では公開ワークフローがアプリの公開前にマイグレーションを適用します。
 
 本番では `NEXT_PUBLIC_APP_URL` を公開URLへ変更してください。定期収支は
 Vercel Cron から毎日 `/api/cron/recurring` を呼び出して生成します。
@@ -70,7 +70,8 @@ npm run test:e2e      # Playwright E2E
 | `CI / verify` | ワークフローの構文と式、ESLint（警告も失敗）、Next.js のルート型を含む型検査、単体テストとカバレッジ下限、公開画面のアクセシビリティ、本番ビルドを検証します。依存パッケージに重大度が High 以上の脆弱性がある場合も失敗します。 |
 | `Database / test` | CI 内の Supabase にマイグレーションを適用し、SQL テストと TypeScript・SQL の精算結果の一致を検証します。 |
 | `E2E / playwright` | CI 内の Supabase とブラウザーで利用者の操作を検証し、本番ビルドでも取込プレビューを確認します。 |
-| `Migration Drift / check` | 本番 Supabase のマイグレーション履歴を読み取り専用で照合します。プルリクエストでは同じリポジトリのブランチが対象です。Dependabot 起点の実行はスキップします。 |
+| `Production Release` | 検証済みのコミットの DB マイグレーションを適用し、本番アプリを公開します。 |
+| `Migration Drift / check` | 本番 Supabase のマイグレーション履歴を毎日と手動実行時に照合します。 |
 
 `CI / verify` と `E2E / playwright` が失敗した場合、取得済みのレポートを GitHub Actions の実行画面からダウンロードできます。保存期間は 7 日間です。
 プルリクエストに追加のコミットを push すると、CI・データベース・ブラウザーの検証は進行中の旧コミットの実行を取り消します。

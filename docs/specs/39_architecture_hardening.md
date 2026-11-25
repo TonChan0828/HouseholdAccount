@@ -44,17 +44,15 @@
 - `CRON_SECRET`: Vercel Cron Route Handler の認証用。
 - `NEXT_PUBLIC_APP_URL`: `metadataBase` 用の公開URL。
 
-## マイグレーション適用漏れの検知
+## 本番公開とマイグレーション
 
-main への push で Vercel は自動デプロイされるが、本番DBのマイグレーションは `supabase db push --linked` による手動適用。適用漏れのまま新コードが本番に出ると、存在しない列や関数を参照して `(dashboard)` 全体が「データを読み込めませんでした」になる（2026-09-28 の `categories.sort_order`、2026-10-07 の RPC `transaction_daily_summary` で発生）。
+`Production Release` は `main` の同じコミットで CI、Database、E2E が成功したことを確認します。現在の本番アプリと互換性のあるマイグレーションを適用し、履歴が一致してから Vercel の候補版を本番ドメインへ公開します。Git 連携はプルリクエストのプレビューに使います。
 
-- `.github/workflows/migration-drift.yml` が PR・main push・毎日 09:00 JST・手動で実行される。
-- `scripts/check-migration-drift.mjs` が Supabase の管理APIから本番のマイグレーション履歴を取得し、リポジトリ内のSQLファイルのバージョンと照合する。次のいずれかがあれば失敗する。
-  - リポジトリにあるが本番未適用のマイグレーション
-  - 本番に適用済みだがリポジトリにないマイグレーション
-  - API の呼び出しが失敗するか、応答が有効なマイグレーション履歴として読み取れない
-- 運用: マイグレーションを含む PR は、内容が後方互換（追加のみ）であることを確認したうえで、マージ前に本番へ適用してからチェックを通す。
-- GitHub Actions のシークレット `SUPABASE_ACCESS_TOKEN` に、本番プロジェクト限定で Migrations の読み取り権限を持つ期限付きトークンを登録する。未設定時はエラーにする。
+- 初回切り替え前に、GitHub の `Production` 環境にシークレット `SUPABASE_ACCESS_TOKEN`、`SUPABASE_DB_PASSWORD`、`VERCEL_TOKEN` を設定します。変数は `VERCEL_ORG_ID`、`VERCEL_PROJECT_ID`、`VERCEL_SCOPE`、`PRODUCTION_URL` を設定します。
+- Supabase のトークンは本番プロジェクトのリンクと履歴照合に必要な権限に絞ります。従来のリポジトリ共通の照合用トークンは、切り替えと定期照合を確認した後に削除します。
+- 本番と同じ既存スキーマからの適用、旧アプリの動作、更新後のアプリの動作を事前に隔離環境で確認します。列の削除や名前変更は、新旧アプリで使える追加を先に公開し、旧アプリへの切り戻しが不要になってから別の公開で行います。
+- 適用履歴がローカルの履歴の先頭部分と一致する場合に限り、末尾の未適用分を適用します。未知の履歴、途中の欠落、適用後の不一致、候補版の動作確認失敗があれば公開を止めます。
+- 適用後に公開が失敗した場合は原因を修正して `main` から再実行します。公開後のアプリに問題があれば、Vercel の直前の本番デプロイを復帰し、DB の変更は別途前方修正します。定期の `Migration Drift` は本番履歴を毎日 09:00 JST に照合します。
 
 ## テスト方針
 
