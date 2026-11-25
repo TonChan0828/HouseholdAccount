@@ -1,10 +1,10 @@
-import { DeleteTransactionForm } from "@/components/features/transactions/delete-transaction-form";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
   updateTransaction,
 } from "@/app/(dashboard)/transactions/actions";
+import { DeleteTransactionForm } from "@/components/features/transactions/delete-transaction-form";
 import { ReflectToGroups } from "@/components/features/transactions/reflect-to-groups.client";
 import { TransactionForm } from "@/components/features/transactions/transaction-form";
 import { buttonVariants } from "@/components/ui/button";

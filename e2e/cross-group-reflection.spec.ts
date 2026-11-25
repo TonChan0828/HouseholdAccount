@@ -101,4 +101,34 @@ test.describe("収支のグループ間反映", () => {
     await page.goto("/transactions");
     await expect(row(page, memo)).toContainText("¥800");
   });
+
+  test("反映先にカテゴリがなければ警告し、元のカテゴリを表示する", async ({ page }) => {
+    const target = ephemeralName("未分類の反映先");
+    const source = ephemeralName("未分類の反映元");
+    const memo = `元カテゴリ確認 ${Date.now()}`;
+    const category = "専用の水道代";
+    await createHousehold(page, target);
+    await createHousehold(page, source);
+
+    await page.goto("/categories/new");
+    await page.getByLabel("カテゴリ名").fill(category);
+    await page.getByRole("radio", { name: "支出" }).check();
+    await page.getByRole("button", { name: "追加する" }).click();
+    await expect(page).toHaveURL(/\/categories$/);
+
+    await page.goto("/transactions/new");
+    await page.getByLabel("金額").fill("2315");
+    await page.getByLabel("メモ").fill(memo);
+    await page.getByRole("radio", { name: category }).check();
+    await page.locator("summary").filter({ hasText: "他のグループにも反映する" }).click();
+    await page.getByRole("checkbox", { name: target }).check();
+    await page.getByRole("button", { name: "登録する", exact: true }).click();
+    await expect(page.getByText(/「専用の水道代」がないため、未分類で反映しました/)).toBeVisible();
+
+    await page.goto("/households");
+    await card(page, target).getByRole("button", { name: "このグループに切り替え" }).click();
+    await expect(card(page, target).getByTestId("active-badge")).toHaveText("利用中");
+    await page.goto("/transactions");
+    await expect(row(page, memo)).toContainText("反映元のカテゴリ：専用の水道代");
+  });
 });

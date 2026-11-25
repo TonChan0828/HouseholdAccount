@@ -5,6 +5,11 @@ import { TransactionDialogProvider } from "@/components/features/transactions/tr
 import type { CalendarDay } from "@/lib/calendar";
 import { CalendarBoard, type CalendarTx } from "./calendar-board";
 
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...await importOriginal<typeof import("next/navigation")>(),
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const day = (date: string, over: Partial<CalendarDay> = {}): CalendarDay => ({
   date,
   inMonth: true,
