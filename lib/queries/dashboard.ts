@@ -42,20 +42,11 @@ export async function loadDashboardData(
     const goal = unwrapData(goalResult, "fetchSavingsGoal");
     if (!goal) return { progress: null, goal: null };
 
-    const savedResult = await supabase
-      .from("transactions")
-      .select("amount, type")
-      .eq("household_id", householdId)
-      .gte("date", goal.start_date);
-    const savedRows = unwrapData(savedResult, "fetchSavingsTransactions");
-    const saved = (savedRows ?? []).reduce(
-      (sum, transaction) =>
-        sum +
-        (transaction.type === "income"
-          ? transaction.amount
-          : -transaction.amount),
-      0,
-    );
+    const savedResult = await supabase.rpc("savings_goal_balance", {
+      _household_id: householdId,
+      _start_date: goal.start_date,
+    });
+    const saved = unwrapData(savedResult, "fetchSavingsBalance") ?? 0;
 
     return {
       progress: buildSavingsProgress(
