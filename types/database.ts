@@ -367,6 +367,7 @@ export type Database = {
           household_id: string
           id: string
           import_key: string | null
+          reflected_category_name: string | null
           is_shared: boolean
           memo: string | null
           on_behalf_of: string | null
@@ -382,6 +383,7 @@ export type Database = {
           household_id: string
           id?: string
           import_key?: string | null
+          reflected_category_name?: string | null
           is_shared?: boolean
           memo?: string | null
           on_behalf_of?: string | null
@@ -397,6 +399,7 @@ export type Database = {
           household_id?: string
           id?: string
           import_key?: string | null
+          reflected_category_name?: string | null
           is_shared?: boolean
           memo?: string | null
           on_behalf_of?: string | null
@@ -439,6 +442,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_ui_transaction: { Args: {
+        _request_id: string; _household_id: string; _request_hash: string; _rows: Json; _warnings: Json
+      }; Returns: Json }
+      get_ui_transaction_receipt: { Args: { _request_id: string }; Returns: Json }
+      delete_transaction_with_undo: { Args: { _transaction_id: string; _household_id: string }; Returns: Json }
+      undo_transaction_delete: { Args: { _undo_id: string }; Returns: boolean }
+      prune_transaction_undo: { Args: never; Returns: undefined }
       transaction_daily_summary: {
         Args: {
           _household_id: string

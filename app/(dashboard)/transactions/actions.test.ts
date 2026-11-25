@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createTransaction, deleteTransaction, updateTransaction } from "./actions";
+import { createTransaction, deleteTransactionWithUndo, updateTransaction } from "./actions";
 
 type QueryCall = {
   table: string;
@@ -10,6 +10,8 @@ type QueryCall = {
 };
 
 const state = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  setCookie: vi.fn(),
   user: null as { id: string } | null,
   householdId: null as string | null,
   matchedRows: [] as { id: string }[],
@@ -23,6 +25,10 @@ const state = vi.hoisted(() => ({
     values?: unknown;
     filters: Record<string, string>;
   }[],
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ set: state.setCookie }),
 }));
 
 vi.mock("next/cache", () => ({
@@ -60,6 +66,7 @@ vi.mock("@/lib/queries/members", () => ({
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
+    rpc: state.rpc,
     auth: {
       getUser: async () => ({ data: { user: state.user } }),
     },
@@ -77,10 +84,6 @@ vi.mock("@/lib/supabase/server", () => ({
         update(values: unknown) {
           call.method = "update";
           call.values = values;
-          return query;
-        },
-        delete() {
-          call.method = "delete";
           return query;
         },
         eq(column: string, value: string) {
@@ -146,6 +149,7 @@ beforeEach(() => {
   ];
   state.calls = [];
   vi.clearAllMocks();
+  state.rpc.mockReset();
 });
 
 describe("createTransaction", () => {
@@ -297,29 +301,39 @@ describe("updateTransaction", () => {
   });
 });
 
-describe("deleteTransaction", () => {
-  it("未ログインの場合は /login にリダイレクトし削除しない", async () => {
-    state.user = null;
-    const formData = new FormData();
-    formData.set("id", "t-1");
+describe("deleteTransactionWithUndo", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
 
-    await expect(deleteTransaction(formData)).rejects.toThrow(
-      "NEXT_REDIRECT:/login",
-    );
-    expect(state.calls).toHaveLength(0);
+  function removeForm(householdId = "h-1") {
+    const form = new FormData();
+    form.set("id", id);
+    form.set("householdId", householdId);
+    return form;
+  }
+
+  it("未ログインの場合は削除しない", async () => {
+    state.user = null;
+    await expect(deleteTransactionWithUndo(undefined, removeForm())).rejects.toThrow("NEXT_REDIRECT:/login");
+    expect(state.rpc).not.toHaveBeenCalled();
   });
 
-  it("id と household_id の両方でスコープして削除する", async () => {
-    const formData = new FormData();
-    formData.set("id", "t-1");
+  it("収支と表示中のグループを指定し、削除確定後に通知用の情報を付けて一覧へ戻る", async () => {
+    state.rpc.mockResolvedValue({
+      data: { id, expiresAt: "2026-11-25T12:34:56+00:00" },
+      error: null,
+    });
+    await expect(deleteTransactionWithUndo(undefined, removeForm())).rejects.toThrow("NEXT_REDIRECT:/transactions");
+    expect(state.rpc).toHaveBeenCalledWith("delete_transaction_with_undo", {
+      _transaction_id: id,
+      _household_id: "h-1",
+    });
+    expect(state.setCookie).toHaveBeenCalledWith("transaction_deletion_receipt", expect.any(String),
+      expect.objectContaining({ httpOnly: true }));
+  });
 
-    await expect(deleteTransaction(formData)).rejects.toThrow(
-      "NEXT_REDIRECT:/transactions",
-    );
-
-    const del = state.calls.find((c) => c.method === "delete");
-    expect(del?.table).toBe("transactions");
-    expect(del?.filters).toEqual({ id: "t-1", household_id: "h-1" });
+  it("グループ切り替え後には古いフォームから削除しない", async () => {
+    await expect(deleteTransactionWithUndo(undefined, removeForm("other"))).resolves.toHaveProperty("error");
+    expect(state.rpc).not.toHaveBeenCalled();
   });
 });
 

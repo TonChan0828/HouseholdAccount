@@ -7,6 +7,10 @@ import type { Category } from "@/types";
 
 import { TransactionForm } from "./transaction-form";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const noop = async () => undefined;
 
 const categories: Category[] = [
@@ -129,6 +133,7 @@ describe("TransactionForm", () => {
     await waitFor(() => expect(screen.getByLabelText("金額")).toHaveValue(""));
     expect(action.mock.calls[0]?.[1].get("_household")).toBe("h1");
     expect(action.mock.calls[0]?.[1].get("_continue")).toBe("1");
+    expect(action.mock.calls[0]?.[1].get("_request_key")).toMatch(/^[0-9a-f-]{36}$/);
     expect(screen.getByRole("radio", { name: "食費" })).toBeChecked();
   });
 

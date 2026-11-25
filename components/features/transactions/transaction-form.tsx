@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
 import { HouseholdLabel } from "@/components/features/layout/household-label";
@@ -15,6 +17,7 @@ import type { MemberInfo } from "@/lib/members";
 import { localToday } from "@/lib/period";
 import type { CategoryOption } from "@/lib/queries/categories";
 import type { ParsedReceipt } from "@/lib/receipt/parse-receipt";
+import { submissionReceipt } from "@/lib/transactions/submission-receipt";
 import { cn } from "@/lib/utils";
 import type { TransactionType } from "@/types";
 
@@ -62,6 +65,9 @@ type Props = {
   };
 };
 
+const slowSubmissionMs = 10_000;
+const submissionTimeoutMs = 20_000;
+
 export function TransactionForm({
   action,
   categories,
@@ -77,11 +83,67 @@ export function TransactionForm({
   currentUserId,
   defaultValues,
 }: Props) {
+  const router = useRouter();
+  const [navigating, startNavigation] = useTransition();
   const formId = useId();
-  const [state, formAction, pending] = useActionState<
-    TransactionActionState,
-    FormData
-  >(action, undefined);
+  const trackCreation = Boolean(household && !defaultValues?.id);
+  const requestKey = useRef<string | null>(null);
+  const [lookUpAllowed, setLookUpAllowed] = useState(false);
+  const [checkingReceipt, setCheckingReceipt] = useState(false);
+  const [receiptMessage, setReceiptMessage] = useState("");
+  const [recovered, setRecovered] = useState<TransactionActionState>();
+  const [state, formAction, pending] = useActionState<TransactionActionState, FormData>(
+    async (previous, formData) => {
+      if (!trackCreation) return action(previous, formData);
+
+      requestKey.current ??= crypto.randomUUID();
+      formData.set("_request_key", requestKey.current);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<TransactionActionState>((resolve) => {
+        timer = setTimeout(() => resolve({
+          error: "登録の応答に時間がかかっています。再送の前に登録状況を確認してください。",
+          uncertain: true,
+        }), submissionTimeoutMs);
+      });
+      try {
+        return await Promise.race([action(previous, formData), timeout]);
+      } catch {
+        return { error: "登録結果を確認できませんでした。登録状況を確認してください。", uncertain: true };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    undefined,
+  );
+  const result = recovered ?? state;
+
+  useEffect(() => {
+    if (!pending || !trackCreation) return;
+    const timer = setTimeout(() => setLookUpAllowed(true), slowSubmissionMs);
+    return () => clearTimeout(timer);
+  }, [pending, trackCreation]);
+
+  async function checkReceipt() {
+    const checkingKey = requestKey.current;
+    if (!checkingKey) return;
+    setCheckingReceipt(true);
+    setReceiptMessage("");
+    try {
+      const response = await fetch(`/api/transactions/submissions/${checkingKey}`, { cache: "no-store" });
+      if (requestKey.current !== checkingKey) return;
+      if (response.status === 404) {
+        setReceiptMessage("登録の完了をまだ確認できません。同じ内容なら、登録ボタンで重複せずに再送できます。");
+        return;
+      }
+      if (!response.ok) throw new Error("Receipt unavailable");
+      const receipt = submissionReceipt.parse(await response.json());
+      if (requestKey.current === checkingKey) setRecovered({ ok: true, key: receipt.id, warnings: receipt.warnings });
+    } catch {
+      if (requestKey.current === checkingKey) setReceiptMessage("登録状況を取得できませんでした。少し時間をおいて確認してください。");
+    } finally {
+      setCheckingReceipt(false);
+    }
+  }
 
   const [type, setType] = useState<TransactionType>(
     defaultValues?.type ?? "expense",
@@ -126,12 +188,21 @@ export function TransactionForm({
   // 連続入力では金額とメモを空にし、希望された場合だけカテゴリも引き継ぐ。
   // 名義人も維持する（他人の分をまとめて入力するのが代理入力の主用途のため。spec 41）。
   useEffect(() => {
-    if (!state || !("ok" in state)) return;
-    if (lastOkKey.current === state.key) return;
-    lastOkKey.current = state.key;
+    if (!result || !("ok" in result)) return;
+    if (lastOkKey.current === result.key) return;
+    lastOkKey.current = result.key;
+    requestKey.current = null;
+    if (trackCreation) {
+      if (result.warnings?.length) {
+        toast.warning("収支を登録しました", { description: result.warnings.join(" ") });
+      } else {
+        toast.success("収支を登録しました");
+      }
+    }
 
     if (!continueSubmit.current) {
       onSuccess?.();
+      if (trackCreation && !dialog) startNavigation(() => router.push("/transactions"));
       return;
     }
 
@@ -144,7 +215,7 @@ export function TransactionForm({
     setSavedCount((n) => n + 1);
     amountRef.current?.focus();
     // onSuccess が毎レンダー変わっても、lastOkKey で二重発火は防がれる。
-  }, [state, onSuccess]);
+  }, [result, onSuccess, trackCreation, dialog, router, startNavigation]);
 
   const toggleReflect = (id: string) => {
     setReflectIds((prev) =>
@@ -202,10 +273,14 @@ export function TransactionForm({
         <form
           id={formId}
           action={formAction}
+          aria-busy={pending}
           onSubmit={(event) => {
             const submitter = (event.nativeEvent as SubmitEvent).submitter;
             continueSubmit.current = submitter?.getAttribute("name") === "_continue";
             submittedKeepCategory.current = keepCategory;
+            setLookUpAllowed(false);
+            setReceiptMessage("");
+            setRecovered(undefined);
           }}
           className="space-y-5"
         >
@@ -471,9 +546,9 @@ export function TransactionForm({
             <input key={id} type="hidden" name="reflect_household_ids" value={id} />
           ))}
 
-          {state && "error" in state ? (
+          {result && "error" in result ? (
             <p className="text-sm text-destructive" role="alert">
-              {state.error}
+              {result.error}
             </p>
           ) : null}
 
@@ -488,6 +563,16 @@ export function TransactionForm({
       </div>
 
       <div className={cn("space-y-2", dialog && "shrink-0 border-t bg-popover p-4")}>
+        {trackCreation && (
+          (pending && lookUpAllowed) || (result && "error" in result && result.uncertain)
+        ) ? (
+          <div className="space-y-1 text-sm">
+            <Button type="button" variant="link" disabled={checkingReceipt} onClick={checkReceipt}>
+              {checkingReceipt ? "確認中…" : "登録状況を確認する"}
+            </Button>
+            {receiptMessage ? <p role="status">{receiptMessage}</p> : null}
+          </div>
+        ) : null}
         {enableContinue ? (
           <div className="space-y-1 text-xs text-muted-foreground">
             <p>続けて登録する場合、日付・種別・名義人を引き継ぎます。</p>
@@ -505,7 +590,7 @@ export function TransactionForm({
           form={formId}
           type="submit"
           className="h-11 w-full text-base shadow-soft"
-          disabled={pending}
+          disabled={pending || navigating}
         >
           {pending ? "処理中..." : submitLabel}
         </Button>
@@ -517,7 +602,7 @@ export function TransactionForm({
             value="1"
             variant="outline"
             className="h-11 w-full text-base"
-            disabled={pending}
+            disabled={pending || navigating}
           >
             登録して続ける
           </Button>

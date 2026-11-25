@@ -66,6 +66,12 @@ export function ReflectToGroups({ transactionId, otherHouseholds }: Props) {
         </p>
       ) : null}
 
+      {state && "ok" in state && state.warnings?.length ? (
+        <ul className="mt-2 space-y-1 text-sm text-muted-foreground" role="alert">
+          {state.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+        </ul>
+      ) : null}
+
       <Button
         type="submit"
         variant="outline"

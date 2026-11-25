@@ -1,8 +1,13 @@
 "use server";
 
+import { createHash } from "node:crypto";
+import { z } from "zod";
+
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { submissionReceipt, transactionDeletionCookie, transactionUndoReceipt } from "@/lib/transactions/submission-receipt";
 import type { ExistingCategory } from "@/lib/import/excel";
 import {
   getUserHouseholds,
@@ -17,18 +22,19 @@ import {
 } from "@/lib/transactions/attribution";
 import {
   buildMirrorRows,
+  type MirrorRow,
   type MirrorSource,
 } from "@/lib/transactions/mirror";
 import { importedAdjustmentSchema, transactionSchema } from "@/lib/validations/transaction";
 
 export type TransactionActionState =
-  | { error: string }
-  | { ok: true; key: string }
+  | { error: string; uncertain?: boolean }
+  | { ok: true; key: string; warnings?: string[] }
   | undefined;
 
 /** 後追い反映（reflectTransaction）の結果 state。 */
 export type ReflectActionState =
-  | { ok: true; count: number }
+  | { ok: true; count: number; warnings?: string[] }
   | { error: string }
   | undefined;
 
@@ -100,6 +106,7 @@ function readReflectIds(formData: FormData): string[] {
 async function getCategoryName(
   supabase: ServerClient,
   categoryId: string | null | undefined,
+  householdId: string,
 ): Promise<string | null> {
   if (!categoryId) {
     return null;
@@ -108,34 +115,27 @@ async function getCategoryName(
     .from("categories")
     .select("name")
     .eq("id", categoryId)
+    .eq("household_id", householdId)
     .maybeSingle();
   const data = unwrapData(result, "fetchTransactionCategoryName");
   return data?.name ?? null;
 }
 
-/**
- * 収支を反映先グループへ一回限りコピーする。
- *
- * - 反映先は本人の所属グループのみに絞る（反映元グループ自身は除外）。クライアントを信用しない。
- * - 反映先グループのカテゴリを取得し、名前+type 一致で `category_id` を解決（無ければ null）。
- * - RLS の INSERT ポリシー（is_household_member ∧ created_by = self）を満たすため SECURITY DEFINER 不要。
- *
- * @returns 反映した件数。DB エラー時は例外を投げる。
- */
-async function mirrorTransaction(
+/** 所属グループに限って反映行とカテゴリ警告を組み立てる。 */
+async function planReflection(
   supabase: ServerClient,
   userId: string,
   sourceHouseholdId: string,
   source: MirrorSource,
   requestedIds: string[],
-): Promise<number> {
+): Promise<{ rows: MirrorRow[]; warnings: string[] }> {
   const memberships = await getUserHouseholds();
   const memberIds = new Set(memberships.map((h) => h.id));
   const validIds = requestedIds.filter(
     (id) => id !== sourceHouseholdId && memberIds.has(id),
   );
   if (validIds.length === 0) {
-    return 0;
+    return { rows: [], warnings: [] };
   }
 
   const { data: cats, error: catError } = await supabase
@@ -165,11 +165,11 @@ async function mirrorTransaction(
     })),
   );
 
-  const { error: insertError } = await supabase.from("transactions").insert(rows);
-  if (insertError) {
-    throw new Error("反映に失敗しました");
-  }
-  return rows.length;
+  const names = new Map(memberships.map((group) => [group.id, group.name]));
+  const warnings = rows.flatMap((row) => row.reflected_category_name
+    ? [`${names.get(row.household_id)} に「${row.reflected_category_name}」がないため、未分類で反映しました。`]
+    : []);
+  return { rows, warnings };
 }
 
 /** 収支を新規登録する。登録者と household を自動付与。 */
@@ -200,7 +200,7 @@ export async function createTransaction(
     return { error: subject.error };
   }
 
-  const { error } = await supabase.from("transactions").insert({
+  const source = {
     household_id: householdId,
     created_by: user.id,
     on_behalf_of: subject.value,
@@ -210,39 +210,60 @@ export async function createTransaction(
     category_id: category_id ?? null,
     memo: memo || null,
     is_shared,
-  });
-
-  if (error) {
-    return { error: "収支の登録に失敗しました" };
+  };
+  const reflectIds = readReflectIds(formData);
+  const submittedKey = formData.get("_request_key");
+  const requestKey = z.string().uuid().safeParse(submittedKey);
+  if (submittedKey !== null && !requestKey.success) {
+    return { error: "入力フォームを開き直してください。" };
   }
 
-  // 反映先グループが選択されていれば他グループへも一回限りでコピーする。
-  // 反映の失敗は本体の登録を巻き戻さず、状態として通知する。
-  const reflectIds = readReflectIds(formData);
+  let reflection: { rows: MirrorRow[]; warnings: string[] } = { rows: [], warnings: [] };
   if (reflectIds.length > 0) {
     try {
-      const categoryName = await getCategoryName(supabase, category_id);
-      await mirrorTransaction(
-        supabase,
-        user.id,
-        householdId,
-        { type, amount, date, categoryName, memo: memo || null },
-        reflectIds,
-      );
+      const categoryName = await getCategoryName(supabase, category_id, householdId);
+      reflection = await planReflection(supabase, user.id, householdId,
+        { type, amount, date, categoryName, memo: memo || null }, reflectIds);
     } catch {
-      return {
-        error: "他のグループへの反映に失敗しました（収支自体は登録されました）",
-      };
+      return { error: "反映先を確認できませんでした。少し時間をおいてお試しください。" };
     }
   }
 
-  revalidateTransactionViews();
+  if (requestKey.success) {
+    const hash = createHash("sha256").update(JSON.stringify({
+      source,
+      reflectIds: [...reflectIds].sort(),
+    })).digest("hex");
+    const { data, error } = await supabase.rpc("create_ui_transaction", {
+      _household_id: householdId,
+      _request_id: requestKey.data,
+      _request_hash: hash,
+      _rows: [source, ...reflection.rows],
+      _warnings: reflection.warnings,
+    });
+    if (error?.code === "PT409") {
+      return { error: "前の送信結果を確認してから、新しい内容を登録してください。", uncertain: true };
+    }
+    if (error?.code && ["22023", "23503", "23514", "42501"].includes(error.code)) {
+      return { error: "登録先、金額、カテゴリ、名義人を確認してください。" };
+    }
+    const receipt = submissionReceipt.safeParse(data);
+    if (error || !receipt.success) {
+      return { error: "登録結果を確認できませんでした。登録状況を確認してください。", uncertain: true };
+    }
+    revalidateTransactionViews();
+    return { ok: true, key: receipt.data.id, warnings: receipt.data.warnings };
+  }
 
-  // 「登録して続ける」やダイアログからの送信は、フォーム／ダイアログに留まれるよう
-  // 成功状態を返す。key は成功のたびに変わり、クライアント側のリセット・クローズを毎回
-  // トリガーする。
+  const { error } = await supabase.from("transactions").insert(source);
+  if (error) return { error: "収支の登録に失敗しました" };
+  if (reflection.rows.length > 0) {
+    const { error } = await supabase.from("transactions").insert(reflection.rows);
+    if (error) return { error: "他のグループへの反映に失敗しました（収支自体は登録されました）" };
+  }
+  revalidateTransactionViews();
   if (formData.get("_continue") === "1" || isDialogSubmit(formData)) {
-    return { ok: true, key: crypto.randomUUID() };
+    return { ok: true, key: crypto.randomUUID(), ...(reflection.warnings.length ? { warnings: reflection.warnings } : {}) };
   }
 
   redirect("/transactions");
@@ -326,24 +347,45 @@ export async function updateTransaction(
   redirect("/transactions");
 }
 
-/** 収支を削除する（RLS に加えてアクティブグループでもスコープする多層防御）。 */
-export async function deleteTransaction(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  if (!id) {
-    return;
-  }
+export type DeleteTransactionState = { error: string } | undefined;
+
+export async function deleteTransactionWithUndo(
+  _state: DeleteTransactionState,
+  formData: FormData,
+): Promise<DeleteTransactionState> {
+  const id = z.string().uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "削除する収支を指定してください。" };
 
   const { householdId, supabase } = await requireDashboardContext();
-
-  const result = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", id)
-    .eq("household_id", householdId);
-  throwIfError(result, "deleteTransaction");
-
+  if (formData.get("householdId") !== householdId) {
+    return { error: "グループが切り替わりました。編集画面を開き直してください。" };
+  }
+  const { data, error } = await supabase.rpc("delete_transaction_with_undo", {
+    _transaction_id: id.data,
+    _household_id: householdId,
+  });
+  const deleted = transactionUndoReceipt.safeParse(data);
+  if (error || !deleted.success) return { error: "削除できる収支が見つかりませんでした。" };
+  const cookieStore = await cookies();
+  cookieStore.set(transactionDeletionCookie, JSON.stringify(deleted.data), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/transactions",
+    maxAge: 60,
+  });
   revalidateTransactionViews();
   redirect("/transactions");
+}
+
+export async function undoTransactionDelete(id: string): Promise<boolean> {
+  const parsed = z.string().uuid().safeParse(id);
+  if (!parsed.success) return false;
+  const { supabase } = await requireDashboardContext();
+  const { data, error } = await supabase.rpc("undo_transaction_delete", { _undo_id: parsed.data });
+  if (error || !data) return false;
+  revalidateTransactionViews();
+  return true;
 }
 
 /** 既存の収支を、選択した他グループへ後追いで一回限りコピーする。 */
@@ -366,7 +408,7 @@ export async function reflectTransaction(
   // 反映元はアクティブグループでスコープし、入力者本人か名義人だけが反映できる（spec 41）。
   const transactionResult = await supabase
     .from("transactions")
-    .select("type, amount, date, category_id, memo, created_by, on_behalf_of")
+    .select("type, amount, date, category_id, memo, created_by, on_behalf_of, reflected_category_name")
     .eq("id", id)
     .eq("household_id", householdId)
     .maybeSingle();
@@ -380,8 +422,8 @@ export async function reflectTransaction(
   }
 
   try {
-    const categoryName = await getCategoryName(supabase, tx.category_id);
-    const count = await mirrorTransaction(
+    const categoryName = (await getCategoryName(supabase, tx.category_id, householdId)) ?? tx.reflected_category_name;
+    const { rows, warnings } = await planReflection(
       supabase,
       user.id,
       householdId,
@@ -394,11 +436,12 @@ export async function reflectTransaction(
       },
       reflectIds,
     );
-    if (count === 0) {
+    if (rows.length === 0) {
       return { error: "反映先のグループが見つかりません" };
     }
+    throwIfError(await supabase.from("transactions").insert(rows), "reflectTransaction");
     revalidateTransactionViews();
-    return { ok: true, count };
+    return { ok: true, count: rows.length, warnings };
   } catch {
     return { error: "反映に失敗しました" };
   }

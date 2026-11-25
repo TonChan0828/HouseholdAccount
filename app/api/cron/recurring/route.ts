@@ -20,6 +20,9 @@ export async function GET(request: Request): Promise<Response> {
       throw new Error("Recurring generation RPC failed", { cause: error });
     }
 
+    const cleanup = await admin.rpc("prune_transaction_undo");
+    if (cleanup.error) logServerError("cron.transaction_undo_cleanup.failed", cleanup.error, { requestId });
+
     return Response.json(
       { ok: true, generated: data ?? 0 },
       { headers: { "Cache-Control": "no-store" } },
