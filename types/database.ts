@@ -1,11 +1,4 @@
-/**
- * Supabase の DB スキーマ型。
- *
- * `supabase/migrations/` のスキーマから Supabase が生成した型定義。
- * スキーマ変更後は次のコマンド（または MCP の generate_typescript_types）で再生成する:
- *   npx supabase gen types typescript --project-id <id> > types/database.ts
- * 再生成時は末尾の互換エイリアス（MemberRole 等）を再付与すること。
- */
+// Generated from the local database by npm run db:types.
 
 export type Json =
   | string
@@ -16,11 +9,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       budgets: {
@@ -60,44 +48,6 @@ export type Database = {
             referencedRelation: "households"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      savings_goals: {
-        Row: {
-          created_at: string
-          household_id: string
-          id: string
-          name: string
-          start_date: string
-          target_amount: number
-          target_date: string | null
-        }
-        Insert: {
-          created_at?: string
-          household_id: string
-          id?: string
-          name: string
-          start_date: string
-          target_amount: number
-          target_date?: string | null
-        }
-        Update: {
-          created_at?: string
-          household_id?: string
-          id?: string
-          name?: string
-          start_date?: string
-          target_amount?: number
-          target_date?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "savings_goals_household_id_fkey"
-            columns: ["household_id"]
-            isOneToOne: true
-            referencedRelation: "households"
-            referencedColumns: ["id"]
-          }
         ]
       }
       categories: {
@@ -322,6 +272,44 @@ export type Database = {
           },
         ]
       }
+      savings_goals: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          name: string
+          start_date: string
+          target_amount: number
+          target_date: string | null
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          name: string
+          start_date: string
+          target_amount: number
+          target_date?: string | null
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          name?: string
+          start_date?: string
+          target_amount?: number
+          target_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_goals_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settlements: {
         Row: {
           household_id: string
@@ -367,11 +355,11 @@ export type Database = {
           household_id: string
           id: string
           import_key: string | null
-          reflected_category_name: string | null
           is_shared: boolean
           memo: string | null
           on_behalf_of: string | null
           recurring_id: string | null
+          reflected_category_name: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Insert: {
@@ -383,11 +371,11 @@ export type Database = {
           household_id: string
           id?: string
           import_key?: string | null
-          reflected_category_name?: string | null
           is_shared?: boolean
           memo?: string | null
           on_behalf_of?: string | null
           recurring_id?: string | null
+          reflected_category_name?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Update: {
@@ -399,11 +387,11 @@ export type Database = {
           household_id?: string
           id?: string
           import_key?: string | null
-          reflected_category_name?: string | null
           is_shared?: boolean
           memo?: string | null
           on_behalf_of?: string | null
           recurring_id?: string | null
+          reflected_category_name?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
         }
         Relationships: [
@@ -415,18 +403,18 @@ export type Database = {
             referencedColumns: ["household_id", "id"]
           },
           {
-            foreignKeyName: "transactions_household_on_behalf_fkey"
-            columns: ["household_id", "on_behalf_of"]
-            isOneToOne: false
-            referencedRelation: "household_members"
-            referencedColumns: ["household_id", "user_id"]
-          },
-          {
             foreignKeyName: "transactions_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_household_on_behalf_fkey"
+            columns: ["household_id", "on_behalf_of"]
+            isOneToOne: false
+            referencedRelation: "household_members"
+            referencedColumns: ["household_id", "user_id"]
           },
           {
             foreignKeyName: "transactions_recurring_id_fkey"
@@ -442,52 +430,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_ui_transaction: { Args: {
-        _request_id: string; _household_id: string; _request_hash: string; _rows: Json; _warnings: Json
-      }; Returns: Json }
-      get_ui_transaction_receipt: { Args: { _request_id: string }; Returns: Json }
-      delete_transaction_with_undo: { Args: { _transaction_id: string; _household_id: string }; Returns: Json }
-      undo_transaction_delete: { Args: { _undo_id: string }; Returns: boolean }
-      prune_transaction_undo: { Args: never; Returns: undefined }
-      transaction_daily_summary: {
-        Args: {
-          _household_id: string
-          _start: string
-          _end: string
-          _type?: Database["public"]["Enums"]["transaction_type"]
-          _category_id?: string
-          _member_id?: string
-          _memo_pattern?: string
-          _min_amount?: number
-          _max_amount?: number
-        }
-        Returns: { date: string; income: number; expense: number; count: number }[]
+      accept_invitation: { Args: { _token: string }; Returns: string }
+      category_usage: {
+        Args: { _household_id: string }
+        Returns: {
+          budgets: number
+          category_id: string
+          recurring: number
+          transactions: number
+        }[]
       }
       confirm_transaction_import: {
+        Args: { _household_id: string; _month: string; _rows: Json }
+        Returns: number
+      }
+      confirm_transaction_import_v2: {
         Args: {
           _household_id: string
+          _member_id: string | null
           _month: string
           _rows: Json
         }
         Returns: number
       }
-      confirm_transaction_import_v2: {
-        Args: Database["public"]["Functions"]["confirm_transaction_import"]["Args"] & { _member_id: string | null }
-        Returns: number
-      }
-      category_usage: {
-        Args: { _household_id: string }
-        Returns: { category_id: string; transactions: number; recurring: number; budgets: number }[]
-      }
-      merge_category: {
-        Args: { _household_id: string; _source_id: string; _destination_id: string }
-        Returns: undefined
-      }
-      set_preset_category_visibility: {
-        Args: { _household_id: string; _category_id: string; _hidden: boolean }
-        Returns: undefined
-      }
-      accept_invitation: { Args: { _token: string }; Returns: string }
       consume_rate_limit: {
         Args: {
           _bucket: string
@@ -498,23 +463,61 @@ export type Database = {
         Returns: boolean
       }
       consume_rate_limit_with_reset: {
-        Args: Database["public"]["Functions"]["consume_rate_limit"]["Args"]
+        Args: {
+          _bucket: string
+          _key_hash: string
+          _limit: number
+          _window_seconds: number
+        }
         Returns: Json
       }
       create_settlement: {
         Args: { _household_id: string; _ref: string }
         Returns: string
       }
+      create_ui_transaction: {
+        Args: {
+          _household_id: string
+          _request_hash: string
+          _request_id: string
+          _rows: Json
+          _warnings: Json
+        }
+        Returns: Json
+      }
       delete_own_account: { Args: never; Returns: undefined }
-      generate_due_recurring: { Args: { _household_id: string }; Returns: number }
+      delete_transaction_with_undo: {
+        Args: { _household_id: string; _transaction_id: string }
+        Returns: Json
+      }
       generate_all_due_recurring: {
         Args: { _as_of_date: string }
         Returns: number
       }
+      generate_due_recurring: {
+        Args: { _household_id: string }
+        Returns: number
+      }
+      get_ui_transaction_receipt: {
+        Args: { _request_id: string }
+        Returns: Json
+      }
       invitation_preview: {
         Args: { _token: string }
-        Returns: { household_name: string; status: string }[]
+        Returns: {
+          household_name: string
+          status: string
+        }[]
       }
+      merge_category: {
+        Args: {
+          _destination_id: string
+          _household_id: string
+          _source_id: string
+        }
+        Returns: undefined
+      }
+      prune_transaction_undo: { Args: never; Returns: undefined }
       reorder_categories: {
         Args: {
           _category_ids: string[]
@@ -523,17 +526,38 @@ export type Database = {
         }
         Returns: undefined
       }
-      is_household_member: { Args: { _household_id: string }; Returns: boolean }
-      is_household_owner: { Args: { _household_id: string }; Returns: boolean }
       set_member_display_name: {
         Args: { _display_name: string; _household_id: string }
         Returns: undefined
       }
-      shares_household_with: { Args: { _user_id: string }; Returns: boolean }
+      set_preset_category_visibility: {
+        Args: { _category_id: string; _hidden: boolean; _household_id: string }
+        Returns: undefined
+      }
+      transaction_daily_summary: {
+        Args: {
+          _category_id?: string
+          _end: string
+          _household_id: string
+          _max_amount?: number
+          _member_id?: string
+          _memo_pattern?: string
+          _min_amount?: number
+          _start: string
+          _type?: Database["public"]["Enums"]["transaction_type"]
+        }
+        Returns: {
+          count: number
+          date: string
+          expense: number
+          income: number
+        }[]
+      }
       transfer_ownership: {
         Args: { _household_id: string; _new_owner: string }
         Returns: undefined
       }
+      undo_transaction_delete: { Args: { _undo_id: string }; Returns: boolean }
     }
     Enums: {
       category_type: "income" | "expense" | "both"
@@ -554,12 +578,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -583,11 +607,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -608,11 +632,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -633,11 +657,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -650,11 +674,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -673,7 +697,7 @@ export const Constants = {
   },
 } as const
 
-// --- 互換エイリアス（既存コードが参照。再生成時に再付与すること） ----------
+// 既存の呼び出し元が使用する列挙型の別名。
 export type MemberRole = Database["public"]["Enums"]["member_role"]
 export type TransactionType = Database["public"]["Enums"]["transaction_type"]
 export type CategoryType = Database["public"]["Enums"]["category_type"]
