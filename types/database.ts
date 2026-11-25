@@ -439,6 +439,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      savings_goal_balance: {
+        Args: { _household_id: string; _start_date: string }
+        Returns: number
+      }
       transaction_daily_summary: {
         Args: {
           _household_id: string
