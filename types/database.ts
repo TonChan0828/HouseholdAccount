@@ -431,6 +431,10 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      agent_api_v1: {
+        Args: { _arguments: Json; _operation: string; _token: string }
+        Returns: Json
+      }
       category_usage: {
         Args: { _household_id: string }
         Returns: {
@@ -471,6 +475,7 @@ export type Database = {
         }
         Returns: Json
       }
+      create_agent_token: { Args: { _label: string }; Returns: string }
       create_settlement: {
         Args: { _household_id: string; _ref: string }
         Returns: string
@@ -498,6 +503,7 @@ export type Database = {
         Args: { _household_id: string }
         Returns: number
       }
+      get_agent_routing: { Args: never; Returns: Json }
       get_ui_transaction_receipt: {
         Args: { _request_id: string }
         Returns: Json
@@ -507,6 +513,14 @@ export type Database = {
         Returns: {
           household_name: string
           status: string
+        }[]
+      }
+      list_agent_tokens: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          label: string
         }[]
       }
       merge_category: {
@@ -523,6 +537,16 @@ export type Database = {
           _category_ids: string[]
           _household_id: string
           _type: Database["public"]["Enums"]["category_type"]
+        }
+        Returns: undefined
+      }
+      revoke_agent_token: { Args: { _id: string }; Returns: undefined }
+      save_agent_routing: {
+        Args: {
+          _category_map: Json
+          _home_id: string
+          _personal_id: string
+          _transfer_id: string
         }
         Returns: undefined
       }
