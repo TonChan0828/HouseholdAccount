@@ -145,6 +145,7 @@ export function createSeedState(): DemoState {
         : null,
       memo: t.memo,
       import_key: null,
+      reflected_category_name: null,
       // デモモードは代理入力（spec 41）の対象外。
       on_behalf_of: null,
       recurring_id: null,

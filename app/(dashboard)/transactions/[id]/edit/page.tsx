@@ -3,12 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
-  deleteTransaction,
   updateTransaction,
 } from "@/app/(dashboard)/transactions/actions";
+import { DeleteTransactionForm } from "@/components/features/transactions/delete-transaction-form";
 import { ReflectToGroups } from "@/components/features/transactions/reflect-to-groups.client";
 import { TransactionForm } from "@/components/features/transactions/transaction-form";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Surface } from "@/components/shared/surface";
@@ -64,6 +64,9 @@ export default async function EditTransactionPage({
         style={{ animationDelay: "60ms" }}
       >
         <CardContent className="space-y-4 pt-6">
+          {!transaction.category_id && transaction.reflected_category_name ? (
+            <p className="text-sm text-muted-foreground">反映元のカテゴリ：{transaction.reflected_category_name}</p>
+          ) : null}
           <TransactionForm
             action={updateTransaction}
             categories={categories}
@@ -88,12 +91,7 @@ export default async function EditTransactionPage({
               otherHouseholds={otherHouseholds}
             />
           ) : null}
-          <form action={deleteTransaction} className="border-t pt-4">
-            <input type="hidden" name="id" value={transaction.id} />
-            <Button type="submit" variant="destructive" className="w-full">
-              この収支を削除
-            </Button>
-          </form>
+          <DeleteTransactionForm id={transaction.id} householdId={householdId} />
         </CardContent>
       </Surface>
       <div className="text-center">

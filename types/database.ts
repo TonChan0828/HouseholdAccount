@@ -359,6 +359,7 @@ export type Database = {
           memo: string | null
           on_behalf_of: string | null
           recurring_id: string | null
+          reflected_category_name: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Insert: {
@@ -374,6 +375,7 @@ export type Database = {
           memo?: string | null
           on_behalf_of?: string | null
           recurring_id?: string | null
+          reflected_category_name?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Update: {
@@ -389,6 +391,7 @@ export type Database = {
           memo?: string | null
           on_behalf_of?: string | null
           recurring_id?: string | null
+          reflected_category_name?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
         }
         Relationships: [
@@ -472,7 +475,21 @@ export type Database = {
         Args: { _household_id: string; _ref: string }
         Returns: string
       }
+      create_ui_transaction: {
+        Args: {
+          _household_id: string
+          _request_hash: string
+          _request_id: string
+          _rows: Json
+          _warnings: Json
+        }
+        Returns: Json
+      }
       delete_own_account: { Args: never; Returns: undefined }
+      delete_transaction_with_undo: {
+        Args: { _household_id: string; _transaction_id: string }
+        Returns: Json
+      }
       generate_all_due_recurring: {
         Args: { _as_of_date: string }
         Returns: number
@@ -480,6 +497,10 @@ export type Database = {
       generate_due_recurring: {
         Args: { _household_id: string }
         Returns: number
+      }
+      get_ui_transaction_receipt: {
+        Args: { _request_id: string }
+        Returns: Json
       }
       invitation_preview: {
         Args: { _token: string }
@@ -496,6 +517,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      prune_transaction_undo: { Args: never; Returns: undefined }
       reorder_categories: {
         Args: {
           _category_ids: string[]
@@ -539,6 +561,7 @@ export type Database = {
         Args: { _household_id: string; _new_owner: string }
         Returns: undefined
       }
+      undo_transaction_delete: { Args: { _undo_id: string }; Returns: boolean }
     }
     Enums: {
       category_type: "income" | "expense" | "both"
