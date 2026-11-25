@@ -1,3 +1,5 @@
+import { fetchHouseholdBudgets } from "@/lib/queries/budgets";
+import { fetchReminderCategories } from "@/lib/queries/categories";
 import type { ServerClient } from "@/lib/household";
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { unwrapData } from "@/lib/queries/result";
@@ -12,24 +14,6 @@ export async function loadDashboardData(
   ranges: { current: DateRange; previous: DateRange },
   now = new Date(),
 ) {
-  const loadBudgets = async () => {
-    const result = await supabase
-      .from("budgets")
-      .select("category_id, amount")
-      .eq("household_id", householdId);
-    return unwrapData(result, "fetchDashboardBudgets") ?? [];
-  };
-
-  const loadReminderTargets = async () => {
-    const result = await supabase
-      .from("categories")
-      .select("id, name")
-      .eq("household_id", householdId)
-      .eq("reminder_enabled", true)
-      .eq("is_hidden", false);
-    return unwrapData(result, "fetchReminderCategories") ?? [];
-  };
-
   const loadSavingsGoal = async (): Promise<{
     progress: SavingsProgress | null;
     goal: { start_date: string; target_date: string | null } | null;
@@ -83,9 +67,9 @@ export async function loadDashboardData(
     fetchTransactionsInRange(supabase, householdId, ranges.current),
     fetchTransactionsInRange(supabase, householdId, ranges.previous),
     getHouseholdMemberNames(householdId),
-    loadBudgets(),
+    fetchHouseholdBudgets(supabase, householdId),
     loadSavingsGoal(),
-    loadReminderTargets(),
+    fetchReminderCategories(supabase, householdId),
   ]);
 
   return {

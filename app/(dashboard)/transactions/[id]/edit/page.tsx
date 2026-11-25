@@ -1,3 +1,4 @@
+import { fetchHouseholdCategories } from "@/lib/queries/categories";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -18,7 +19,6 @@ import {
 import { getHouseholdMemberNames } from "@/lib/queries/members";
 import { unwrapData } from "@/lib/queries/result";
 import { canEditTransaction } from "@/lib/transactions/attribution";
-import type { Category } from "@/types";
 
 export default async function EditTransactionPage({
   params,
@@ -41,15 +41,7 @@ export default async function EditTransactionPage({
     notFound();
   }
 
-  const categoryResult = await supabase
-    .from("categories")
-    .select("*")
-    .eq("household_id", householdId)
-    .order("type", { ascending: true })
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  const data = unwrapData(categoryResult, "fetchTransactionFormCategories");
-  const categories = (data ?? []) as Category[];
+  const categories = await fetchHouseholdCategories(supabase, householdId);
 
   // 反映元（アクティブグループ）を除く自分の所属グループを反映先候補にする。
   const otherHouseholds = (await getUserHouseholds()).filter(

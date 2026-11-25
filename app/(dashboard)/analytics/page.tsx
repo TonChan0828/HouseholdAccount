@@ -1,3 +1,5 @@
+import { fetchHouseholdBudgets } from "@/lib/queries/budgets";
+import { fetchHouseholdCategories } from "@/lib/queries/categories";
 import { AdviceSection } from "@/components/features/charts/advice-section";
 import { AnalyticsViewTabs } from "@/components/features/charts/analytics-view-tabs";
 import { CategoryBreakdown } from "@/components/features/charts/category-breakdown";
@@ -74,30 +76,22 @@ export default async function AnalyticsPage({
 
   const [
     txs,
-    budgetResult,
-    categoryResult,
+    budgetData,
+    categoryData,
     recurringResult,
   ] = await Promise.all([
     fetchTransactionsInRange(supabase, householdId, {
       start: ranges[0].start,
       end: base.end,
     }),
-    supabase
-      .from("budgets")
-      .select("category_id, amount")
-      .eq("household_id", householdId),
-    supabase
-      .from("categories")
-      .select("id, name, color")
-      .eq("household_id", householdId),
+    fetchHouseholdBudgets(supabase, householdId),
+    fetchHouseholdCategories(supabase, householdId),
     supabase
       .from("recurring_transactions")
       .select("category_id, type")
       .eq("household_id", householdId)
       .eq("is_active", true),
   ]);
-  const budgetData = unwrapData(budgetResult, "fetchAnalyticsBudgets");
-  const categoryData = unwrapData(categoryResult, "fetchAnalyticsCategories");
   const recurringData = unwrapData(recurringResult, "fetchAnalyticsRecurring");
 
   const trend = summarizeTrend(txs, ranges);
@@ -107,9 +101,9 @@ export default async function AnalyticsPage({
 
   // 家計アドバイス（ルールベース）の入力を組み立てる。
   const budget = buildBudgetRows(
-    budgetData ?? [],
+    budgetData,
     categories,
-    categoryData ?? [],
+    categoryData,
   );
   // 定期支出に紐づくカテゴリは固定費とみなし、集中度判定から除外する。
   const fixedCategoryIds = (recurringData ?? [])
