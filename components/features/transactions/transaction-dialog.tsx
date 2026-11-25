@@ -65,6 +65,7 @@ function useTransactionDialog(): ContextValue {
 
 type ProviderProps = {
   categories: CategoryOption[];
+  household?: { id: string; name: string };
   /** 反映先候補（現在のグループを除く自分の所属グループ）。空なら反映UIを出さない。 */
   otherHouseholds: { id: string; name: string }[];
   /** グループの全メンバー。2人以上なら名義人セレクトを出す（spec 41）。 */
@@ -84,6 +85,7 @@ type ProviderProps = {
  */
 export function TransactionDialogProvider({
   categories,
+  household,
   otherHouseholds,
   members,
   currentUserId,
@@ -110,9 +112,9 @@ export function TransactionDialogProvider({
         {target ? (
           <DialogContent
             data-testid="transaction-dialog"
-            className="max-h-[85vh] overflow-y-auto sm:max-w-md"
+            className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
           >
-            <DialogHeader>
+            <DialogHeader className="shrink-0 px-4 py-4 pr-12">
               <DialogTitle>
                 {editing ? "収支を編集" : "収支を追加"}
               </DialogTitle>
@@ -123,6 +125,7 @@ export function TransactionDialogProvider({
               key={editing?.id ?? "new"}
               action={editing ? updateTransaction : createTransaction}
               categories={categories}
+              household={household}
               submitLabel={editing ? "更新する" : "登録する"}
               dialog
               onSuccess={close}
@@ -135,25 +138,25 @@ export function TransactionDialogProvider({
               members={members}
               currentUserId={currentUserId}
               defaultValues={editing ?? undefined}
+              afterForm={editing ? (
+                <div className="mt-4 space-y-4">
+                  {editing.amount >= 0 && otherHouseholds.length > 0 ? (
+                    <ReflectToGroups
+                      transactionId={editing.id}
+                      otherHouseholds={otherHouseholds}
+                    />
+                  ) : null}
+                  <div className="border-t pt-3 text-center">
+                    <Link
+                      href={`/transactions/${editing.id}/edit`}
+                      className={buttonVariants({ variant: "link", size: "sm" })}
+                    >
+                      編集ページを開く（削除はこちら）
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
             />
-
-            {editing && editing.amount >= 0 && otherHouseholds.length > 0 ? (
-              <ReflectToGroups
-                transactionId={editing.id}
-                otherHouseholds={otherHouseholds}
-              />
-            ) : null}
-
-            {editing ? (
-              <div className="border-t pt-3 text-center">
-                <Link
-                  href={`/transactions/${editing.id}/edit`}
-                  className={buttonVariants({ variant: "link", size: "sm" })}
-                >
-                  編集ページを開く（削除はこちら）
-                </Link>
-              </div>
-            ) : null}
           </DialogContent>
         ) : null}
       </Dialog>

@@ -96,6 +96,7 @@ export default async function CalendarPage({
     <TransactionDialogProvider
       categories={categories}
       otherHouseholds={otherHouseholds}
+      household={households.find((group) => group.id === householdId)}
       members={members}
       currentUserId={user.id}
     >
