@@ -24,6 +24,7 @@ describe("production release", () => {
     expect(workflow.promote).toHaveBeenCalledAfter(workflow.smoke);
     expect(workflow.promote).toHaveBeenCalledWith("https://example.vercel.app");
     expect(workflow.verifyLive).toHaveBeenCalledAfter(workflow.promote);
+    expect(workflow.verifyLive).toHaveBeenCalledWith("https://example.vercel.app");
   });
 
   it.each(["checkBefore", "apply", "checkAfter"] as const)("stops before deployment if %s fails", (step) => {

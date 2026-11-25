@@ -28,7 +28,7 @@ export function releaseCommit({
   smoke(candidate);
   assertLatest();
   promote(candidate);
-  verifyLive();
+  verifyLive(candidate);
 }
 
 function required(name) {
@@ -186,7 +186,12 @@ function main() {
       promote(candidate) {
         vercel(["promote", candidate, "--yes"]);
       },
-      verifyLive() {
+      verifyLive(candidate) {
+        const expected = JSON.parse(vercel(["inspect", candidate, "--json"])).id;
+        const live = JSON.parse(vercel(["inspect", productionUrl, "--json"])).id;
+        if (typeof expected !== "string" || live !== expected) {
+          throw new Error("The production domain does not point to the verified candidate.");
+        }
         run("curl", ["--fail", "--silent", "--show-error", "--max-time", "30",
           "--output", "/dev/null", `${productionUrl}/login`], checkout);
       },
