@@ -2,37 +2,8 @@ name: Mutation Testing
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "lib/amount-expression.ts"
-      - "lib/settlement.ts"
-      - "lib/budget.ts"
-      - "lib/forecast.ts"
-      - "lib/analytics.ts"
-      - "lib/category-matrix.ts"
-      - "lib/savings-goal.ts"
-      - "lib/period.ts"
-      - "lib/transaction-filter.ts"
-      - "lib/transactions/mirror.ts"
-      - "lib/transactions/attribution.ts"
-      - "stryker.config.json"
-      - ".github/workflows/mutation.yml"
-  push:
-    branches: [main]
-    paths:
-      - "lib/amount-expression.ts"
-      - "lib/settlement.ts"
-      - "lib/budget.ts"
-      - "lib/forecast.ts"
-      - "lib/analytics.ts"
-      - "lib/category-matrix.ts"
-      - "lib/savings-goal.ts"
-      - "lib/period.ts"
-      - "lib/transaction-filter.ts"
-      - "lib/transactions/mirror.ts"
-      - "lib/transactions/attribution.ts"
-      - "stryker.config.json"
-      - ".github/workflows/mutation.yml"
+  schedule:
+    - cron: "0 18 * * *" # 03:00 JST
 
 permissions:
   contents: read
