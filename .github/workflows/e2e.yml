@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 45
     env:
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      E2E_WORKERS: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -30,8 +31,16 @@ jobs:
       - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: 2.117.0
-      - run: npm ci
-      - run: supabase start
+      - name: Prepare Supabase and Chromium in parallel
+        run: |
+          supabase start --exclude realtime,storage-api,imgproxy,studio,edge-runtime,logflare,vector,supavisor,postgres-meta &
+          supabase_pid=$!
+          (npm ci && npx playwright install --with-deps chromium) &
+          browser_pid=$!
+          status=0
+          wait "$supabase_pid" || status=$?
+          wait "$browser_pid" || status=$?
+          exit "$status"
       - name: Configure local Supabase
         shell: bash
         run: |
@@ -43,8 +52,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Seed E2E users and fixtures
         run: node e2e/seed.mjs
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --workers=1
+      - run: npm run test:e2e
       - name: Check import preview against a production build
         env:
           NEXT_PUBLIC_APP_URL: http://localhost:3217
