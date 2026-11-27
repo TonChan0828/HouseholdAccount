@@ -1,5 +1,28 @@
+/**
+ * seed が用意するワーカー別フィクスチャの数（e2e/seed.mjs と合わせる）。
+ * アプリは選択中の家計簿をユーザー単位で扱うため、並列ワーカーでユーザーを共有すると競合する。
+ */
+export const E2E_MAX_WORKERS = 8;
+
+export function workerFixtures(index: number) {
+  if (!Number.isInteger(index) || index < 0 || index >= E2E_MAX_WORKERS) {
+    throw new Error(`E2E ワーカー番号は 0〜${E2E_MAX_WORKERS - 1} です: ${index}`);
+  }
+  // 0番は従来のフィクスチャ名のままにする
+  const suffix = index === 0 ? "" : `-w${index}`;
+  return {
+    ownerEmail: `e2e${suffix}@e2etest.dev`,
+    memberEmail: `e2e-member${suffix}@e2etest.dev`,
+    household: `E2Eダッシュボード-1781044939636${suffix}`,
+    storageState: `e2e/.auth/user${suffix}.json`,
+  };
+}
+
+// Playwright がワーカープロセスに設定する。ワーカー外（設定の読み込み・Vitest）では0番。
+const current = workerFixtures(Number(process.env.TEST_PARALLEL_INDEX ?? 0));
+
 /** ログイン済みセッションを保存するファイル */
-export const STORAGE_STATE = "e2e/.auth/user.json";
+export const STORAGE_STATE = current.storageState;
 
 /**
  * E2E が生成する一時データ（グループ等）に付与する接頭辞。
@@ -26,7 +49,7 @@ export function isEphemeralName(name: string): boolean {
 
 /** E2E 用の確認済みテストユーザー（Supabase に seed 済み。MULTI_MEMBER_HOUSEHOLD のオーナー） */
 export const E2E_USER = {
-  email: "e2e@e2etest.dev",
+  email: current.ownerEmail,
   password: "password123",
 };
 
@@ -36,7 +59,7 @@ export const E2E_USER = {
  * 委譲・除外 UI や複数人テストに使う。
  */
 export const E2E_MEMBER_USER = {
-  email: "e2e-member@e2etest.dev",
+  email: current.memberEmail,
   password: "password123",
   displayName: "テストメンバー",
 };
@@ -46,4 +69,4 @@ export const E2E_MEMBER_USER = {
  * メンバー: E2E_USER（owner）+ E2E_MEMBER_USER（member）。
  * 複数メンバーのグループでの重複表示・切り替え・メンバー管理 UI の回帰テストに使う。
  */
-export const MULTI_MEMBER_HOUSEHOLD = "E2Eダッシュボード-1781044939636";
+export const MULTI_MEMBER_HOUSEHOLD = current.household;

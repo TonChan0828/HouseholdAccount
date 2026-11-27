@@ -17,7 +17,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 1 : undefined,
+  // 並列にする場合は seed と同じ E2E_WORKERS を指定する。ワーカーごとに別ユーザーを使う。
+  workers: Number(process.env.E2E_WORKERS ?? 1),
   timeout: isCI ? 60_000 : 30_000,
   expect: {
     timeout: isCI ? 15_000 : 5_000,
