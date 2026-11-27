@@ -16,7 +16,12 @@ concurrency:
 jobs:
   playwright:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      # 他のワークフローと合わせて、同時実行の上限（20ジョブ）に収める。
+      matrix:
+        suite: ["1/12", "2/12", "3/12", "4/12", "5/12", "6/12", "7/12", "8/12", "9/12", "10/12", "11/12", "12/12", production]
     env:
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       E2E_WORKERS: 2
@@ -52,8 +57,13 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Seed E2E users and fixtures
         run: node e2e/seed.mjs
-      - run: npm run test:e2e
+      - name: Run browser tests
+        if: matrix.suite != 'production'
+        env:
+          SHARD: ${{ matrix.suite }}
+        run: npm run test:e2e -- --shard="$SHARD"
       - name: Check import preview against a production build
+        if: matrix.suite == 'production'
         env:
           NEXT_PUBLIC_APP_URL: http://localhost:3217
           E2E_PORT: 3217
@@ -65,7 +75,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
-          name: playwright-failure-${{ github.run_id }}
+          name: playwright-failure-${{ github.run_id }}-${{ strategy.job-index }}
           path: |
             playwright-report/
             test-results/
