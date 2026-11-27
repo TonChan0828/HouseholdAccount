@@ -33,10 +33,13 @@ const admin = createClient(url, serviceRoleKey, {
 });
 
 const PASSWORD = "password123";
-const OWNER_EMAIL = "e2e@e2etest.dev";
-const MEMBER_EMAIL = "e2e-member@e2etest.dev";
 const MEMBER_DISPLAY_NAME = "テストメンバー";
-const HOUSEHOLD_NAME = "E2Eダッシュボード-1781044939636";
+// 固定パスワードのアカウントを必要以上に作らないよう、並列実行を指定した数だけ用意する。
+// 上限と命名は e2e/constants.ts の E2E_MAX_WORKERS / workerFixtures と合わせる。
+const WORKERS = Number(process.env.E2E_WORKERS ?? 1);
+if (!Number.isInteger(WORKERS) || WORKERS < 1 || WORKERS > 8) {
+  throw new Error(`E2E_WORKERS は 1〜8 です: ${process.env.E2E_WORKERS}`);
+}
 
 /** メールから既存 auth ユーザーを探す（admin.listUsers をページングして検索）。 */
 async function findUserByEmail(email) {
@@ -74,7 +77,12 @@ async function ensureUser(email) {
   return data.user.id;
 }
 
-async function main() {
+async function seedWorker(index) {
+  const suffix = index === 0 ? "" : `-w${index}`;
+  const OWNER_EMAIL = `e2e${suffix}@e2etest.dev`;
+  const MEMBER_EMAIL = `e2e-member${suffix}@e2etest.dev`;
+  const HOUSEHOLD_NAME = `E2Eダッシュボード-1781044939636${suffix}`;
+
   const ownerId = await ensureUser(OWNER_EMAIL);
   const memberId = await ensureUser(MEMBER_EMAIL);
 
@@ -124,6 +132,10 @@ async function main() {
     console.log(`[seed] member を追加: ${MEMBER_EMAIL}`);
   }
 
+}
+
+async function main() {
+  for (let index = 0; index < WORKERS; index++) await seedWorker(index);
   console.log("[seed] 完了");
 }
 
